@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#087f8c">
+  <meta name="description" content="Aquarium Fish - inventario, ventas y movimientos">
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" href="icon.svg">
+  <link rel="stylesheet" href="style.css">
+  <title>Aquarium Fish</title>
+</head>
+<body>
+<header>
+  <div class="brand"><img src="icon.svg" alt=""><div><strong>Aquarium Fish</strong><small>Gestión del negocio</small></div></div>
+  <button id="installBtn" class="ghost hidden">Instalar</button>
+</header>
+
+<main id="app">
+  <section id="home" class="screen active">
+    <h1>Inicio</h1>
+    <div class="cards">
+      <div class="card"><span>Ventas pagadas</span><b id="salesTotal">$0</b><small id="salesCount">0 transacciones</small></div>
+      <div class="card"><span>Productos</span><b id="productCount">0</b><small>en catálogo</small></div>
+      <div class="card"><span>Stock bajo</span><b id="lowStock">0</b><small>requieren atención</small></div>
+    </div>
+    <div class="panel">
+      <h2>Resumen</h2>
+      <div id="recentSales" class="list"></div>
+    </div>
+  </section>
+
+  <section id="inventory" class="screen">
+    <div class="section-head"><h1>Inventario</h1><button class="primary" onclick="openProduct()">+ Producto</button></div>
+    <input id="search" class="search" placeholder="Buscar producto..." oninput="renderInventory()">
+    <div id="inventoryList" class="list"></div>
+  </section>
+
+  <section id="sales" class="screen">
+    <div class="section-head"><h1>Ventas</h1><button class="primary" onclick="openSale()">+ Venta</button></div>
+    <div id="salesList" class="list"></div>
+  </section>
+
+  <section id="moves" class="screen">
+    <div class="section-head"><h1>Movimientos</h1><button class="primary" onclick="openMove()">Registrar movimiento</button></div>
+    <div id="movesList" class="list"></div>
+  </section>
+</main>
+
+<nav>
+  <button data-tab="home" class="active">⌂<span>Inicio</span></button>
+  <button data-tab="inventory">▣<span>Inventario</span></button>
+  <button data-tab="sales">▤<span>Ventas</span></button>
+  <button data-tab="moves">⇅<span>Movimientos</span></button>
+</nav>
+
+<div id="modal" class="modal hidden">
+  <div class="modal-box">
+    <div class="modal-head"><h2 id="modalTitle"></h2><button onclick="closeModal()">×</button></div>
+    <form id="form"></form>
+  </div>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>
