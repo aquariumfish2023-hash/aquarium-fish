@@ -25,12 +25,17 @@
 <small>Gestión del negocio</small>
 </div>
 </div>
-<button id="installBtn" class="ghost hidden">Instalar</button>
+
+<button id="installBtn" class="ghost hidden">
+Instalar
+</button>
 </header>
+
 
 <main>
 
 <section id="home" class="screen active">
+
 <h1>Inicio</h1>
 
 <div class="cards">
@@ -61,27 +66,40 @@
 
 </div>
 
-<div class="panel">
-<h2>Últimas ventas</h2>
-<div id="recentSales" class="list"></div>
-</div>
 
 <div class="panel">
+
+<h2>Últimas ventas</h2>
+
+<div id="recentSales" class="list"></div>
+
+</div>
+
+
+<div class="panel">
+
 <h2>Resumen interno</h2>
+
 <p class="muted">
 Las ganancias no aparecen en las pantallas de venta.
 </p>
+
 <button class="primary" onclick="openInternal()">
 🔒 Ver ganancias y cuentas
 </button>
+
 </div>
+
 
 <div class="panel">
 
 <h2>Datos</h2>
 
 <div class="data-actions">
-<button onclick="exportData()">Exportar respaldo</button>
+
+<button onclick="exportData()">
+Exportar respaldo
+</button>
 
 <button onclick="document.getElementById('importFile').click()">
 Importar respaldo
@@ -92,6 +110,7 @@ id="importFile"
 type="file"
 accept=".json"
 hidden>
+
 </div>
 
 <p class="muted">
@@ -106,6 +125,7 @@ encargos y movimientos.
 </div>
 
 </section>
+
 
 
 <section id="inventory" class="screen">
@@ -130,6 +150,7 @@ placeholder="Buscar producto...">
 </section>
 
 
+
 <section id="sales" class="screen">
 
 <div class="section-head">
@@ -145,6 +166,7 @@ placeholder="Buscar producto...">
 <div id="salesList" class="list"></div>
 
 </section>
+
 
 
 <section id="customers" class="screen">
@@ -169,6 +191,7 @@ placeholder="Buscar cliente...">
 </section>
 
 
+
 <section id="orders" class="screen">
 
 <div class="section-head">
@@ -191,6 +214,7 @@ y que no tienes disponibles.
 </section>
 
 
+
 <section id="moves" class="screen">
 
 <div class="section-head">
@@ -208,6 +232,7 @@ Registrar movimiento
 </section>
 
 </main>
+
 
 
 <nav>
@@ -245,6 +270,7 @@ Registrar movimiento
 </nav>
 
 
+
 <div id="modal" class="modal hidden">
 
 <div class="modal-box">
@@ -262,6 +288,7 @@ Registrar movimiento
 </div>
 
 </div>
+
 
 
 <div id="internalModal" class="modal hidden">
@@ -299,9 +326,11 @@ Cerrar
 </div>
 
 
-<!-- INICIO SEGURO -->
+
+<!-- SPLASH SEGURO -->
 
 <script>
+
 (function(){
 
 function hideSplash(){
@@ -318,27 +347,28 @@ splash.classList.add("hide");
 }
 
 /*
-No esperamos al evento "load".
-Así Firebase no puede dejar
-la pantalla bloqueada.
+La pantalla inicial se oculta
+sin esperar a Firebase ni al evento load.
 */
 
 setTimeout(hideSplash,1500);
 
 /*
-Segundo seguro por si el navegador
-está muy lento.
+Segundo seguro.
 */
 
 setTimeout(hideSplash,3000);
 
 })();
+
 </script>
+
 
 
 <!-- APLICACIÓN -->
 
 <script src="app.js"></script>
+
 
 
 <!-- FIREBASE -->
@@ -348,7 +378,8 @@ setTimeout(hideSplash,3000);
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
 
 
-<!-- CONFIGURACIÓN FIREBASE -->
+
+<!-- CONFIGURACIÓN -->
 
 <script>
 
@@ -377,7 +408,8 @@ appId:
 </script>
 
 
-<!-- SINCRONIZACIÓN -->
+
+<!-- SINCRONIZACIÓN FIREBASE -->
 
 <script>
 
@@ -401,7 +433,6 @@ let uploadTimer = null;
 let firestoreRef = null;
 
 
-/* Estado */
 
 function setStatus(text){
 
@@ -419,7 +450,6 @@ console.log(text);
 }
 
 
-/* Iniciar Firebase */
 
 function initFirebase(){
 
@@ -467,7 +497,7 @@ error
 );
 
 setStatus(
-"⚠️ Firebase no disponible. La app seguirá funcionando."
+"⚠️ Firebase no disponible. Datos locales activos."
 );
 
 return false;
@@ -477,7 +507,6 @@ return false;
 }
 
 
-/* Subir datos */
 
 function uploadLocalData(){
 
@@ -548,7 +577,11 @@ setStatus(
 }
 
 
-/* Guardar localmente y sincronizar */
+
+/*
+Detectar cambios realizados
+por la aplicación.
+*/
 
 const originalSetItem =
 Storage.prototype.setItem;
@@ -575,7 +608,6 @@ uploadLocalData();
 };
 
 
-/* Sincronización principal */
 
 async function startSync(){
 
@@ -595,10 +627,9 @@ const snapshot =
 await firestoreRef.get();
 
 
+
 /*
-Firebase está vacío.
-Subimos lo que ya existe
-en el dispositivo.
+SI FIREBASE ESTÁ VACÍO
 */
 
 if(!snapshot.exists){
@@ -614,8 +645,9 @@ uploadLocalData();
 }
 
 
+
 /*
-Firebase ya tiene datos.
+SI FIREBASE YA TIENE DATOS
 */
 
 else{
@@ -631,6 +663,17 @@ localStorage.getItem(DATA_KEY);
 const remoteText =
 JSON.stringify(remote);
 
+
+/*
+IMPORTANTE:
+
+Ya NO hacemos location.reload().
+
+Así evitamos el ciclo:
+
+logo → app → logo → app
+*/
+
 if(local !== remoteText){
 
 syncing = true;
@@ -644,24 +687,8 @@ remoteText
 syncing = false;
 
 setStatus(
-"☁️ Datos recuperados de Firebase"
+"☁️ Datos de Firebase recibidos"
 );
-
-/*
-Recargar para que app.js
-muestre los datos recuperados.
-*/
-
-setTimeout(
-function(){
-
-location.reload();
-
-},
-700
-);
-
-return;
 
 }
 
@@ -670,18 +697,21 @@ return;
 ready = true;
 
 setStatus(
-"☁️ Datos sincronizados"
+"☁️ Sincronización activa"
 );
 
 }
 
 
+
 /*
-Escuchar cambios desde otro
-celular, tablet o computador.
+ESCUCHAR CAMBIOS DE OTROS DISPOSITIVOS
+
+No recargamos la página automáticamente.
 */
 
 firestoreRef.onSnapshot(
+
 function(snapshot){
 
 if(!snapshot.exists()){
@@ -706,6 +736,7 @@ localStorage.getItem(DATA_KEY);
 const remoteText =
 JSON.stringify(remote);
 
+
 if(remoteText !== local){
 
 syncing = true;
@@ -719,21 +750,17 @@ remoteText
 syncing = false;
 
 setStatus(
-"☁️ Datos actualizados"
+"☁️ Datos actualizados desde otro dispositivo"
 );
 
-setTimeout(
-function(){
-
-location.reload();
-
-},
-700
-);
+/*
+NO location.reload()
+*/
 
 }
 
 },
+
 function(error){
 
 console.error(
@@ -748,6 +775,8 @@ setStatus(
 }
 
 );
+
+
 
 }catch(error){
 
@@ -765,12 +794,16 @@ setStatus(
 }
 
 
+
 /*
-Firebase comienza DESPUÉS de que
-la aplicación ya está visible.
+Esperamos un momento después
+de mostrar la aplicación.
+
+Firebase NO controla el arranque.
 */
 
 setTimeout(
+
 function(){
 
 const connected =
@@ -783,7 +816,9 @@ startSync();
 }
 
 },
+
 1200
+
 );
 
 })();
@@ -792,4 +827,4 @@ startSync();
 
 
 </body>
-</html>
+  </html>
