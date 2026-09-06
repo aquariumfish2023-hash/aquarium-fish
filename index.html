@@ -10,4 +10,21 @@
 <nav><button data-tab="home" class="active">⌂<span>Inicio</span></button><button data-tab="inventory">▣<span>Inventario</span></button><button data-tab="sales">▤<span>Ventas</span></button><button data-tab="customers">♙<span>Clientes</span></button><button data-tab="orders">📝<span>Encargos</span></button><button data-tab="moves">⇅<span>Movimientos</span></button></nav>
 <div id="modal" class="modal hidden"><div class="modal-box"><div class="modal-head"><h2 id="modalTitle"></h2><button onclick="closeModal()">×</button></div><form id="form"></form></div></div>
 <div id="internalModal" class="modal hidden"><div class="modal-box"><div class="modal-head"><h2>🔒 Resumen interno</h2><button onclick="closeInternal()">×</button></div><div id="internalStats"></div><p class="muted">Esta información está separada de la pantalla de venta para que puedas mostrar los precios al cliente sin enseñarle la ganancia.</p><div class="form-actions"><button class="primary" onclick="closeInternal()">Cerrar</button></div></div></div>
-<script>window.addEventListener('load',()=>setTimeout(()=>document.getElementById('splash').classList.add('hide'),3000));</script><script src="app.js"></script></body></html>
+<script>window.addEventListener('load',()=>setTimeout(()=>document.getElementById('splash').classList.add('hide'),3000));</script><script src="app.js"></script><script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+
+<script>
+const firebaseConfig = {
+  apiKey: "AIzaSyBhmpkynU7Kl87UNge7aWwDhJ2Pm-TpVxk",
+  authDomain: "aquarium-fish-218a1.firebaseapp.com",
+  projectId: "aquarium-fish-218a1",
+  storageBucket: "aquarium-fish-218a1.firebasestorage.app",
+  messagingSenderId: "629993722414",
+  appId: "1:629993722414:web:fa7d4f8ec7ec1f3d2f05bf"
+};
+
+firebase.initializeApp(firebaseConfig);
+const firestore = firebase.firestore();
+
+console.log("🔥 Firebase conectado correctamente");
+</script></body></html>
