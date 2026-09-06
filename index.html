@@ -34,6 +34,7 @@
 <h1>Inicio</h1>
 
 <div class="cards">
+
 <div class="card">
 <span>Ventas</span>
 <b id="salesTotal">$0</b>
@@ -57,6 +58,7 @@
 <b id="lowStock">0</b>
 <small>requieren atención</small>
 </div>
+
 </div>
 
 <div class="panel">
@@ -66,199 +68,350 @@
 
 <div class="panel">
 <h2>Resumen interno</h2>
-<p class="muted">Las ganancias no aparecen en las pantallas de venta.</p>
-<button class="primary" onclick="openInternal()">🔒 Ver ganancias y cuentas</button>
+<p class="muted">
+Las ganancias no aparecen en las pantallas de venta.
+</p>
+<button class="primary" onclick="openInternal()">
+🔒 Ver ganancias y cuentas
+</button>
 </div>
 
 <div class="panel">
+
 <h2>Datos</h2>
 
 <div class="data-actions">
 <button onclick="exportData()">Exportar respaldo</button>
-<button onclick="document.getElementById('importFile').click()">Importar respaldo</button>
-<input id="importFile" type="file" accept=".json" hidden>
+
+<button onclick="document.getElementById('importFile').click()">
+Importar respaldo
+</button>
+
+<input
+id="importFile"
+type="file"
+accept=".json"
+hidden>
 </div>
 
 <p class="muted">
-El respaldo guarda productos, ventas, clientes, encargos y movimientos.
+El respaldo guarda productos, ventas, clientes,
+encargos y movimientos.
 </p>
 
 <p id="syncStatus" class="muted">
-☁️ Conectando con Firebase...
+☁️ Preparando sincronización...
 </p>
 
 </div>
+
 </section>
 
 
 <section id="inventory" class="screen">
+
 <div class="section-head">
+
 <h1>Inventario</h1>
-<button class="primary" onclick="openProduct()">+ Producto</button>
+
+<button class="primary" onclick="openProduct()">
++ Producto
+</button>
+
 </div>
 
-<input id="search" class="search" placeholder="Buscar producto...">
+<input
+id="search"
+class="search"
+placeholder="Buscar producto...">
+
 <div id="inventoryList" class="list"></div>
+
 </section>
 
 
 <section id="sales" class="screen">
+
 <div class="section-head">
+
 <h1>Ventas</h1>
-<button class="primary" onclick="openSale()">+ Venta</button>
+
+<button class="primary" onclick="openSale()">
++ Venta
+</button>
+
 </div>
 
 <div id="salesList" class="list"></div>
+
 </section>
 
 
 <section id="customers" class="screen">
+
 <div class="section-head">
+
 <h1>Clientes</h1>
-<button class="primary" onclick="openCustomer()">+ Cliente</button>
+
+<button class="primary" onclick="openCustomer()">
++ Cliente
+</button>
+
 </div>
 
-<input id="customerSearch" class="search" placeholder="Buscar cliente...">
+<input
+id="customerSearch"
+class="search"
+placeholder="Buscar cliente...">
+
 <div id="customersList" class="list"></div>
+
 </section>
 
 
 <section id="orders" class="screen">
+
 <div class="section-head">
+
 <h1>Encargos</h1>
-<button class="primary" onclick="openOrder()">+ Encargo</button>
+
+<button class="primary" onclick="openOrder()">
++ Encargo
+</button>
+
 </div>
 
 <p class="muted">
-Anota peces o accesorios que un cliente pidió y que no tienes disponibles.
+Anota peces o accesorios que un cliente pidió
+y que no tienes disponibles.
 </p>
 
 <div id="ordersList" class="list"></div>
+
 </section>
 
 
 <section id="moves" class="screen">
+
 <div class="section-head">
+
 <h1>Movimientos</h1>
-<button class="primary" onclick="openMove()">Registrar movimiento</button>
+
+<button class="primary" onclick="openMove()">
+Registrar movimiento
+</button>
+
 </div>
 
 <div id="movesList" class="list"></div>
+
 </section>
 
 </main>
 
 
 <nav>
-<button data-tab="home" class="active">⌂<span>Inicio</span></button>
-<button data-tab="inventory">▣<span>Inventario</span></button>
-<button data-tab="sales">▤<span>Ventas</span></button>
-<button data-tab="customers">♙<span>Clientes</span></button>
-<button data-tab="orders">📝<span>Encargos</span></button>
-<button data-tab="moves">⇅<span>Movimientos</span></button>
+
+<button data-tab="home" class="active">
+⌂
+<span>Inicio</span>
+</button>
+
+<button data-tab="inventory">
+▣
+<span>Inventario</span>
+</button>
+
+<button data-tab="sales">
+▤
+<span>Ventas</span>
+</button>
+
+<button data-tab="customers">
+♙
+<span>Clientes</span>
+</button>
+
+<button data-tab="orders">
+📝
+<span>Encargos</span>
+</button>
+
+<button data-tab="moves">
+⇅
+<span>Movimientos</span>
+</button>
+
 </nav>
 
 
 <div id="modal" class="modal hidden">
+
 <div class="modal-box">
 
 <div class="modal-head">
+
 <h2 id="modalTitle"></h2>
+
 <button onclick="closeModal()">×</button>
+
 </div>
 
 <form id="form"></form>
 
 </div>
+
 </div>
 
 
 <div id="internalModal" class="modal hidden">
+
 <div class="modal-box">
 
 <div class="modal-head">
+
 <h2>🔒 Resumen interno</h2>
+
 <button onclick="closeInternal()">×</button>
+
 </div>
 
 <div id="internalStats"></div>
 
 <p class="muted">
-Esta información está separada de la pantalla de venta para que puedas mostrar los precios al cliente sin enseñarle la ganancia.
+Esta información está separada de la pantalla de venta
+para que puedas mostrar los precios al cliente sin
+enseñarle la ganancia.
 </p>
 
 <div class="form-actions">
-<button class="primary" onclick="closeInternal()">Cerrar</button>
+
+<button
+class="primary"
+onclick="closeInternal()">
+Cerrar
+</button>
+
 </div>
 
 </div>
+
 </div>
 
 
-<!-- Splash -->
+<!-- INICIO SEGURO -->
+
 <script>
-window.addEventListener('load',()=>{
-setTimeout(()=>{
-const splash=document.getElementById('splash');
-if(splash) splash.classList.add('hide');
-},3000);
-});
+(function(){
+
+function hideSplash(){
+
+const splash =
+document.getElementById("splash");
+
+if(splash){
+
+splash.classList.add("hide");
+
+}
+
+}
+
+/*
+No esperamos al evento "load".
+Así Firebase no puede dejar
+la pantalla bloqueada.
+*/
+
+setTimeout(hideSplash,1500);
+
+/*
+Segundo seguro por si el navegador
+está muy lento.
+*/
+
+setTimeout(hideSplash,3000);
+
+})();
 </script>
 
 
-<!-- Aquarium Fish -->
+<!-- APLICACIÓN -->
+
 <script src="app.js"></script>
 
 
-<!-- Firebase -->
+<!-- FIREBASE -->
+
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
 
+
+<!-- CONFIGURACIÓN FIREBASE -->
 
 <script>
 
 const firebaseConfig = {
-apiKey: "AIzaSyBhmpkynU7Kl87UNge7aWwDhJ2Pm-TpVxk",
-authDomain: "aquarium-fish-218a1.firebaseapp.com",
-projectId: "aquarium-fish-218a1",
-storageBucket: "aquarium-fish-218a1.firebasestorage.app",
-messagingSenderId: "629993722414",
-appId: "1:629993722414:web:fa7d4f8ec7ec1f3d2f05bf"
+
+apiKey:
+"AIzaSyBhmpkynU7Kl87UNge7aWwDhJ2Pm-TpVxk",
+
+authDomain:
+"aquarium-fish-218a1.firebaseapp.com",
+
+projectId:
+"aquarium-fish-218a1",
+
+storageBucket:
+"aquarium-fish-218a1.firebasestorage.app",
+
+messagingSenderId:
+"629993722414",
+
+appId:
+"1:629993722414:web:fa7d4f8ec7ec1f3d2f05bf"
+
 };
-
-firebase.initializeApp(firebaseConfig);
-
-const firestore = firebase.firestore();
-
-console.log("🔥 Firebase conectado correctamente");
 
 </script>
 
 
-<!-- Sincronización Aquarium Fish -->
+<!-- SINCRONIZACIÓN -->
+
 <script>
 
 (function(){
 
-const DATA_KEY = "aquarium_fish_data_v5";
-const COLLECTION = "appData";
-const DOCUMENT = "aquariumFish";
+const DATA_KEY =
+"aquarium_fish_data_v5";
 
-const ref = firestore
-.collection(COLLECTION)
-.doc(DOCUMENT);
+const COLLECTION =
+"appData";
+
+const DOCUMENT =
+"aquariumFish";
 
 let syncing = false;
-let timer = null;
+
 let ready = false;
 
+let uploadTimer = null;
+
+let firestoreRef = null;
+
+
+/* Estado */
 
 function setStatus(text){
 
-const el = document.getElementById("syncStatus");
+const el =
+document.getElementById("syncStatus");
 
 if(el){
+
 el.textContent = text;
+
 }
 
 console.log(text);
@@ -266,62 +419,153 @@ console.log(text);
 }
 
 
-async function uploadLocalData(){
+/* Iniciar Firebase */
 
-if(!ready || syncing) return;
-
-clearTimeout(timer);
-
-timer=setTimeout(async()=>{
+function initFirebase(){
 
 try{
 
-const local=localStorage.getItem(DATA_KEY);
+if(typeof firebase === "undefined"){
 
-if(!local){
-setStatus("⚠️ No hay datos locales");
-return;
+throw new Error(
+"Firebase no pudo cargar"
+);
+
 }
 
-const data=JSON.parse(local);
+if(!firebase.apps.length){
 
-await ref.set({
+firebase.initializeApp(
+firebaseConfig
+);
+
+}
+
+const firestore =
+firebase.firestore();
+
+firestoreRef =
+firestore
+.collection(COLLECTION)
+.doc(DOCUMENT);
+
+console.log(
+"🔥 Firebase conectado correctamente"
+);
+
+setStatus(
+"🟢 Firebase conectado"
+);
+
+return true;
+
+}catch(error){
+
+console.error(
+"❌ Error iniciando Firebase:",
+error
+);
+
+setStatus(
+"⚠️ Firebase no disponible. La app seguirá funcionando."
+);
+
+return false;
+
+}
+
+}
+
+
+/* Subir datos */
+
+function uploadLocalData(){
+
+if(!ready ||
+syncing ||
+!firestoreRef){
+
+return;
+
+}
+
+clearTimeout(uploadTimer);
+
+uploadTimer =
+setTimeout(async function(){
+
+try{
+
+const local =
+localStorage.getItem(DATA_KEY);
+
+if(!local){
+
+setStatus(
+"⚠️ No hay datos locales"
+);
+
+return;
+
+}
+
+const data =
+JSON.parse(local);
+
+await firestoreRef.set({
 
 data:data,
 
 updatedAt:
-firebase.firestore.FieldValue.serverTimestamp()
+firebase.firestore.FieldValue
+.serverTimestamp()
 
 });
 
-setStatus("☁️ Sincronizado con Firebase");
+setStatus(
+"☁️ Sincronizado con Firebase"
+);
 
-console.log("☁️ Datos enviados a Firebase");
+console.log(
+"☁️ Datos enviados a Firebase"
+);
 
 }catch(error){
 
-console.error("❌ Error Firebase:",error);
+console.error(
+"❌ Error Firebase:",
+error
+);
 
-setStatus("⚠️ Error de sincronización");
+setStatus(
+"⚠️ No se pudo sincronizar"
+);
 
 }
 
-},500);
+},700);
 
 }
 
 
-const originalSetItem=Storage.prototype.setItem;
+/* Guardar localmente y sincronizar */
 
+const originalSetItem =
+Storage.prototype.setItem;
 
-Storage.prototype.setItem=function(key,value){
+Storage.prototype.setItem =
+function(key,value){
 
-originalSetItem.call(this,key,value);
+originalSetItem.call(
+this,
+key,
+value
+);
 
 if(
-key===DATA_KEY &&
-!syncing &&
-ready
+key === DATA_KEY &&
+ready &&
+!syncing
 ){
 
 uploadLocalData();
@@ -331,52 +575,65 @@ uploadLocalData();
 };
 
 
+/* Sincronización principal */
+
 async function startSync(){
+
+if(!firestoreRef){
+
+return;
+
+}
 
 try{
 
-setStatus("☁️ Conectando con Firebase...");
+setStatus(
+"☁️ Comprobando datos..."
+);
 
-const snapshot=await ref.get();
+const snapshot =
+await firestoreRef.get();
 
 
 /*
-Firebase está vacío:
-subimos los datos que ya existen
-en el teléfono.
+Firebase está vacío.
+Subimos lo que ya existe
+en el dispositivo.
 */
 
 if(!snapshot.exists){
 
-console.log(
-"☁️ Firebase está vacío. Subiendo datos locales..."
+ready = true;
+
+setStatus(
+"☁️ Guardando datos en Firebase..."
 );
 
-ready=true;
-
-await uploadLocalData();
+uploadLocalData();
 
 }
 
 
 /*
-Firebase ya tiene datos:
-los recuperamos.
+Firebase ya tiene datos.
 */
 
 else{
 
-const remote=snapshot.data().data;
+const remote =
+snapshot.data().data;
 
 if(remote){
 
-const local=localStorage.getItem(DATA_KEY);
+const local =
+localStorage.getItem(DATA_KEY);
 
-const remoteText=JSON.stringify(remote);
+const remoteText =
+JSON.stringify(remote);
 
-if(local!==remoteText){
+if(local !== remoteText){
 
-syncing=true;
+syncing = true;
 
 originalSetItem.call(
 localStorage,
@@ -384,15 +641,25 @@ DATA_KEY,
 remoteText
 );
 
-syncing=false;
+syncing = false;
 
 setStatus(
 "☁️ Datos recuperados de Firebase"
 );
 
-setTimeout(()=>{
+/*
+Recargar para que app.js
+muestre los datos recuperados.
+*/
+
+setTimeout(
+function(){
+
 location.reload();
-},700);
+
+},
+700
+);
 
 return;
 
@@ -400,33 +667,48 @@ return;
 
 }
 
-ready=true;
+ready = true;
 
-setStatus("☁️ Sincronizado con Firebase");
+setStatus(
+"☁️ Datos sincronizados"
+);
 
 }
 
 
 /*
-Escuchar cambios hechos desde otro
+Escuchar cambios desde otro
 celular, tablet o computador.
 */
 
-ref.onSnapshot(snapshot=>{
+firestoreRef.onSnapshot(
+function(snapshot){
 
-if(!snapshot.exists()) return;
+if(!snapshot.exists()){
 
-const remote=snapshot.data().data;
+return;
 
-if(!remote || syncing) return;
+}
 
-const local=localStorage.getItem(DATA_KEY);
+const remote =
+snapshot.data().data;
 
-const remoteText=JSON.stringify(remote);
+if(!remote ||
+syncing){
 
-if(remoteText!==local){
+return;
 
-syncing=true;
+}
+
+const local =
+localStorage.getItem(DATA_KEY);
+
+const remoteText =
+JSON.stringify(remote);
+
+if(remoteText !== local){
+
+syncing = true;
 
 originalSetItem.call(
 localStorage,
@@ -434,28 +716,48 @@ DATA_KEY,
 remoteText
 );
 
-syncing=false;
+syncing = false;
 
-setStatus("☁️ Datos actualizados");
+setStatus(
+"☁️ Datos actualizados"
+);
 
-setTimeout(()=>{
+setTimeout(
+function(){
+
 location.reload();
-},700);
+
+},
+700
+);
 
 }
 
-});
-
-
-}catch(error){
+},
+function(error){
 
 console.error(
-"❌ Firebase Sync Error:",
+"❌ Error escuchando Firebase:",
 error
 );
 
 setStatus(
-"🔴 ERROR FIREBASE: " + (error.code || "") + " - " + error.message
+"⚠️ Firebase desconectado. Datos locales activos."
+);
+
+}
+
+);
+
+}catch(error){
+
+console.error(
+"❌ Error de sincronización:",
+error
+);
+
+setStatus(
+"⚠️ Firebase no disponible. Datos locales activos."
 );
 
 }
@@ -464,18 +766,30 @@ setStatus(
 
 
 /*
-Iniciar sincronización cuando
-la aplicación haya cargado.
+Firebase comienza DESPUÉS de que
+la aplicación ya está visible.
 */
 
-window.addEventListener(
-"load",
-startSync
+setTimeout(
+function(){
+
+const connected =
+initFirebase();
+
+if(connected){
+
+startSync();
+
+}
+
+},
+1200
 );
 
 })();
 
 </script>
+
 
 </body>
 </html>
