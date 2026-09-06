@@ -28,3 +28,107 @@ const firestore = firebase.firestore();
 
 console.log("🔥 Firebase conectado correctamente");
 </script></body></html>
+<script>
+(function () {
+  const DATA_KEY = "aquarium_fish_data_v5";
+  const COLLECTION = "appData";
+  const DOCUMENT = "aquariumFish";
+
+  const status = (text) => {
+    const el = document.getElementById("syncStatus");
+    if (el) el.textContent = text;
+  };
+
+  let timer = null;
+  let ready = false;
+  let applyingRemote = false;
+
+  function uploadLocalData() {
+    if (!ready || applyingRemote) return;
+
+    clearTimeout(timer);
+
+    timer = setTimeout(async () => {
+      try {
+        const local = localStorage.getItem(DATA_KEY);
+        if (!local) return;
+
+        const data = JSON.parse(local);
+
+        await firestore.collection(COLLECTION).doc(DOCUMENT).set({
+          data: data,
+          updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+
+        status("☁️ Sincronizado con Firebase");
+        console.log("☁️ Datos enviados a Firebase");
+      } catch (error) {
+        console.error("Error Firebase:", error);
+        status("⚠️ Error de sincronización");
+      }
+    }, 700);
+  }
+
+  const originalSetItem = localStorage.setItem.bind(localStorage);
+
+  localStorage.setItem = function (key, value) {
+    originalSetItem(key, value);
+
+    if (key === DATA_KEY) {
+      uploadLocalData();
+    }
+  };
+
+  async function startSync() {
+    try {
+      status("☁️ Conectando...");
+
+      const ref = firestore.collection(COLLECTION).doc(DOCUMENT);
+      const snap = await ref.get();
+
+      if (!snap.exists) {
+        console.log("☁️ Firebase está vacío. Subiendo datos locales...");
+        uploadLocalData();
+      } else {
+        const remote = snap.data().data;
+
+        if (remote) {
+          applyingRemote = true;
+          originalSetItem(DATA_KEY, JSON.stringify(remote));
+          applyingRemote = false;
+
+          status("☁️ Datos recuperados de Firebase");
+
+          setTimeout(() => {
+            location.reload();
+          }, 500);
+        }
+      }
+
+      ready = true;
+
+      ref.onSnapshot((snapshot) => {
+        if (!snapshot.exists || !snapshot.data().data) return;
+
+        const remote = JSON.stringify(snapshot.data().data);
+        const local = localStorage.getItem(DATA_KEY);
+
+        if (remote !== local) {
+          applyingRemote = true;
+          originalSetItem(DATA_KEY, remote);
+          applyingRemote = false;
+
+          status("☁️ Datos actualizados");
+          setTimeout(() => location.reload(), 500);
+        }
+      });
+
+    } catch (error) {
+      console.error("Firebase Sync Error:", error);
+      status("⚠️ Firebase no disponible");
+    }
+  }
+
+  window.addEventListener("load", startSync);
+})();
+</script>
