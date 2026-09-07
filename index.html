@@ -1,387 +1,489 @@
 <!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#087f8c">
+<meta name="description" content="Aquarium Fish - inventario, ventas, ganancias, clientes y encargos">
 
-<html lang="es"><head><meta charset="utf-8"><meta
-name="viewport"
-content="width=device-width,initial-scale=1,viewport-fit=cover"
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon.svg">
+<link rel="stylesheet" href="style.css">
 
-«»
+<title>Aquarium Fish</title>
+</head>
 
-<meta
-name="theme-color"
-content="#087f8c"
+<body>
 
-«»
-
-<meta
-name="description"
-content="Aquarium Fish - inventario, ventas, ganancias, clientes y encargos"
-
-«»
-
-<link rel="manifest" href="manifest.json"><link rel="icon" href="icon.svg"><link rel="stylesheet" href="style.css"><title>Aquarium Fish</title></head><body><!-- =========================
+<!-- =========================
      SPLASH
-========================= --><div
-  id="splash"
-  aria-label="Aquarium Fish"
-><img
-src="splash-v7.png"
-alt="Aquarium Fish - Gestión del negocio"
+========================= -->
 
-«»
+<div id="splash" aria-label="Aquarium Fish">
+  <img src="splash-v7.png" alt="Aquarium Fish - Gestión del negocio">
+</div>
 
-</div><!-- =========================
+
+<!-- =========================
      ENCABEZADO
-========================= --><header><div class="brand"><img
-src="icon.svg"
-alt=""
+========================= -->
 
-«»
+<header>
+  <div class="brand">
+    <img src="icon.svg" alt="">
+    <div>
+      <strong>Aquarium Fish</strong>
+      <small>Gestión del negocio</small>
+    </div>
+  </div>
 
-<div><strong>Aquarium Fish</strong>
+  <button id="installBtn" class="ghost hidden" type="button">
+    Instalar
+  </button>
+</header>
 
-<small>
-Gestión del negocio
-</small></div></div><button
-id="installBtn"
-class="ghost hidden"
 
-«»
-
-Instalar
-
-</button></header><!-- =========================
+<!-- =========================
      CONTENIDO
-========================= --><main><!-- =========================
+========================= -->
+
+<main>
+
+<!-- =========================
      INICIO
-========================= --><section
-  id="home"
-  class="screen active"
-><h1>Inicio</h1><div class="cards"><div class="card"><span>
-Ventas
-</span><b id="salesTotal">
-$0
-</b><small id="salesCount">
-0 transacciones
-</small></div><div class="card"><span>
-Productos
-</span><b id="productCount">
-0
-</b><small>
-en catálogo
-</small></div><div class="card"><span>
-Clientes
-</span><b id="customerCount">
-0
-</b><small>
-registrados
-</small></div><div class="card"><span>
-Stock bajo
-</span><b id="lowStock">
-0
-</b><small>
-requieren atención
-</small></div></div><!-- ÚLTIMAS VENTAS --><div class="panel"><h2>
-Últimas ventas
-</h2><div
-  id="recentSales"
-  class="list"
-></div></div><!-- RESUMEN INTERNO --><div class="panel"><h2>
-Resumen interno
-</h2><p class="muted">Las ganancias no aparecen en las pantallas de venta.
+========================= -->
 
-</p><button
-class="primary"
-onclick="openInternal()"
+<section id="home" class="screen active">
 
-«»
+  <h1>Inicio</h1>
 
-🔒 Ver ganancias y cuentas
+  <div class="cards">
 
-</button></div><!-- DATOS --><div class="panel"><h2>
-Datos
-</h2><div class="data-actions"><button
-onclick="exportData()"
+    <div class="card">
+      <span>Ventas</span>
+      <b id="salesTotal">$0</b>
+      <small id="salesCount">0 transacciones</small>
+    </div>
 
-«»
+    <div class="card">
+      <span>Productos</span>
+      <b id="productCount">0</b>
+      <small>en catálogo</small>
+    </div>
 
-Exportar respaldo
+    <div class="card">
+      <span>Clientes</span>
+      <b id="customerCount">0</b>
+      <small>registrados</small>
+    </div>
 
-</button><button
-onclick="document.getElementById('importFile').click()"
+    <div class="card">
+      <span>Stock bajo</span>
+      <b id="lowStock">0</b>
+      <small>requieren atención</small>
+    </div>
 
-«»
+  </div>
 
-Importar respaldo
 
-</button><input
-id="importFile"
-type="file"
-accept=".json"
-hidden
+  <!-- ÚLTIMAS VENTAS -->
 
-«»
+  <div class="panel">
 
-</div><p class="muted">El respaldo guarda productos, ventas, clientes,
-encargos y movimientos.
+    <h2>Últimas ventas</h2>
 
-</p><p
-  id="syncStatus"
-  class="muted"
->☁️ Preparando sincronización...
+    <div id="recentSales" class="list"></div>
 
-</p></div></section><!-- =========================
+  </div>
+
+
+  <!-- RESUMEN INTERNO -->
+
+  <div class="panel">
+
+    <h2>Resumen interno</h2>
+
+    <p class="muted">
+      Las ganancias no aparecen en las pantallas de venta.
+    </p>
+
+    <button
+      class="primary"
+      type="button"
+      onclick="openInternal()"
+    >
+      🔒 Ver ganancias y cuentas
+    </button>
+
+  </div>
+
+
+  <!-- DATOS -->
+
+  <div class="panel">
+
+    <h2>Datos</h2>
+
+    <div class="data-actions">
+
+      <button type="button" onclick="exportData()">
+        Exportar respaldo
+      </button>
+
+      <button
+        type="button"
+        onclick="document.getElementById('importFile').click()"
+      >
+        Importar respaldo
+      </button>
+
+      <input
+        id="importFile"
+        type="file"
+        accept=".json"
+        hidden
+      >
+
+    </div>
+
+    <p class="muted">
+      El respaldo guarda productos, ventas, clientes,
+      encargos y movimientos.
+    </p>
+
+    <p id="syncStatus" class="muted">
+      ☁️ Preparando sincronización...
+    </p>
+
+  </div>
+
+</section>
+
+
+<!-- =========================
      INVENTARIO
-========================= --><section
-  id="inventory"
-  class="screen"
-><div class="section-head"><h1>
-Inventario
-</h1><button
-class="primary"
-onclick="openProduct()"
+========================= -->
 
-«»
+<section id="inventory" class="screen">
 
-+ Producto
+  <div class="section-head">
 
-</button></div><input
-id="search"
-class="search"
-placeholder="Buscar producto..."
+    <h1>Inventario</h1>
 
-«»
+    <button
+      class="primary"
+      type="button"
+      onclick="openProduct()"
+    >
+      + Producto
+    </button>
 
-<div
-  id="inventoryList"
-  class="list"
-></div></section><!-- =========================
+  </div>
+
+  <input
+    id="search"
+    class="search"
+    placeholder="Buscar producto..."
+  >
+
+  <div id="inventoryList" class="list"></div>
+
+</section>
+
+
+<!-- =========================
      VENTAS
-========================= --><section
-  id="sales"
-  class="screen"
-><div class="section-head"><h1>
-Ventas
-</h1><button
-class="primary"
-onclick="openSale()"
+========================= -->
 
-«»
+<section id="sales" class="screen">
 
-+ Venta
+  <div class="section-head">
 
-</button></div><div
-  id="salesList"
-  class="list"
-></div></section><!-- =========================
+    <h1>Ventas</h1>
+
+    <button
+      class="primary"
+      type="button"
+      onclick="openSale()"
+    >
+      + Venta
+    </button>
+
+  </div>
+
+  <div id="salesList" class="list"></div>
+
+</section>
+
+
+<!-- =========================
      CLIENTES
-========================= --><section
-  id="customers"
-  class="screen"
-><div class="section-head"><h1>
-Clientes
-</h1><button
-class="primary"
-onclick="openCustomer()"
+========================= -->
 
-«»
+<section id="customers" class="screen">
 
-+ Cliente
+  <div class="section-head">
 
-</button></div><input
-id="customerSearch"
-class="search"
-placeholder="Buscar cliente..."
+    <h1>Clientes</h1>
 
-«»
+    <button
+      class="primary"
+      type="button"
+      onclick="openCustomer()"
+    >
+      + Cliente
+    </button>
 
-<div
-  id="customersList"
-  class="list"
-></div></section><!-- =========================
+  </div>
+
+  <input
+    id="customerSearch"
+    class="search"
+    placeholder="Buscar cliente..."
+  >
+
+  <div id="customersList" class="list"></div>
+
+</section>
+
+
+<!-- =========================
      ENCARGOS
-========================= --><section
-  id="orders"
-  class="screen"
-><div class="section-head"><h1>
-Encargos
-</h1><button
-class="primary"
-onclick="openOrder()"
+========================= -->
 
-«»
+<section id="orders" class="screen">
 
-+ Encargo
+  <div class="section-head">
 
-</button></div><p class="muted">Anota peces o accesorios que un cliente pidió
-y que no tienes disponibles.
+    <h1>Encargos</h1>
 
-</p><div
-  id="ordersList"
-  class="list"
-></div></section><!-- =========================
+    <button
+      class="primary"
+      type="button"
+      onclick="openOrder()"
+    >
+      + Encargo
+    </button>
+
+  </div>
+
+  <p class="muted">
+    Anota peces o accesorios que un cliente pidió
+    y que no tienes disponibles.
+  </p>
+
+  <div id="ordersList" class="list"></div>
+
+</section>
+
+
+<!-- =========================
      MOVIMIENTOS
-========================= --><section
-  id="moves"
-  class="screen"
-><div class="section-head"><h1>
-Movimientos
-</h1><button
-class="primary"
-onclick="openMove()"
+========================= -->
 
-«»
+<section id="moves" class="screen">
 
-Registrar movimiento
+  <div class="section-head">
 
-</button></div><div
-  id="movesList"
-  class="list"
-></div></section></main><!-- =========================
+    <h1>Movimientos</h1>
+
+    <button
+      class="primary"
+      type="button"
+      onclick="openMove()"
+    >
+      Registrar movimiento
+    </button>
+
+  </div>
+
+  <div id="movesList" class="list"></div>
+
+</section>
+
+</main>
+
+
+<!-- =========================
      NAVEGACIÓN
-========================= --><nav><button
-type="button"
-data-tab="home"
-class="active"
+========================= -->
 
-«»
+<nav>
 
-⌂
+  <button
+    type="button"
+    data-tab="home"
+    class="active"
+  >
+    ⌂
+    <span>Inicio</span>
+  </button>
 
-<span>
-Inicio
-</span></button><button
-type="button"
-data-tab="inventory"
+  <button
+    type="button"
+    data-tab="inventory"
+  >
+    ▣
+    <span>Inventario</span>
+  </button>
 
-«»
+  <button
+    type="button"
+    data-tab="sales"
+  >
+    ▤
+    <span>Ventas</span>
+  </button>
 
-▣
+  <button
+    type="button"
+    data-tab="customers"
+  >
+    ♙
+    <span>Clientes</span>
+  </button>
 
-<span>
-Inventario
-</span></button><button
-type="button"
-data-tab="sales"
+  <button
+    type="button"
+    data-tab="orders"
+  >
+    📝
+    <span>Encargos</span>
+  </button>
 
-«»
+  <button
+    type="button"
+    data-tab="moves"
+  >
+    ⇅
+    <span>Movimientos</span>
+  </button>
 
-▤
+</nav>
 
-<span>
-Ventas
-</span></button><button
-type="button"
-data-tab="customers"
 
-«»
-
-♙
-
-<span>
-Clientes
-</span></button><button
-type="button"
-data-tab="orders"
-
-«»
-
-📝
-
-<span>
-Encargos
-</span></button><button
-type="button"
-data-tab="moves"
-
-«»
-
-⇅
-
-<span>
-Movimientos
-</span></button></nav><!-- =========================
+<!-- =========================
      MODAL PRINCIPAL
-========================= --><div
-  id="modal"
-  class="modal hidden"
-><div class="modal-box"><div class="modal-head"><h2 id="modalTitle"></h2><button
-type="button"
-onclick="closeModal()"
+========================= -->
 
-«»
+<div id="modal" class="modal hidden">
 
-×
+  <div class="modal-box">
 
-</button></div><form
-  id="form"
-></form></div></div><!-- =========================
+    <div class="modal-head">
+
+      <h2 id="modalTitle"></h2>
+
+      <button
+        type="button"
+        onclick="closeModal()"
+      >
+        ×
+      </button>
+
+    </div>
+
+    <form id="form"></form>
+
+  </div>
+
+</div>
+
+
+<!-- =========================
      MODAL INTERNO
-========================= --><div
-  id="internalModal"
-  class="modal hidden"
-><div class="modal-box"><div class="modal-head"><h2>
-🔒 Resumen interno
-</h2><button
-type="button"
-onclick="closeInternal()"
+========================= -->
 
-«»
+<div id="internalModal" class="modal hidden">
 
-×
+  <div class="modal-box">
 
-</button></div><div
-  id="internalStats"
-></div><p class="muted">Esta información está separada de la pantalla de venta
-para que puedas mostrar los precios al cliente sin
-enseñarle la ganancia.
+    <div class="modal-head">
 
-</p><div class="form-actions"><button
-type="button"
-class="primary"
-onclick="closeInternal()"
+      <h2>🔒 Resumen interno</h2>
 
-«»
+      <button
+        type="button"
+        onclick="closeInternal()"
+      >
+        ×
+      </button>
 
-Cerrar
+    </div>
 
-</button></div></div></div><!-- =========================
+    <div id="internalStats"></div>
+
+    <p class="muted">
+      Esta información está separada de la pantalla de venta
+      para que puedas mostrar los precios al cliente sin
+      enseñarle la ganancia.
+    </p>
+
+    <div class="form-actions">
+
+      <button
+        type="button"
+        class="primary"
+        onclick="closeInternal()"
+      >
+        Cerrar
+      </button>
+
+    </div>
+
+  </div>
+
+</div>
+
+
+<!-- =========================
      SPLASH
-========================= --><script>
+========================= -->
+
+<script>
 
 (function(){
 
-function hideSplash(){
+  function hideSplash(){
 
-  const splash =
-    document.getElementById("splash");
+    const splash =
+      document.getElementById("splash");
 
-  if(splash){
-
-    splash.classList.add("hide");
+    if(splash){
+      splash.classList.add("hide");
+    }
 
   }
 
-}
-
-setTimeout(
-  hideSplash,
-  1500
-);
-
-setTimeout(
-  hideSplash,
-  3000
-);
+  setTimeout(hideSplash,1500);
+  setTimeout(hideSplash,3000);
 
 })();
 
-</script><!-- =========================
+</script>
+
+
+<!-- =========================
      APLICACIÓN
-========================= --><script src="app.js"></script><!-- =========================
+========================= -->
+
+<script src="app.js"></script>
+
+
+<!-- =========================
      FIREBASE
-========================= --><script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script><script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script><!-- =========================
+========================= -->
+
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+
+
+<!-- =========================
      CONFIGURACIÓN FIREBASE
-========================= --><script>
+========================= -->
+
+<script>
 
 const firebaseConfig = {
 
@@ -405,42 +507,30 @@ const firebaseConfig = {
 
 };
 
-</script><!-- =========================
+</script>
+
+
+<!-- =========================
      SINCRONIZACIÓN FIREBASE
-========================= --><script>
+========================= -->
+
+<script>
 
 (function(){
 
 "use strict";
 
-
-const DATA_KEY =
-  "aquarium_fish_data_v5";
-
-const COLLECTION =
-  "appData";
-
-const DOCUMENT =
-  "aquariumFish";
-
+const DATA_KEY = "aquarium_fish_data_v5";
+const COLLECTION = "appData";
+const DOCUMENT = "aquariumFish";
 
 let syncing = false;
-
 let ready = false;
-
 let uploadTimer = null;
-
 let firestoreRef = null;
-
 let lastCloudJSON = null;
 
-
-/* =========================
-   REFERENCIA ORIGINAL
-========================= */
-
-const originalSetItem =
-  Storage.prototype.setItem;
+const originalSetItem = Storage.prototype.setItem;
 
 
 /* =========================
@@ -450,14 +540,10 @@ const originalSetItem =
 function setStatus(text){
 
   const el =
-    document.getElementById(
-      "syncStatus"
-    );
+    document.getElementById("syncStatus");
 
   if(el){
-
     el.textContent = text;
-
   }
 
   console.log(text);
@@ -471,9 +557,7 @@ function setStatus(text){
 
 function normalize(data){
 
-  data =
-    data || {};
-
+  data = data || {};
 
   return {
 
@@ -513,21 +597,14 @@ function normalize(data){
 
 function hasRealData(data){
 
-  const d =
-    normalize(data);
+  const d = normalize(data);
 
   return (
-
     d.products.length > 0 ||
-
     d.sales.length > 0 ||
-
     d.moves.length > 0 ||
-
     d.customers.length > 0 ||
-
     d.orders.length > 0
-
   );
 
 }
@@ -545,17 +622,11 @@ function getLocalData(){
       typeof db !== "undefined" &&
       db
     ){
-
       return normalize(db);
-
     }
 
-
     const saved =
-      localStorage.getItem(
-        DATA_KEY
-      );
-
+      localStorage.getItem(DATA_KEY);
 
     if(saved){
 
@@ -565,13 +636,12 @@ function getLocalData(){
 
     }
 
-
     return normalize(null);
 
   }catch(error){
 
     console.error(
-      "❌ Error leyendo datos locales:",
+      "Error leyendo datos locales:",
       error
     );
 
@@ -610,7 +680,7 @@ function saveLocalV5(data){
     syncing = false;
 
     console.error(
-      "❌ Error guardando datos locales:",
+      "Error guardando datos locales:",
       error
     );
 
@@ -630,18 +700,15 @@ function refreshApp(){
   try{
 
     if(
-      typeof renderAll ===
-      "function"
+      typeof renderAll === "function"
     ){
-
       renderAll();
-
     }
 
   }catch(error){
 
     console.error(
-      "❌ Error actualizando pantalla:",
+      "Error actualizando pantalla:",
       error
     );
 
@@ -661,91 +728,64 @@ function uploadLocalData(){
     syncing ||
     !firestoreRef
   ){
-
     return;
-
   }
 
-
-  clearTimeout(
-    uploadTimer
-  );
-
+  clearTimeout(uploadTimer);
 
   uploadTimer =
-    setTimeout(
-      async function(){
+    setTimeout(async function(){
 
-        try{
+      try{
 
-          const localData =
-            getLocalData();
+        const localData =
+          getLocalData();
 
+        const localJSON =
+          JSON.stringify(localData);
 
-          const localJSON =
-            JSON.stringify(
-              localData
-            );
-
-
-          if(
-            localJSON ===
-            lastCloudJSON
-          ){
-
-            return;
-
-          }
-
-
-          setStatus(
-            "☁️ Guardando datos en Firebase..."
-          );
-
-
-          await firestoreRef.set({
-
-            data:
-              localData,
-
-            updatedAt:
-              firebase.firestore
-                .FieldValue
-                .serverTimestamp()
-
-          });
-
-
-          lastCloudJSON =
-            localJSON;
-
-
-          setStatus(
-            "☁️ Datos sincronizados"
-          );
-
-
-          console.log(
-            "✅ Datos guardados en Firebase"
-          );
-
-        }catch(error){
-
-          console.error(
-            "❌ Error guardando en Firebase:",
-            error
-          );
-
-
-          setStatus(
-            "⚠️ No se pudo sincronizar"
-          );
-
+        if(
+          localJSON === lastCloudJSON
+        ){
+          return;
         }
 
-      },
-      700
-    );
+        setStatus(
+          "☁️ Guardando datos en Firebase..."
+        );
+
+        await firestoreRef.set({
+
+          data: localData,
+
+          updatedAt:
+            firebase.firestore
+              .FieldValue
+              .serverTimestamp()
+
+        });
+
+        lastCloudJSON =
+          localJSON;
+
+        setStatus(
+          "☁️ Datos sincronizados"
+        );
+
+      }catch(error){
+
+        console.error(
+          "Error guardando en Firebase:",
+          error
+        );
+
+        setStatus(
+          "⚠️ No se pudo sincronizar"
+        );
+
+      }
+
+    },700);
 
 }
 
@@ -755,10 +795,7 @@ function uploadLocalData(){
 ========================= */
 
 Storage.prototype.setItem =
-  function(
-    key,
-    value
-  ){
+  function(key,value){
 
     originalSetItem.call(
       this,
@@ -766,15 +803,10 @@ Storage.prototype.setItem =
       value
     );
 
-
     if(
-
       key === DATA_KEY &&
-
       ready &&
-
       !syncing
-
     ){
 
       uploadLocalData();
@@ -791,39 +823,25 @@ Storage.prototype.setItem =
 function applyRemoteData(remoteData){
 
   if(!remoteData){
-
     return;
-
   }
-
 
   try{
 
     const normalized =
-      normalize(
-        remoteData
-      );
-
+      normalize(remoteData);
 
     const remoteJSON =
-      JSON.stringify(
-        normalized
-      );
-
+      JSON.stringify(normalized);
 
     const localData =
       getLocalData();
 
-
     const localJSON =
-      JSON.stringify(
-        localData
-      );
-
+      JSON.stringify(localData);
 
     if(
-      remoteJSON ===
-      localJSON
+      remoteJSON === localJSON
     ){
 
       lastCloudJSON =
@@ -835,34 +853,20 @@ function applyRemoteData(remoteData){
 
 
     /*
-      Nunca borrar datos locales
-      por un documento Firebase vacío.
+      No borrar datos locales
+      por un Firebase vacío.
     */
 
     if(
-
-      !hasRealData(
-        normalized
-      ) &&
-
-      hasRealData(
-        localData
-      )
-
+      !hasRealData(normalized) &&
+      hasRealData(localData)
     ){
 
-      console.log(
-        "⚠️ Firebase vacío. Conservando datos locales."
-      );
-
-
       lastCloudJSON = null;
-
 
       setStatus(
         "☁️ Conservando datos locales..."
       );
-
 
       uploadLocalData();
 
@@ -873,35 +877,23 @@ function applyRemoteData(remoteData){
 
     syncing = true;
 
-
     originalSetItem.call(
       localStorage,
       DATA_KEY,
       remoteJSON
     );
 
-
-    db =
-      normalized;
-
+    db = normalized;
 
     syncing = false;
 
-
     refreshApp();
-
 
     lastCloudJSON =
       remoteJSON;
 
-
     setStatus(
       "☁️ Datos actualizados desde Firebase"
-    );
-
-
-    console.log(
-      "✅ Datos recibidos desde Firebase"
     );
 
   }catch(error){
@@ -909,7 +901,7 @@ function applyRemoteData(remoteData){
     syncing = false;
 
     console.error(
-      "❌ Error aplicando datos de Firebase:",
+      "Error aplicando Firebase:",
       error
     );
 
@@ -927,8 +919,7 @@ function initFirebase(){
   try{
 
     if(
-      typeof firebase ===
-      "undefined"
+      typeof firebase === "undefined"
     ){
 
       throw new Error(
@@ -936,7 +927,6 @@ function initFirebase(){
       );
 
     }
-
 
     if(
       !firebase.apps.length
@@ -948,45 +938,30 @@ function initFirebase(){
 
     }
 
-
     const firestore =
       firebase.firestore();
 
-
     firestoreRef =
       firestore
-        .collection(
-          COLLECTION
-        )
-        .doc(
-          DOCUMENT
-        );
-
-
-    console.log(
-      "🔥 Firebase conectado correctamente"
-    );
-
+        .collection(COLLECTION)
+        .doc(DOCUMENT);
 
     setStatus(
       "🟢 Firebase conectado"
     );
-
 
     return true;
 
   }catch(error){
 
     console.error(
-      "❌ Error iniciando Firebase:",
+      "Error iniciando Firebase:",
       error
     );
-
 
     setStatus(
       "⚠️ Firebase no disponible. Datos locales activos."
     );
-
 
     return false;
 
@@ -1002,11 +977,8 @@ function initFirebase(){
 async function startSync(){
 
   if(!firestoreRef){
-
     return;
-
   }
-
 
   try{
 
@@ -1014,34 +986,20 @@ async function startSync(){
       "☁️ Comprobando datos..."
     );
 
-
     const localData =
       getLocalData();
 
-
-    const localJSON =
-      JSON.stringify(
-        localData
-      );
-
-
     /*
-      Migrar datos antiguos a v5.
+      Migrar datos anteriores
+      a la versión 5.
     */
 
     if(
-      hasRealData(
-        localData
-      )
+      hasRealData(localData)
     ){
 
       saveLocalV5(
         localData
-      );
-
-
-      console.log(
-        "✅ Datos locales migrados a v5"
       );
 
     }
@@ -1055,19 +1013,15 @@ async function startSync(){
        FIREBASE NO EXISTE
     ========================= */
 
-    if(
-      !snapshot.exists
-    ){
+    if(!snapshot.exists){
 
       ready = true;
 
       lastCloudJSON = null;
 
-
       setStatus(
         "☁️ Subiendo tus datos a Firebase..."
       );
-
 
       uploadLocalData();
 
@@ -1088,57 +1042,31 @@ async function startSync(){
       if(cloudData){
 
         const normalizedCloud =
-          normalize(
-            cloudData
-          );
+          normalize(cloudData);
 
 
         if(
-
-          !hasRealData(
-            normalizedCloud
-          ) &&
-
-          hasRealData(
-            localData
-          )
-
+          !hasRealData(normalizedCloud) &&
+          hasRealData(localData)
         ){
-
-          console.log(
-            "⚠️ Firebase vacío. Conservando datos locales."
-          );
-
 
           ready = true;
 
           lastCloudJSON = null;
 
-
           setStatus(
             "☁️ Subiendo datos existentes..."
           );
 
-
           uploadLocalData();
 
-        }
-
-        else{
-
-          /*
-            IMPORTANTE:
-            primero dejamos lista la sincronización
-            y después aplicamos los datos.
-          */
+        }else{
 
           ready = true;
-
 
           applyRemoteData(
             normalizedCloud
           );
-
 
           setStatus(
             "🟢 Sincronización activa"
@@ -1146,19 +1074,15 @@ async function startSync(){
 
         }
 
-      }
-
-      else{
+      }else{
 
         ready = true;
 
         lastCloudJSON = null;
 
-
         setStatus(
           "☁️ Guardando datos..."
         );
-
 
         uploadLocalData();
 
@@ -1175,69 +1099,42 @@ async function startSync(){
 
       function(snapshot){
 
-        if(
-          !snapshot.exists
-        ){
-
+        if(!snapshot.exists){
           return;
-
         }
-
 
         const snapshotData =
           snapshot.data();
 
-
         if(
-
           !snapshotData ||
-
           !snapshotData.data
-
         ){
-
           return;
-
         }
 
-
-        const normalizedRemote =
+        const remote =
           normalize(
             snapshotData.data
           );
 
-
-        const currentLocal =
+        const local =
           getLocalData();
 
 
         /*
-          No permitir que una actualización
-          vacía borre información existente.
+          No permitir que Firebase
+          vacío borre información.
         */
 
         if(
-
-          !hasRealData(
-            normalizedRemote
-          ) &&
-
-          hasRealData(
-            currentLocal
-          )
-
+          !hasRealData(remote) &&
+          hasRealData(local)
         ){
-
-          console.log(
-            "⚠️ Se ignoró actualización vacía de Firebase."
-          );
-
 
           lastCloudJSON = null;
 
-
           uploadLocalData();
-
 
           return;
 
@@ -1245,20 +1142,13 @@ async function startSync(){
 
 
         const remoteJSON =
-          JSON.stringify(
-            normalizedRemote
-          );
+          JSON.stringify(remote);
 
-
-        const currentLocalJSON =
-          JSON.stringify(
-            currentLocal
-          );
-
+        const localJSON =
+          JSON.stringify(local);
 
         if(
-          remoteJSON ===
-          currentLocalJSON
+          remoteJSON === localJSON
         ){
 
           lastCloudJSON =
@@ -1268,21 +1158,16 @@ async function startSync(){
 
         }
 
-
-        applyRemoteData(
-          normalizedRemote
-        );
+        applyRemoteData(remote);
 
       },
-
 
       function(error){
 
         console.error(
-          "❌ Error escuchando Firebase:",
+          "Error escuchando Firebase:",
           error
         );
-
 
         setStatus(
           "⚠️ Firebase desconectado. Datos locales activos."
@@ -1295,10 +1180,9 @@ async function startSync(){
   }catch(error){
 
     console.error(
-      "❌ Error de sincronización:",
+      "Error de sincronización:",
       error
     );
-
 
     setStatus(
       "⚠️ Firebase no disponible. Datos locales activos."
@@ -1313,178 +1197,113 @@ async function startSync(){
    ARRANCAR
 ========================= */
 
-setTimeout(
+setTimeout(function(){
 
-  function(){
+  const connected =
+    initFirebase();
 
-    const connected =
-      initFirebase();
+  if(connected){
+    startSync();
+  }
 
-
-    if(connected){
-
-      startSync();
-
-    }
-
-  },
-
-  1200
-
-);
+},1200);
 
 })();
 
-</script><!-- =================================================
-     CONTROL DE NAVEGACIÓN DE SEGURIDAD
-     No depende de app.js ni de Firebase.
-================================================= --><script>
+</script>
+
+
+<!-- =========================
+     NAVEGACIÓN
+========================= -->
+
+<script>
 
 (function(){
 
-"use strict";
+  function configurarNavegacion(){
 
-
-function iniciarNavegacion(){
-
-  const botones =
-    Array.from(
+    const botones =
       document.querySelectorAll(
         "nav button[data-tab]"
-      )
-    );
-
-
-  const pantallas =
-    Array.from(
-      document.querySelectorAll(
-        "main .screen"
-      )
-    );
-
-
-  if(
-    !botones.length ||
-    !pantallas.length
-  ){
-
-    console.warn(
-      "⚠️ No se encontraron elementos de navegación."
-    );
-
-    return;
-
-  }
-
-
-  function irA(tab){
-
-    const pantalla =
-      document.getElementById(
-        tab
       );
-
-
-    if(!pantalla){
-
-      console.warn(
-        "⚠️ Pantalla no encontrada:",
-        tab
-      );
-
-      return;
-
-    }
-
-
-    pantallas.forEach(
-      function(p){
-
-        p.classList.remove(
-          "active"
-        );
-
-      }
-    );
-
-
-    pantalla.classList.add(
-      "active"
-    );
-
-
-    botones.forEach(
-      function(b){
-
-        b.classList.toggle(
-          "active",
-          b.dataset.tab === tab
-        );
-
-      }
-    );
-
 
     /*
-      Llevar la pantalla al comienzo
-      al cambiar de sección.
+      app.js ya tiene la función show().
+      Aquí solamente aseguramos que los
+      botones sigan funcionando.
     */
 
-    window.scrollTo({
-      top: 0,
-      behavior: "smooth"
+    botones.forEach(function(boton){
+
+      boton.onclick = function(event){
+
+        event.preventDefault();
+
+        const tab =
+          this.getAttribute("data-tab");
+
+        if(
+          typeof show === "function"
+        ){
+
+          show(tab);
+
+        }else{
+
+          document
+            .querySelectorAll(".screen")
+            .forEach(function(p){
+
+              p.classList.remove("active");
+
+            });
+
+          const pantalla =
+            document.getElementById(tab);
+
+          if(pantalla){
+
+            pantalla.classList.add("active");
+
+          }
+
+          botones.forEach(function(b){
+
+            b.classList.toggle(
+              "active",
+              b.getAttribute("data-tab") === tab
+            );
+
+          });
+
+        }
+
+      };
+
     });
 
   }
 
 
-  botones.forEach(
-    function(boton){
+  if(
+    document.readyState === "loading"
+  ){
 
-      boton.addEventListener(
-        "click",
-        function(event){
+    document.addEventListener(
+      "DOMContentLoaded",
+      configurarNavegacion
+    );
 
-          event.preventDefault();
+  }else{
 
-          event.stopPropagation();
+    configurarNavegacion();
 
-          irA(
-            this.dataset.tab
-          );
+  }
 
-        },
-        false
-      );
+})();
 
-    }
-  );
+</script>
 
-
-  /*
-    Asegurar Inicio al cargar.
-  */
-
-  irA("home");
-
-
-  console.log(
-    "✅ Navegación de Aquarium Fish activa"
-  );
-
-}
-
-
-/*
-  Ejecutar cuando el DOM esté listo.
-*/
-
-if(
-  document.readyState ===
-  "loading"
-){
-
-  document.addEventListener(
-    "DOMContentLoaded",
-    iniciarNavegacion
-  
+</body>
+</html>
