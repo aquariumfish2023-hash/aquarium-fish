@@ -411,420 +411,402 @@ appId:
 
 <!-- SINCRONIZACIÓN FIREBASE -->
 
+<scri<!-- SINCRONIZACIÓN FIREBASE -->
 <script>
-
 (function(){
 
-const DATA_KEY =
-"aquarium_fish_data_v5";
-
-const COLLECTION =
-"appData";
-
-const DOCUMENT =
-"aquariumFish";
+const DATA_KEY = "aquarium_fish_data_v5";
+const COLLECTION = "appData";
+const DOCUMENT = "aquariumFish";
 
 let syncing = false;
-
 let ready = false;
-
 let uploadTimer = null;
-
 let firestoreRef = null;
-
-
+let lastCloudJSON = null;
 
 function setStatus(text){
-
-const el =
-document.getElementById("syncStatus");
-
-if(el){
-
-el.textContent = text;
-
+  const el = document.getElementById("syncStatus");
+  if(el){
+    el.textContent = text;
+  }
+  console.log(text);
 }
 
-console.log(text);
+function normalize(data){
+  data = data || {};
 
+  data.products = Array.isArray(data.products) ? data.products : [];
+  data.sales = Array.isArray(data.sales) ? data.sales : [];
+  data.moves = Array.isArray(data.moves) ? data.moves : [];
+  data.customers = Array.isArray(data.customers) ? data.customers : [];
+  data.orders = Array.isArray(data.orders) ? data.orders : [];
+
+  return data;
 }
 
+function getLocalData(){
+  try{
+    const saved = localStorage.getItem(DATA_KEY);
 
+    if(!saved){
+      return normalize(null);
+    }
 
-function initFirebase(){
+    return normalize(JSON.parse(saved));
 
-try{
+  }catch(error){
 
-if(typeof firebase === "undefined"){
+    console.error("Error leyendo datos locales:", error);
+    return normalize(null);
 
-throw new Error(
-"Firebase no pudo cargar"
-);
-
+  }
 }
 
-if(!firebase.apps.length){
-
-firebase.initializeApp(
-firebaseConfig
-);
-
+function getLocalJSON(){
+  return JSON.stringify(getLocalData());
 }
 
-const firestore =
-firebase.firestore();
+function refreshApp(){
+  try{
 
-firestoreRef =
-firestore
-.collection(COLLECTION)
-.doc(DOCUMENT);
+    if(typeof renderAll === "function"){
+      renderAll();
+    }
 
-console.log(
-"🔥 Firebase conectado correctamente"
-);
+  }catch(error){
 
-setStatus(
-"🟢 Firebase conectado"
-);
+    console.error("Error actualizando pantalla:", error);
 
-return true;
-
-}catch(error){
-
-console.error(
-"❌ Error iniciando Firebase:",
-error
-);
-
-setStatus(
-"⚠️ Firebase no disponible. Datos locales activos."
-);
-
-return false;
-
+  }
 }
-
-}
-
-
 
 function uploadLocalData(){
 
-if(!ready ||
-syncing ||
-!firestoreRef){
+  if(!ready || syncing || !firestoreRef){
+    return;
+  }
 
-return;
+  clearTimeout(uploadTimer);
 
-}
+  uploadTimer = setTimeout(async function(){
 
-clearTimeout(uploadTimer);
+    try{
 
-uploadTimer =
-setTimeout(async function(){
+      const localJSON = getLocalJSON();
 
-try{
+      if(localJSON === lastCloudJSON){
+        return;
+      }
 
-const local =
-localStorage.getItem(DATA_KEY);
+      const data = JSON.parse(localJSON);
 
-if(!local){
+      await firestoreRef.set({
+        data: data,
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
 
-setStatus(
-"⚠️ No hay datos locales"
-);
+      lastCloudJSON = localJSON;
 
-return;
+      setStatus("☁️ Sincronizado con Firebase");
 
-}
+    }catch(error){
 
-const data =
-JSON.parse(local);
+      console.error("❌ Error guardando en Firebase:", error);
 
-await firestoreRef.set({
+      setStatus("⚠️ No se pudo sincronizar");
 
-data:data,
+    }
 
-updatedAt:
-firebase.firestore.FieldValue
-.serverTimestamp()
-
-});
-
-setStatus(
-"☁️ Sincronizado con Firebase"
-);
-
-console.log(
-"☁️ Datos enviados a Firebase"
-);
-
-}catch(error){
-
-console.error(
-"❌ Error Firebase:",
-error
-);
-
-setStatus(
-"⚠️ No se pudo sincronizar"
-);
-
-}
-
-},700);
-
+  },700);
 }
 
 
+/* Detectar cuando la aplicación guarda datos */
+const originalSetItem = Storage.prototype.setItem;
 
-/*
-Detectar cambios realizados
-por la aplicación.
-*/
+Storage.prototype.setItem = function(key,value){
 
-const originalSetItem =
-Storage.prototype.setItem;
+  originalSetItem.call(this,key,value);
 
-Storage.prototype.setItem =
-function(key,value){
+  if(
+    key === DATA_KEY &&
+    ready &&
+    !syncing
+  ){
 
-originalSetItem.call(
-this,
-key,
-value
-);
+    uploadLocalData();
 
-if(
-key === DATA_KEY &&
-ready &&
-!syncing
-){
-
-uploadLocalData();
-
-}
+  }
 
 };
 
 
+/* Recibir datos desde Firebase */
+function applyRemoteData(remoteData){
 
+  if(!remoteData){
+    return;
+  }
+
+  try{
+
+    const normalized = normalize(remoteData);
+
+    const remoteJSON = JSON.stringify(normalized);
+
+    const localJSON = localStorage.getItem(DATA_KEY);
+
+    if(remoteJSON === localJSON){
+
+      lastCloudJSON = remoteJSON;
+
+      return;
+
+    }
+
+    syncing = true;
+
+    /* Guardar datos recibidos */
+    originalSetItem.call(
+      localStorage,
+      DATA_KEY,
+      remoteJSON
+    );
+
+    /* MUY IMPORTANTE:
+       actualizar los datos que la aplicación
+       tiene actualmente en memoria */
+    db = normalized;
+
+    syncing = false;
+
+    /* Actualizar inmediatamente la pantalla */
+    refreshApp();
+
+    lastCloudJSON = remoteJSON;
+
+    setStatus("☁️ Datos actualizados desde Firebase");
+
+  }catch(error){
+
+    syncing = false;
+
+    console.error(
+      "❌ Error aplicando datos de Firebase:",
+      error
+    );
+
+  }
+
+}
+
+
+/* Iniciar Firebase */
+function initFirebase(){
+
+  try{
+
+    if(typeof firebase === "undefined"){
+
+      throw new Error(
+        "Firebase no pudo cargar"
+      );
+
+    }
+
+    if(!firebase.apps.length){
+
+      firebase.initializeApp(firebaseConfig);
+
+    }
+
+    const firestore = firebase.firestore();
+
+    firestoreRef =
+      firestore
+        .collection(COLLECTION)
+        .doc(DOCUMENT);
+
+    console.log(
+      "🔥 Firebase conectado correctamente"
+    );
+
+    setStatus(
+      "🟢 Firebase conectado"
+    );
+
+    return true;
+
+  }catch(error){
+
+    console.error(
+      "❌ Error iniciando Firebase:",
+      error
+    );
+
+    setStatus(
+      "⚠️ Firebase no disponible. Datos locales activos."
+    );
+
+    return false;
+
+  }
+
+}
+
+
+/* Iniciar sincronización */
 async function startSync(){
 
-if(!firestoreRef){
+  if(!firestoreRef){
+    return;
+  }
 
-return;
+  try{
 
-}
+    setStatus(
+      "☁️ Comprobando datos..."
+    );
 
-try{
+    const snapshot =
+      await firestoreRef.get();
 
-setStatus(
-"☁️ Comprobando datos..."
-);
-
-const snapshot =
-await firestoreRef.get();
-
-
-
-/*
-SI FIREBASE ESTÁ VACÍO
-*/
-
-if(!snapshot.exists){
-
-ready = true;
-
-setStatus(
-"☁️ Guardando datos en Firebase..."
-);
-
-uploadLocalData();
-
-}
+    const localJSON =
+      getLocalJSON();
 
 
+    /* Si Firebase todavía no tiene datos,
+       subir los datos del dispositivo */
+    if(!snapshot.exists){
 
-/*
-SI FIREBASE YA TIENE DATOS
-*/
+      lastCloudJSON = localJSON;
 
-else{
+      ready = true;
 
-const remote =
-snapshot.data().data;
+      setStatus(
+        "☁️ Guardando datos en Firebase..."
+      );
 
-if(remote){
+      uploadLocalData();
 
-const local =
-localStorage.getItem(DATA_KEY);
+    }
 
-const remoteText =
-JSON.stringify(remote);
+    /* Si Firebase ya tiene datos,
+       cargarlos en la aplicación */
+    else{
 
+      const cloudData =
+        snapshot.data() &&
+        snapshot.data().data;
 
-/*
-IMPORTANTE:
+      if(cloudData){
 
-Ya NO hacemos location.reload().
+        applyRemoteData(
+          cloudData
+        );
 
-Así evitamos el ciclo:
+      }
 
-logo → app → logo → app
-*/
+      ready = true;
 
-if(local !== remoteText){
+      setStatus(
+        "🟢 Sincronización activa"
+      );
 
-syncing = true;
-
-originalSetItem.call(
-localStorage,
-DATA_KEY,
-remoteText
-);
-
-syncing = false;
-
-setStatus(
-"☁️ Datos de Firebase recibidos"
-);
-
-}
-
-}
-
-ready = true;
-
-setStatus(
-"☁️ Sincronización activa"
-);
-
-}
+    }
 
 
+    /* Escuchar cambios realizados
+       desde el otro dispositivo */
+    firestoreRef.onSnapshot(
 
-/*
-ESCUCHAR CAMBIOS DE OTROS DISPOSITIVOS
+      function(snapshot){
 
-No recargamos la página automáticamente.
-*/
+        if(
+          !snapshot.exists ||
+          !snapshot.data() ||
+          !snapshot.data().data
+        ){
 
-firestoreRef.onSnapshot(
+          return;
 
-function(snapshot){
+        }
 
-if(!snapshot.exists()){
+        const remoteData =
+          snapshot.data().data;
 
-return;
+        const remoteJSON =
+          JSON.stringify(
+            normalize(remoteData)
+          );
 
-}
+        const currentLocal =
+          localStorage.getItem(DATA_KEY);
 
-const remote =
-snapshot.data().data;
+        if(
+          remoteJSON === currentLocal
+        ){
 
-if(!remote ||
-syncing){
+          lastCloudJSON =
+            remoteJSON;
 
-return;
+          return;
 
-}
+        }
 
-const local =
-localStorage.getItem(DATA_KEY);
+        applyRemoteData(
+          remoteData
+        );
 
-const remoteText =
-JSON.stringify(remote);
+      },
 
+      function(error){
 
-if(remoteText !== local){
+        console.error(
+          "❌ Error escuchando Firebase:",
+          error
+        );
 
-syncing = true;
+        setStatus(
+          "⚠️ Firebase desconectado. Datos locales activos."
+        );
 
-originalSetItem.call(
-localStorage,
-DATA_KEY,
-remoteText
-);
+      }
 
-syncing = false;
+    );
 
-setStatus(
-"☁️ Datos actualizados desde otro dispositivo"
-);
+  }catch(error){
 
-/*
-NO location.reload()
-*/
+    console.error(
+      "❌ Error de sincronización:",
+      error
+    );
+
+    setStatus(
+      "⚠️ Firebase no disponible. Datos locales activos."
+    );
+
+  }
 
 }
 
-},
 
-function(error){
+/* Esperar a que cargue la aplicación */
+setTimeout(function(){
 
-console.error(
-"❌ Error escuchando Firebase:",
-error
-);
+  const connected =
+    initFirebase();
 
-setStatus(
-"⚠️ Firebase desconectado. Datos locales activos."
-);
+  if(connected){
 
-}
+    startSync();
 
-);
+  }
 
-
-
-}catch(error){
-
-console.error(
-"❌ Error de sincronización:",
-error
-);
-
-setStatus(
-"⚠️ Firebase no disponible. Datos locales activos."
-);
-
-}
-
-}
-
-
-
-/*
-Esperamos un momento después
-de mostrar la aplicación.
-
-Firebase NO controla el arranque.
-*/
-
-setTimeout(
-
-function(){
-
-const connected =
-initFirebase();
-
-if(connected){
-
-startSync();
-
-}
-
-},
-
-1200
-
-);
+},1200);
 
 })();
-
-</script>
-
-
+    </script>
 </body>
   </html>
