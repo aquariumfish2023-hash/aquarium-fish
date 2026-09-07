@@ -1,120 +1,171 @@
-const KEY="aquarium_fish_data_v5";
+const KEY = "aquarium_fish_data_v5";
 
-let db=
-  JSON.parse(localStorage.getItem(KEY)||'null')||
-  JSON.parse(localStorage.getItem('aquarium_fish_data_v4')||'null')||
-  JSON.parse(localStorage.getItem('aquarium_fish_data_v3')||'null')||
-  JSON.parse(localStorage.getItem('aquarium_fish_data_v2')||'null')||
-  JSON.parse(localStorage.getItem('aquarium_fish_data_v1')||'null')||
+/* =========================================================
+   DATOS
+   ========================================================= */
+
+let db =
+  JSON.parse(localStorage.getItem(KEY) || "null") ||
+  JSON.parse(localStorage.getItem("aquarium_fish_data_v4") || "null") ||
+  JSON.parse(localStorage.getItem("aquarium_fish_data_v3") || "null") ||
+  JSON.parse(localStorage.getItem("aquarium_fish_data_v2") || "null") ||
+  JSON.parse(localStorage.getItem("aquarium_fish_data_v1") || "null") ||
   {
-    products:[],
-    sales:[],
-    moves:[],
-    customers:[],
-    orders:[]
+    products: [],
+    sales: [],
+    moves: [],
+    customers: [],
+    orders: []
   };
 
-db.products=db.products||[];
-db.sales=db.sales||[];
-db.moves=db.moves||[];
-db.customers=db.customers||[];
-db.orders=db.orders||[];
+db.products = Array.isArray(db.products) ? db.products : [];
+db.sales = Array.isArray(db.sales) ? db.sales : [];
+db.moves = Array.isArray(db.moves) ? db.moves : [];
+db.customers = Array.isArray(db.customers) ? db.customers : [];
+db.orders = Array.isArray(db.orders) ? db.orders : [];
 
-const money=n=>new Intl.NumberFormat('es-CO',{
-  style:'currency',
-  currency:'COP',
-  maximumFractionDigits:0
-}).format(Number(n)||0);
 
-const now=()=>new Date().toLocaleString('es-CO');
+/* =========================================================
+   UTILIDADES
+   ========================================================= */
 
-const esc=s=>String(s??'').replace(/[&<>"']/g,m=>({
-  '&':'&amp;',
-  '<':'&lt;',
-  '>':'&gt;',
-  '"':'&quot;',
-  "'":'&#39;'
-}[m]));
+const money = n =>
+  new Intl.NumberFormat("es-CO", {
+    style: "currency",
+    currency: "COP",
+    maximumFractionDigits: 0
+  }).format(Number(n) || 0);
 
-function save(){
-  localStorage.setItem(KEY,JSON.stringify(db));
+const now = () =>
+  new Date().toLocaleString("es-CO");
+
+const esc = s =>
+  String(s ?? "").replace(/[&<>"']/g, m => ({
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    '"': "&quot;",
+    "'": "&#39;"
+  }[m]));
+
+
+/* =========================================================
+   GUARDAR
+   ========================================================= */
+
+function save() {
+
+  localStorage.setItem(
+    KEY,
+    JSON.stringify(db)
+  );
+
   renderAll();
 }
 
-function show(tab){
-
-  document.querySelectorAll('.screen')
-    .forEach(x=>x.classList.remove('active'));
-
-  const screen=document.getElementById(tab);
-
-  if(screen){
-    screen.classList.add('active');
-  }
-
-  document.querySelectorAll('nav button')
-    .forEach(x=>{
-      x.classList.toggle(
-        'active',
-        x.dataset.tab===tab
-      );
-    });
-}
 
 /* =========================================================
    NAVEGACIÓN
    ========================================================= */
 
-document.querySelectorAll('nav button[data-tab]')
-  .forEach(b=>{
-    b.onclick=()=>{
-      show(b.dataset.tab);
-    };
-  });
+function show(tab) {
+
+  document
+    .querySelectorAll(".screen")
+    .forEach(screen => {
+      screen.classList.remove("active");
+    });
+
+  const screen =
+    document.getElementById(tab);
+
+  if (screen) {
+    screen.classList.add("active");
+  }
+
+  document
+    .querySelectorAll("nav button[data-tab]")
+    .forEach(button => {
+
+      button.classList.toggle(
+        "active",
+        button.dataset.tab === tab
+      );
+
+    });
+}
+
+
+function bindNavigation() {
+
+  document
+    .querySelectorAll("nav button[data-tab]")
+    .forEach(button => {
+
+      button.onclick = function () {
+        show(this.dataset.tab);
+      };
+
+    });
+}
 
 
 /* =========================================================
    INVENTARIO
    ========================================================= */
 
-let inventoryCategory='Todas';
-let inventorySort='name-asc';
+let inventoryCategory = "Todas";
+let inventorySort = "name-asc";
 
-function inventoryCategories(){
 
-  const base=[
-    'Peces',
-    'Acuarios',
-    'Filtros',
-    'Iluminación',
-    'Sustratos',
-    'Decoración',
-    'Alimentos',
-    'Accesorios',
-    'Otros'
+function inventoryCategories() {
+
+  const base = [
+    "Peces",
+    "Acuarios",
+    "Filtros",
+    "Iluminación",
+    "Sustratos",
+    "Decoración",
+    "Alimentos",
+    "Accesorios",
+    "Otros"
   ];
 
-  const existing=db.products
-    .map(p=>String(p.category||'').trim())
-    .filter(Boolean);
+  const existing =
+    db.products
+      .map(p => String(p.category || "").trim())
+      .filter(Boolean);
 
-  return [...new Set([...base,...existing])]
-    .sort((a,b)=>
-      a.localeCompare(
-        b,
-        'es',
-        {sensitivity:'base'}
-      )
-    );
+  return [
+    ...new Set([
+      ...base,
+      ...existing
+    ])
+  ].sort((a, b) =>
+    a.localeCompare(
+      b,
+      "es",
+      {
+        sensitivity: "base"
+      }
+    )
+  );
 }
 
-function setInventoryCategory(value){
-  inventoryCategory=value;
+
+function setInventoryCategory(value) {
+
+  inventoryCategory = value;
+
   renderInventory();
 }
 
-function setInventorySort(value){
-  inventorySort=value;
+
+function setInventorySort(value) {
+
+  inventorySort = value;
+
   renderInventory();
 }
 
@@ -123,7 +174,7 @@ function setInventorySort(value){
    RENDER GENERAL
    ========================================================= */
 
-function renderAll(){
+function renderAll() {
 
   renderHome();
   renderInventory();
@@ -136,141 +187,159 @@ function renderAll(){
 
 
 /* =========================================================
-   VENTAS - FUNCIONES AUXILIARES
-   ========================================================= */
-
-function saleLabel(s){
-
-  return s.items&&s.items.length
-    ?s.items.map(i=>i.product).join(', ')
-    :s.product||'Venta';
-}
-
-function saleQty(s){
-
-  return s.items&&s.items.length
-    ?s.items.reduce(
-      (n,i)=>n+(+i.qty||0),
-      0
-    )
-    :(+s.qty||0);
-}
-
-function salePaid(s){
-
-  return s.paid===undefined
-    ?(+s.total||0)
-    :Math.max(
-      0,
-      Math.min(
-        +s.paid||0,
-        +s.total||0
-      )
-    );
-}
-
-
-/* =========================================================
    INICIO
    ========================================================= */
 
-function renderHome(){
+function renderHome() {
 
-  const total=db.sales.reduce(
-    (s,x)=>s+(+x.total||0),
-    0
-  );
+  const total =
+    db.sales.reduce(
+      (sum, sale) =>
+        sum + (+sale.total || 0),
+      0
+    );
 
-  const salesTotalEl=
-    document.getElementById('salesTotal');
+  const salesTotal =
+    document.getElementById(
+      "salesTotal"
+    );
 
-  const salesCountEl=
-    document.getElementById('salesCount');
+  const salesCount =
+    document.getElementById(
+      "salesCount"
+    );
 
-  const productCountEl=
-    document.getElementById('productCount');
+  const productCount =
+    document.getElementById(
+      "productCount"
+    );
 
-  const customerCountEl=
-    document.getElementById('customerCount');
+  const customerCount =
+    document.getElementById(
+      "customerCount"
+    );
 
-  const lowStockEl=
-    document.getElementById('lowStock');
+  const lowStock =
+    document.getElementById(
+      "lowStock"
+    );
 
-  const recentSalesEl=
-    document.getElementById('recentSales');
+  const recentSales =
+    document.getElementById(
+      "recentSales"
+    );
 
-  if(salesTotalEl)
-    salesTotalEl.textContent=money(total);
 
-  if(salesCountEl)
-    salesCountEl.textContent=
+  if (salesTotal)
+    salesTotal.textContent =
+      money(total);
+
+
+  if (salesCount)
+    salesCount.textContent =
       `${db.sales.length} transacciones`;
 
-  if(productCountEl)
-    productCountEl.textContent=
+
+  if (productCount)
+    productCount.textContent =
       db.products.length;
 
-  if(customerCountEl)
-    customerCountEl.textContent=
+
+  if (customerCount)
+    customerCount.textContent =
       db.customers.length;
 
-  if(lowStockEl)
-    lowStockEl.textContent=
-      db.products.filter(p=>
-        (+p.stock||0)<=(+p.min||0)
+
+  if (lowStock)
+    lowStock.textContent =
+      db.products.filter(p =>
+        (+p.stock || 0) <=
+        (+p.min || 0)
       ).length;
 
-  if(!recentSalesEl)return;
 
-  recentSalesEl.innerHTML=
+  if (!recentSales)
+    return;
+
+
+  recentSales.innerHTML =
     db.sales.length
 
-    ?db.sales
-      .slice(-6)
-      .reverse()
-      .map(s=>`
+      ? db.sales
+          .slice(-6)
+          .reverse()
+          .map(sale => `
 
-        <div class="item">
+            <div class="item">
 
-          <div>
+              <div>
 
-            <b>
-              ${esc(saleLabel(s))}
-            </b>
+                <b>
+                  ${esc(
+                    saleLabel(sale)
+                  )}
+                </b>
 
-            <div class="muted">
-              ${esc(s.client||'Sin cliente')}
-              · ${saleQty(s)} und.
-              · ${esc(s.pay||'')}
+                <div class="muted">
+
+                  ${esc(
+                    sale.client ||
+                    "Sin cliente"
+                  )}
+
+                  ·
+
+                  ${saleQty(sale)}
+                  und.
+
+                  ·
+
+                  ${esc(
+                    sale.pay || ""
+                  )}
+
+                </div>
+
+              </div>
+
+
+              <div class="right">
+
+                <strong>
+                  ${money(sale.total)}
+                </strong>
+
+                <small>
+
+                  ${
+                    sale.status === "Pendiente"
+
+                    ? "Pendiente de pago"
+
+                    : sale.status === "Abono"
+
+                    ? "Abono: " +
+                      money(
+                        salePaid(sale)
+                      )
+
+                    : "Pagada"
+                  }
+
+                </small>
+
+              </div>
+
             </div>
 
-          </div>
+          `)
+          .join("")
 
-          <div class="right">
-
-            <strong>
-              ${money(s.total)}
-            </strong>
-
-            <small>
-
-              ${
-                s.status==='Pendiente'
-                ?'Pendiente de pago'
-                :s.status==='Abono'
-                ?'Abono: '+money(salePaid(s))
-                :'Pagada'
-              }
-
-            </small>
-
-          </div>
-
+      : `
+        <div class="empty">
+          Todavía no hay ventas.
         </div>
-
-      `).join('')
-
-    :'<div class="empty">Todavía no hay ventas.</div>';
+      `;
 }
 
 
@@ -278,93 +347,144 @@ function renderHome(){
    INVENTARIO
    ========================================================= */
 
-function renderInventory(){
+function renderInventory() {
 
-  const searchEl=
-    document.getElementById('search');
-
-  const listEl=
-    document.getElementById('inventoryList');
-
-  if(!searchEl||!listEl)return;
-
-  const q=
-    (searchEl.value||'')
-    .toLowerCase()
-    .trim();
-
-  let rows=db.products.filter(p=>
-    `${p.name||''} ${p.category||''}`
-      .toLowerCase()
-      .includes(q)
-  );
-
-  if(inventoryCategory!=='Todas'){
-
-    rows=rows.filter(p=>
-      String(p.category||'')
-        .trim()
-        .toLowerCase()===
-      inventoryCategory.toLowerCase()
-    );
-  }
-
-  if(inventorySort==='name-asc'){
-
-    rows.sort((a,b)=>
-      String(a.name||'').localeCompare(
-        String(b.name||''),
-        'es',
-        {sensitivity:'base'}
-      )
-    );
-
-  }else if(inventorySort==='name-desc'){
-
-    rows.sort((a,b)=>
-      String(b.name||'').localeCompare(
-        String(a.name||''),
-        'es',
-        {sensitivity:'base'}
-      )
-    );
-
-  }else if(inventorySort==='stock-desc'){
-
-    rows.sort((a,b)=>
-      (+b.stock||0)-(+a.stock||0)
-    );
-
-  }else if(inventorySort==='stock-asc'){
-
-    rows.sort((a,b)=>
-      (+a.stock||0)-(+b.stock||0)
-    );
-  }
-
-  let controls=
+  const search =
     document.getElementById(
-      'inventoryControls'
+      "search"
     );
 
-  if(!controls){
+  const list =
+    document.getElementById(
+      "inventoryList"
+    );
 
-    controls=
-      document.createElement('div');
+  if (!search || !list)
+    return;
 
-    controls.id=
-      'inventoryControls';
 
-    searchEl.insertAdjacentElement(
-      'afterend',
+  const q =
+    String(search.value || "")
+      .toLowerCase()
+      .trim();
+
+
+  let rows =
+    db.products.filter(p =>
+
+      `${p.name || ""} ${p.category || ""}`
+        .toLowerCase()
+        .includes(q)
+
+    );
+
+
+  if (
+    inventoryCategory !==
+    "Todas"
+  ) {
+
+    rows =
+      rows.filter(p =>
+
+        String(
+          p.category || ""
+        )
+          .trim()
+          .toLowerCase() ===
+        inventoryCategory
+          .toLowerCase()
+
+      );
+
+  }
+
+
+  if (
+    inventorySort ===
+    "name-asc"
+  ) {
+
+    rows.sort((a, b) =>
+      String(a.name || "")
+        .localeCompare(
+          String(b.name || ""),
+          "es"
+        )
+    );
+
+  }
+
+
+  if (
+    inventorySort ===
+    "name-desc"
+  ) {
+
+    rows.sort((a, b) =>
+      String(b.name || "")
+        .localeCompare(
+          String(a.name || ""),
+          "es"
+        )
+    );
+
+  }
+
+
+  if (
+    inventorySort ===
+    "stock-desc"
+  ) {
+
+    rows.sort(
+      (a, b) =>
+        (+b.stock || 0) -
+        (+a.stock || 0)
+    );
+
+  }
+
+
+  if (
+    inventorySort ===
+    "stock-asc"
+  ) {
+
+    rows.sort(
+      (a, b) =>
+        (+a.stock || 0) -
+        (+b.stock || 0)
+    );
+
+  }
+
+
+  let controls =
+    document.getElementById(
+      "inventoryControls"
+    );
+
+
+  if (!controls) {
+
+    controls =
+      document.createElement(
+        "div"
+      );
+
+    controls.id =
+      "inventoryControls";
+
+    search.insertAdjacentElement(
+      "afterend",
       controls
     );
+
   }
 
-  const categories=
-    inventoryCategories();
 
-  controls.innerHTML=`
+  controls.innerHTML = `
 
     <div style="
       display:grid;
@@ -376,61 +496,84 @@ function renderInventory(){
       <select
         id="inventoryCategory"
         class="search"
-        onchange="setInventoryCategory(this.value)"
       >
 
         <option value="Todas">
           📂 Todas las categorías
         </option>
 
-        ${categories.map(c=>`
+        ${
+          inventoryCategories()
+            .map(category => `
 
-          <option
-            value="${esc(c)}"
-            ${
-              c.toLowerCase()===
-              inventoryCategory.toLowerCase()
-              ?'selected'
-              :''
-            }
-          >
-            ${esc(c)}
-          </option>
+              <option
+                value="${esc(category)}"
+                ${
+                  category.toLowerCase() ===
+                  inventoryCategory.toLowerCase()
+                    ? "selected"
+                    : ""
+                }
+              >
+                ${esc(category)}
+              </option>
 
-        `).join('')}
+            `)
+            .join("")
+        }
 
       </select>
+
 
       <select
         id="inventorySort"
         class="search"
-        onchange="setInventorySort(this.value)"
       >
 
         <option
           value="name-asc"
-          ${inventorySort==='name-asc'?'selected':''}
+          ${
+            inventorySort ===
+            "name-asc"
+              ? "selected"
+              : ""
+          }
         >
           🔤 A-Z
         </option>
 
         <option
           value="name-desc"
-          ${inventorySort==='name-desc'?'selected':''}
+          ${
+            inventorySort ===
+            "name-desc"
+              ? "selected"
+              : ""
+          }
         >
           🔤 Z-A
         </option>
 
         <option
           value="stock-desc"
-          ${inventorySort==='stock-desc'?'selected':''}
+          ${
+            inventorySort ===
+            "stock-desc"
+              ? "selected"
+              : ""
+          }
         >
           📈 Mayor stock
         </option>
 
         <option
           value="stock-asc"
-          ${inventorySort==='stock-asc'?'selected':''}
+          ${
+            inventorySort ===
+            "stock-asc"
+              ? "selected"
+              : ""
+          }
         >
           📉 Menor stock
         </option>
@@ -439,113 +582,178 @@ function renderInventory(){
 
     </div>
 
-    <div class="muted" style="margin:0 0 8px;">
-      Mostrando ${rows.length}
-      de ${db.products.length} productos
+
+    <div
+      class="muted"
+      style="margin:0 0 8px;"
+    >
+      Mostrando
+      ${rows.length}
+      de
+      ${db.products.length}
+      productos
     </div>
+
   `;
 
-  listEl.innerHTML=
+
+  document
+    .getElementById(
+      "inventoryCategory"
+    )
+    .onchange = function () {
+
+      setInventoryCategory(
+        this.value
+      );
+
+    };
+
+
+  document
+    .getElementById(
+      "inventorySort"
+    )
+    .onchange = function () {
+
+      setInventorySort(
+        this.value
+      );
+
+    };
+
+
+  list.innerHTML =
     rows.length
 
-    ?rows.map(p=>`
+      ? rows
+          .map(product => `
 
-      <div
-        class="item clickable"
-        onclick="editProduct(${db.products.indexOf(p)})"
-      >
+            <div
+              class="item clickable"
+              onclick="editProduct(
+                ${db.products.indexOf(product)}
+              )"
+            >
 
-        <div>
+              <div>
 
-          <b>${esc(p.name)}</b>
+                <b>
+                  ${esc(product.name)}
+                </b>
 
-          <div class="muted">
-            ${esc(p.category||'Sin categoría')}
-          </div>
+                <div class="muted">
+                  ${esc(
+                    product.category ||
+                    "Sin categoría"
+                  )}
+                </div>
 
-          <div class="muted">
-            Costo ${money(p.cost)}
-            · Venta ${money(p.price)}
-            · Ganancia/u
-            ${money(
-              (+p.price||0)-
-              (+p.cost||0)
-            )}
-          </div>
+                <div class="muted">
 
+                  Costo
+                  ${money(product.cost)}
+
+                  ·
+
+                  Venta
+                  ${money(product.price)}
+
+                  ·
+
+                  Ganancia/u
+                  ${money(
+                    (+product.price || 0) -
+                    (+product.cost || 0)
+                  )}
+
+                </div>
+
+              </div>
+
+
+              <span
+                class="badge ${
+                  (+product.stock || 0) <=
+                  (+product.min || 0)
+                    ? "low"
+                    : ""
+                }"
+              >
+
+                Stock:
+                ${product.stock}
+
+              </span>
+
+            </div>
+
+          `)
+          .join("")
+
+      : `
+        <div class="empty">
+          No hay productos
+          con estos filtros.
         </div>
-
-        <span class="badge ${
-          +p.stock<=+p.min?'low':''
-        }">
-          Stock: ${p.stock}
-        </span>
-
-      </div>
-
-    `).join('')
-
-    :'<div class="empty">No hay productos con estos filtros.</div>';
+      `;
 }
 
 
 /* =========================================================
-   FECHAS
+   VENTAS - AUXILIARES
    ========================================================= */
 
-function dateKey(value){
+function saleLabel(sale) {
 
-  const d=new Date(value);
+  return sale.items &&
+    sale.items.length
 
-  if(!Number.isNaN(d.getTime())){
+    ? sale.items
+        .map(item =>
+          item.product
+        )
+        .join(", ")
 
-    return d.toLocaleDateString(
-      'es-CO',
-      {
-        year:'numeric',
-        month:'2-digit',
-        day:'2-digit'
-      }
-    );
-  }
-
-  const m=
-    String(value||'').match(
-      /(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})/
-    );
-
-  return m
-    ?`${m[3].length===2?'20'+m[3]:m[3]}-${String(m[2]).padStart(2,'0')}-${String(m[1]).padStart(2,'0')}`
-    :'Sin fecha';
+    : sale.product ||
+      "Venta";
 }
 
-function dateLabel(key){
 
-  if(key==='Sin fecha')
-    return key;
+function saleQty(sale) {
 
-  const parts=key.split('/');
+  return sale.items &&
+    sale.items.length
 
-  if(parts.length===3){
+    ? sale.items.reduce(
+        (total, item) =>
+          total +
+          (+item.qty || 0),
+        0
+      )
 
-    const [d,m,y]=parts;
+    : (+sale.qty || 0);
+}
 
-    return new Date(
-      +y,
-      +m-1,
-      +d
-    ).toLocaleDateString(
-      'es-CO',
-      {
-        weekday:'long',
-        day:'numeric',
-        month:'long',
-        year:'numeric'
-      }
-    );
+
+function salePaid(sale) {
+
+  if (
+    sale.paid ===
+    undefined
+  ) {
+
+    return +sale.total || 0;
+
   }
 
-  return key;
+  return Math.max(
+    0,
+    Math.min(
+      +sale.paid || 0,
+      +sale.total || 0
+    )
+  );
 }
 
 
@@ -553,195 +761,356 @@ function dateLabel(key){
    VENTAS
    ========================================================= */
 
-function renderSales(){
+function dateKey(value) {
 
-  const listEl=
-    document.getElementById('salesList');
+  const date =
+    new Date(value);
 
-  if(!listEl)return;
+  if (
+    !Number.isNaN(
+      date.getTime()
+    )
+  ) {
 
-  if(!db.sales.length){
+    return date.toLocaleDateString(
+      "es-CO"
+    );
 
-    listEl.innerHTML=
-      '<div class="empty">No hay ventas registradas.</div>';
+  }
+
+  return "Sin fecha";
+}
+
+
+function dateLabel(key) {
+
+  if (
+    key ===
+    "Sin fecha"
+  )
+    return key;
+
+
+  const parts =
+    key.split("/");
+
+
+  if (
+    parts.length === 3
+  ) {
+
+    const day =
+      +parts[0];
+
+    const month =
+      +parts[1];
+
+    const year =
+      +parts[2];
+
+
+    return new Date(
+      year,
+      month - 1,
+      day
+    ).toLocaleDateString(
+      "es-CO",
+      {
+        weekday: "long",
+        day: "numeric",
+        month: "long",
+        year: "numeric"
+      }
+    );
+
+  }
+
+
+  return key;
+}
+
+
+function renderSales() {
+
+  const list =
+    document.getElementById(
+      "salesList"
+    );
+
+  if (!list)
+    return;
+
+
+  if (!db.sales.length) {
+
+    list.innerHTML = `
+      <div class="empty">
+        No hay ventas registradas.
+      </div>
+    `;
 
     return;
   }
 
-  const groups={};
 
-  db.sales.forEach(s=>{
+  const groups = {};
 
-    const k=dateKey(s.date);
 
-    (groups[k]||(groups[k]=[]))
-      .push(s);
-  });
+  db.sales.forEach(
+    sale => {
 
-  const keys=
-    Object.keys(groups)
-      .sort((a,b)=>{
-
-        const pa=a.split('/');
-        const pb=b.split('/');
-
-        if(
-          pa.length===3&&
-          pb.length===3
-        ){
-
-          return new Date(
-            +pb[2],
-            +pb[1]-1,
-            +pb[0]
-          )-
-          new Date(
-            +pa[2],
-            +pa[1]-1,
-            +pa[0]
-          );
-        }
-
-        return b.localeCompare(a);
-      });
-
-  listEl.innerHTML=
-    keys.map((k,gi)=>{
-
-      const list=
-        groups[k]
-          .slice()
-          .reverse();
-
-      const total=
-        list.reduce(
-          (n,s)=>n+(+s.total||0),
-          0
+      const key =
+        dateKey(
+          sale.date
         );
 
-      return `
+      if (!groups[key])
+        groups[key] = [];
 
-        <div class="date-group">
+      groups[key].push(
+        sale
+      );
 
-          <button
-            class="date-group-head"
-            type="button"
-            onclick="toggleDateGroup(this)"
-          >
+    }
+  );
 
-            <span>
 
-              <b>
-                ${esc(dateLabel(k))}
-              </b>
+  const keys =
+    Object.keys(groups)
+      .sort((a, b) =>
+        b.localeCompare(a)
+      );
 
-              <small>
-                ${list.length}
-                ${list.length===1?'venta':'ventas'}
-                · ${money(total)}
-              </small>
 
-            </span>
+  list.innerHTML =
+    keys.map(
+      (key, groupIndex) => {
 
-            <span class="date-chevron">
-              ${gi===0?'▲':'▼'}
-            </span>
+        const sales =
+          groups[key]
+            .slice()
+            .reverse();
 
-          </button>
 
-          <div class="date-group-body ${
-            gi===0?'open':''
-          }">
+        const total =
+          sales.reduce(
+            (sum, sale) =>
+              sum +
+              (+sale.total || 0),
+            0
+          );
 
-            ${list.map(s=>{
 
-              const detail=
-                s.items&&s.items.length
-                ?s.items.map(i=>
-                  `${esc(i.product)}
-                   × ${i.qty}`
-                ).join(' · ')
-                :`${esc(s.product||'Producto')}
-                   × ${s.qty||0}`;
+        return `
 
-              return `
+          <div class="date-group">
 
-                <div class="item">
+            <button
+              class="date-group-head"
+              type="button"
+              onclick="toggleDateGroup(this)"
+            >
 
-                  <div>
+              <span>
 
-                    <b>
-                      ${esc(
-                        s.client||
-                        'Sin cliente'
-                      )}
-                    </b>
+                <b>
+                  ${esc(
+                    dateLabel(key)
+                  )}
+                </b>
 
-                    <div class="muted">
-                      ${detail}
+                <small>
+
+                  ${sales.length}
+
+                  ${
+                    sales.length === 1
+                      ? "venta"
+                      : "ventas"
+                  }
+
+                  ·
+
+                  ${money(total)}
+
+                </small>
+
+              </span>
+
+
+              <span
+                class="date-chevron"
+              >
+                ${
+                  groupIndex === 0
+                    ? "▲"
+                    : "▼"
+                }
+              </span>
+
+            </button>
+
+
+            <div
+              class="
+                date-group-body
+                ${
+                  groupIndex === 0
+                    ? "open"
+                    : ""
+                }
+              "
+            >
+
+              ${
+                sales.map(
+                  sale => `
+
+                    <div class="item">
+
+                      <div>
+
+                        <b>
+                          ${esc(
+                            sale.client ||
+                            "Sin cliente"
+                          )}
+                        </b>
+
+
+                        <div class="muted">
+
+                          ${
+                            sale.items &&
+                            sale.items.length
+
+                              ? sale.items
+                                  .map(
+                                    item =>
+                                      `${esc(
+                                        item.product
+                                      )} × ${
+                                        item.qty
+                                      }`
+                                  )
+                                  .join(" · ")
+
+                              : `${esc(
+                                  sale.product ||
+                                  "Producto"
+                                )} × ${
+                                  sale.qty || 0
+                                }`
+                          }
+
+                        </div>
+
+
+                        <div class="muted">
+
+                          ${esc(
+                            sale.date ||
+                            ""
+                          )}
+
+                          ·
+
+                          ${esc(
+                            sale.pay ||
+                            ""
+                          )}
+
+                          ·
+
+                          ${esc(
+                            sale.status ||
+                            "Pagada"
+                          )}
+
+                        </div>
+
+                      </div>
+
+
+                      <div class="right">
+
+                        <b>
+                          ${money(
+                            sale.total
+                          )}
+                        </b>
+
+                        <small>
+
+                          ${
+                            sale.status ===
+                            "Pendiente"
+
+                              ? "Pendiente"
+
+                              : sale.status ===
+                                "Abono"
+
+                              ? "Abono " +
+                                money(
+                                  salePaid(
+                                    sale
+                                  )
+                                )
+
+                              : "Pagada"
+                          }
+
+                        </small>
+
+                      </div>
+
                     </div>
 
-                    <div class="muted">
-                      ${esc(s.date||'')}
-                      · ${esc(s.pay||'')}
-                      · ${esc(
-                        s.status||
-                        'Pagada'
-                      )}
-                    </div>
+                  `
+                ).join("")
+              }
 
-                  </div>
-
-                  <div class="right">
-
-                    <b>
-                      ${money(s.total)}
-                    </b>
-
-                    <small>
-
-                      ${
-                        s.status==='Pendiente'
-                        ?'Pendiente'
-                        :s.status==='Abono'
-                        ?'Abono '+money(salePaid(s))
-                        :'Pagada'
-                      }
-
-                    </small>
-
-                  </div>
-
-                </div>
-              `;
-            }).join('')}
+            </div>
 
           </div>
 
-        </div>
-      `;
+        `;
 
-    }).join('');
+      }
+    ).join("");
 }
 
-function toggleDateGroup(btn){
 
-  const body=
-    btn.nextElementSibling;
+function toggleDateGroup(button) {
 
-  if(!body)return;
+  const body =
+    button.nextElementSibling;
 
-  const open=
-    body.classList.toggle('open');
+  if (!body)
+    return;
 
-  const arrow=
-    btn.querySelector(
-      '.date-chevron'
+
+  const open =
+    body.classList.toggle(
+      "open"
     );
 
-  if(arrow)
-    arrow.textContent=
-      open?'▲':'▼';
+
+  const arrow =
+    button.querySelector(
+      ".date-chevron"
+    );
+
+
+  if (arrow) {
+
+    arrow.textContent =
+      open
+        ? "▲"
+        : "▼";
+
+  }
 }
 
 
@@ -749,136 +1118,206 @@ function toggleDateGroup(btn){
    CLIENTES
    ========================================================= */
 
-function customerStats(name){
+function customerStats(name) {
 
-  const sales=
+  const sales =
     db.sales.filter(
-      s=>s.client===name
+      sale =>
+        sale.client === name
     );
 
-  const bought=
+
+  const bought =
     sales.reduce(
-      (n,s)=>n+(+s.total||0),
+      (sum, sale) =>
+        sum +
+        (+sale.total || 0),
       0
     );
 
-  const paid=
+
+  const paid =
     sales.reduce(
-      (n,s)=>n+salePaid(s),
+      (sum, sale) =>
+        sum +
+        salePaid(sale),
       0
     );
+
 
   return {
+
     sales,
+
     bought,
+
     paid,
+
     balance:
       Math.max(
         0,
-        bought-paid
+        bought - paid
       )
+
   };
 }
 
-function renderCustomers(){
 
-  const searchEl=
+function renderCustomers() {
+
+  const search =
     document.getElementById(
-      'customerSearch'
+      "customerSearch"
     );
 
-  const listEl=
+  const list =
     document.getElementById(
-      'customersList'
+      "customersList"
     );
 
-  if(!searchEl||!listEl)return;
+  if (!search || !list)
+    return;
 
-  const q=
-    (searchEl.value||'')
+
+  const q =
+    String(
+      search.value || ""
+    )
       .toLowerCase()
       .trim();
 
-  const rows=
-    db.customers.filter(c=>
-      `${c.name||''} ${c.phone||''}`
-        .toLowerCase()
-        .includes(q)
-    );
 
-  listEl.innerHTML=
+  const rows =
+    db.customers
+      .filter(customer =>
+        `${customer.name || ""} ${
+          customer.phone || ""
+        }`
+          .toLowerCase()
+          .includes(q)
+      )
+      .sort((a, b) =>
+        String(a.name || "")
+          .localeCompare(
+            String(b.name || ""),
+            "es"
+          )
+      );
+
+
+  list.innerHTML =
     rows.length
 
-    ?rows
-      .slice()
-      .sort((a,b)=>
-        String(a.name||'')
-          .localeCompare(
-            String(b.name||''),
-            'es'
-          )
-      )
-      .map(c=>{
+      ? rows.map(customer => {
 
-        const st=
-          customerStats(c.name);
+          const index =
+            db.customers.indexOf(
+              customer
+            );
 
-        return `
+          const stats =
+            customerStats(
+              customer.name
+            );
 
-          <div
-            class="item clickable"
-            onclick="editCustomer(
-              ${db.customers.indexOf(c)}
-            )"
-          >
 
-            <div>
+          return `
 
-              <b>
-                ${esc(c.name)}
-              </b>
+            <div
+              class="item clickable"
+              onclick="editCustomer(
+                ${index}
+              )"
+            >
 
-              <div class="muted">
-                ${esc(
-                  c.phone||
-                  'Sin teléfono'
-                )}
+              <div>
+
+                <b>
+                  ${esc(
+                    customer.name
+                  )}
+                </b>
+
+                <div class="muted">
+                  ${esc(
+                    customer.phone ||
+                    "Sin teléfono"
+                  )}
+                </div>
+
+                <div class="muted">
+
+                  Comprado
+                  ${money(
+                    stats.bought
+                  )}
+
+                  ·
+
+                  Pagado
+                  ${money(
+                    stats.paid
+                  )}
+
+                  ·
+
+                  Saldo
+                  ${money(
+                    stats.balance
+                  )}
+
+                </div>
+
+                ${
+                  customer.note
+
+                    ? `
+                      <div class="muted">
+                        Nota:
+                        ${esc(
+                          customer.note
+                        )}
+                      </div>
+                    `
+
+                    : ""
+                }
+
               </div>
 
-              <div class="muted">
-                Comprado
-                ${money(st.bought)}
-                · Pagado
-                ${money(st.paid)}
-                · Saldo
-                ${money(st.balance)}
-              </div>
 
-              ${
-                c.note
-                ?`
-                  <div class="muted">
-                    Nota:
-                    ${esc(c.note)}
-                  </div>
-                `
-                :''
-              }
+              <span
+                class="badge ${
+                  stats.balance > 0
+                    ? "low"
+                    : ""
+                }"
+              >
+
+                ${
+                  stats.sales.length
+                }
+
+                ${
+                  stats.sales.length === 1
+                    ? "venta"
+                    : "ventas"
+                }
+
+              </span>
 
             </div>
 
-            <span class="badge ${
-              st.balance>0?'low':''
-            }">
-              ${st.sales.length} ventas
-            </span>
+          `;
 
-          </div>
-        `;
+        }).join("")
 
-      }).join('')
-
-    :'<div class="empty">No hay clientes. Agrega el primero.</div>';
+      : `
+        <div class="empty">
+          No hay clientes.
+          Agrega el primero.
+        </div>
+      `;
 }
 
 
@@ -886,51 +1325,81 @@ function renderCustomers(){
    MOVIMIENTOS
    ========================================================= */
 
-function renderMoves(){
+function renderMoves() {
 
-  const listEl=
+  const list =
     document.getElementById(
-      'movesList'
+      "movesList"
     );
 
-  if(!listEl)return;
+  if (!list)
+    return;
 
-  listEl.innerHTML=
+
+  list.innerHTML =
     db.moves.length
 
-    ?db.moves
-      .slice()
-      .reverse()
-      .map(m=>`
+      ? db.moves
+          .slice()
+          .reverse()
+          .map(move => `
 
-        <div class="item">
+            <div class="item">
 
-          <div>
+              <div>
 
-            <b>
-              ${esc(m.product)}
-            </b>
+                <b>
+                  ${esc(
+                    move.product
+                  )}
+                </b>
 
-            <div class="muted">
-              ${esc(m.reason||'')}
-              · ${esc(
-                m.responsible||''
-              )}
-              · ${esc(m.date||'')}
+                <div class="muted">
+
+                  ${esc(
+                    move.reason ||
+                    ""
+                  )}
+
+                  ·
+
+                  ${esc(
+                    move.responsible ||
+                    ""
+                  )}
+
+                  ·
+
+                  ${esc(
+                    move.date ||
+                    ""
+                  )}
+
+                </div>
+
+              </div>
+
+
+              <span class="badge">
+
+                ${esc(
+                  move.type
+                )}
+
+                ${move.qty}
+
+              </span>
+
             </div>
 
-          </div>
+          `)
+          .join("")
 
-          <span class="badge">
-            ${esc(m.type)}
-            ${m.qty}
-          </span>
-
+      : `
+        <div class="empty">
+          No hay movimientos.
         </div>
-
-      `).join('')
-
-    :'<div class="empty">No hay movimientos.</div>';
+      `;
 }
 
 
@@ -938,131 +1407,228 @@ function renderMoves(){
    ENCARGOS
    ========================================================= */
 
-function renderOrders(){
+function renderOrders() {
 
-  const listEl=
+  const list =
     document.getElementById(
-      'ordersList'
+      "ordersList"
     );
 
-  if(!listEl)return;
+  if (!list)
+    return;
 
-  const rows=
+
+  const rows =
     db.orders
       .slice()
       .reverse();
 
-  listEl.innerHTML=
+
+  list.innerHTML =
     rows.length
 
-    ?rows.map((o,i)=>`
+      ? rows.map(
+          (order, reverseIndex) => {
 
-      <div class="item">
+            const index =
+              db.orders.length -
+              1 -
+              reverseIndex;
 
-        <div>
 
-          <b>
-            ${esc(
-              o.product||
-              'Encargo'
-            )}
-          </b>
+            return `
 
-          <div class="muted">
-            Cliente:
-            ${esc(
-              o.client||
-              'Sin cliente'
-            )}
-            · Cantidad:
-            ${esc(o.qty||1)}
-          </div>
+              <div class="item">
 
-          <div class="muted">
-            ${esc(
-              o.note||
-              'Sin nota'
-            )}
-            · ${esc(o.date||'')}
-          </div>
+                <div>
 
+                  <b>
+                    ${esc(
+                      order.product ||
+                      "Encargo"
+                    )}
+                  </b>
+
+                  <div class="muted">
+
+                    Cliente:
+                    ${esc(
+                      order.client ||
+                      "Sin cliente"
+                    )}
+
+                    ·
+
+                    Cantidad:
+                    ${esc(
+                      order.qty ||
+                      1
+                    )}
+
+                  </div>
+
+
+                  <div class="muted">
+
+                    ${esc(
+                      order.note ||
+                      "Sin nota"
+                    )}
+
+                    ·
+
+                    ${esc(
+                      order.date ||
+                      ""
+                    )}
+
+                  </div>
+
+                </div>
+
+
+                <button
+                  type="button"
+                  class="
+                    badge
+                    order-status
+                    ${
+                      order.status ===
+                      "Listo"
+                        ? "done"
+                        : ""
+                    }
+                  "
+                  onclick="
+                    toggleOrder(
+                      ${index}
+                    )
+                  "
+                >
+
+                  ${esc(
+                    order.status ||
+                    "Pendiente"
+                  )}
+
+                </button>
+
+              </div>
+
+            `;
+
+          }
+        ).join("")
+
+      : `
+        <div class="empty">
+          No hay encargos pendientes.
         </div>
-
-        <button
-          type="button"
-          class="badge order-status ${
-            o.status==='Listo'
-            ?'done'
-            :''
-          }"
-          onclick="
-            toggleOrder(
-              ${db.orders.length-1-i}
-            )
-          "
-        >
-          ${esc(
-            o.status||
-            'Pendiente'
-          )}
-        </button>
-
-      </div>
-
-    `).join('')
-
-    :'<div class="empty">No hay encargos pendientes.</div>';
+      `;
 }
 
-function toggleOrder(i){
 
-  if(!db.orders[i])return;
+function toggleOrder(index) {
 
-  db.orders[i].status=
-    db.orders[i].status==='Listo'
-    ?'Pendiente'
-    :'Listo';
+  if (!db.orders[index])
+    return;
+
+
+  db.orders[index].status =
+    db.orders[index].status ===
+    "Listo"
+
+      ? "Pendiente"
+
+      : "Listo";
+
 
   save();
 }
 
 
 /* =========================================================
-   MODALES
+   MODAL
    ========================================================= */
 
-const modalEl=
-  document.getElementById('modal');
+function getModal() {
 
-function modal(title,html){
-
-  const titleEl=
-    document.getElementById(
-      'modalTitle'
-    );
-
-  const formEl=
-    document.getElementById(
-      'form'
-    );
-
-  if(!modalEl||!titleEl||!formEl)
-    return;
-
-  titleEl.textContent=title;
-  formEl.innerHTML=html;
-
-  modalEl.classList.remove(
-    'hidden'
+  return document.getElementById(
+    "modal"
   );
 }
 
-function closeModal(){
 
-  if(modalEl)
-    modalEl.classList.add(
-      'hidden'
+function modal(
+  title,
+  html,
+  submitHandler
+) {
+
+  const modalElement =
+    getModal();
+
+  const titleElement =
+    document.getElementById(
+      "modalTitle"
     );
+
+  const formElement =
+    document.getElementById(
+      "form"
+    );
+
+
+  if (
+    !modalElement ||
+    !titleElement ||
+    !formElement
+  ) {
+
+    console.error(
+      "No se encontró el modal."
+    );
+
+    return;
+
+  }
+
+
+  titleElement.textContent =
+    title;
+
+
+  formElement.innerHTML =
+    html;
+
+
+  modalElement.classList.remove(
+    "hidden"
+  );
+
+
+  formElement.onsubmit =
+    typeof submitHandler ===
+    "function"
+
+      ? submitHandler
+
+      : null;
+}
+
+
+function closeModal() {
+
+  const modalElement =
+    getModal();
+
+  if (modalElement) {
+
+    modalElement.classList.add(
+      "hidden"
+    );
+
+  }
 }
 
 
@@ -1070,38 +1636,2127 @@ function closeModal(){
    PRODUCTOS
    ========================================================= */
 
-function openProduct(idx=null){
+function openProduct(
+  index = null
+) {
 
-  const p=
-    idx===null
+  const product =
+    index === null
 
-    ?{
-      name:'',
-      category:'',
-      cost:0,
-      price:0,
-      stock:0,
-      min:1
-    }
+      ? {
+          name: "",
+          category: "Peces",
+          cost: 0,
+          price: 0,
+          stock: 0,
+          min: 1
+        }
 
-    :db.products[idx];
+      : db.products[index];
 
-  if(!p)return;
+
+  if (!product)
+    return;
+
 
   modal(
-    idx===null
-      ?'Nuevo producto'
-      :'Editar producto',
+
+    index === null
+      ? "Nuevo producto"
+      : "Editar producto",
 
     `
 
       <label>
+
         Producto
 
         <input
           name="name"
           required
-          value="${esc(p.name)}"
+          value="${esc(
+            product.name
+          )}"
           placeholder="Ej. Guppy"
         >
+
       </label>
+
+
+      <label>
+
+        Categoría
+
+        <select name="category">
+
+          ${
+            inventoryCategories()
+              .map(
+                category => `
+
+                  <option
+                    value="${esc(
+                      category
+                    )}"
+                    ${
+                      String(
+                        product.category ||
+                        ""
+                      ) === category
+                        ? "selected"
+                        : ""
+                    }
+                  >
+
+                    ${esc(
+                      category
+                    )}
+
+                  </option>
+
+                `
+              )
+              .join("")
+          }
+
+        </select>
+
+      </label>
+
+
+      <label>
+
+        Costo
+
+        <input
+          name="cost"
+          type="number"
+          min="0"
+          step="1"
+          value="${
+            +product.cost || 0
+          }"
+        >
+
+      </label>
+
+
+      <label>
+
+        Precio de venta
+
+        <input
+          name="price"
+          type="number"
+          min="0"
+          step="1"
+          value="${
+            +product.price || 0
+          }"
+        >
+
+      </label>
+
+
+      <label>
+
+        Stock
+
+        <input
+          name="stock"
+          type="number"
+          min="0"
+          step="1"
+          value="${
+            +product.stock || 0
+          }"
+        >
+
+      </label>
+
+
+      <label>
+
+        Stock mínimo
+
+        <input
+          name="min"
+          type="number"
+          min="0"
+          step="1"
+          value="${
+            +product.min || 0
+          }"
+        >
+
+      </label>
+
+
+      <div
+        style="
+          display:flex;
+          gap:8px;
+          margin-top:14px;
+          flex-wrap:wrap;
+        "
+      >
+
+        <button
+          class="primary"
+          type="submit"
+        >
+          💾 Guardar
+        </button>
+
+
+        <button
+          type="button"
+          onclick="closeModal()"
+        >
+          Cancelar
+        </button>
+
+
+        ${
+          index !== null
+
+            ? `
+              <button
+                type="button"
+                onclick="deleteProduct(
+                  ${index}
+                )"
+              >
+                🗑️ Eliminar
+              </button>
+            `
+
+            : ""
+        }
+
+      </div>
+
+    `,
+
+    event => {
+
+      event.preventDefault();
+
+
+      const form =
+        event.target;
+
+
+      const item = {
+
+        name:
+          form.name.value.trim(),
+
+        category:
+          form.category.value,
+
+        cost:
+          +form.cost.value || 0,
+
+        price:
+          +form.price.value || 0,
+
+        stock:
+          Math.max(
+            0,
+            +form.stock.value || 0
+          ),
+
+        min:
+          Math.max(
+            0,
+            +form.min.value || 0
+          )
+
+      };
+
+
+      if (!item.name) {
+
+        alert(
+          "Escribe el nombre del producto."
+        );
+
+        return;
+
+      }
+
+
+      if (index === null) {
+
+        db.products.push(
+          item
+        );
+
+      } else {
+
+        db.products[index] =
+          item;
+
+      }
+
+
+      save();
+
+      closeModal();
+
+    }
+
+  );
+}
+
+
+function editProduct(index) {
+
+  openProduct(index);
+
+}
+
+
+function deleteProduct(index) {
+
+  if (!db.products[index])
+    return;
+
+
+  if (
+    !confirm(
+      `¿Eliminar "${db.products[index].name}"?`
+    )
+  )
+    return;
+
+
+  db.products.splice(
+    index,
+    1
+  );
+
+
+  save();
+
+  closeModal();
+}
+
+
+/* =========================================================
+   VENTAS
+   ========================================================= */
+
+function addSaleRow() {
+
+  const container =
+    document.getElementById(
+      "saleRows"
+    );
+
+  if (!container)
+    return;
+
+
+  const row =
+    document.createElement(
+      "div"
+    );
+
+
+  row.className =
+    "sale-row";
+
+
+  row.style.cssText =
+    `
+      display:grid;
+      grid-template-columns:1fr 80px 45px;
+      gap:6px;
+      margin-bottom:8px;
+    `;
+
+
+  row.innerHTML = `
+
+    <select
+      class="sale-product"
+    >
+
+      <option value="">
+        Producto
+      </option>
+
+      ${
+        db.products
+          .map(
+            (product, index) => `
+
+              <option
+                value="${index}"
+              >
+
+                ${esc(
+                  product.name
+                )}
+
+                —
+                stock
+                ${product.stock}
+
+              </option>
+
+            `
+          )
+          .join("")
+      }
+
+    </select>
+
+
+    <input
+      class="sale-qty"
+      type="number"
+      min="1"
+      value="1"
+    >
+
+
+    <button
+      type="button"
+    >
+      ✕
+    </button>
+
+  `;
+
+
+  container.appendChild(
+    row
+  );
+
+
+  row.querySelector(
+    ".sale-product"
+  ).onchange =
+    updateSalePreview;
+
+
+  row.querySelector(
+    ".sale-qty"
+  ).oninput =
+    updateSalePreview;
+
+
+  row.querySelector(
+    "button"
+  ).onclick =
+    function () {
+
+      row.remove();
+
+      updateSalePreview();
+
+    };
+
+
+  updateSalePreview();
+}
+
+
+function updateSalePreview() {
+
+  const rows =
+    [
+      ...document.querySelectorAll(
+        ".sale-row"
+      )
+    ];
+
+
+  let total = 0;
+
+  let profit = 0;
+
+
+  rows.forEach(row => {
+
+    const productIndex =
+      row.querySelector(
+        ".sale-product"
+      )?.value;
+
+
+    const quantity =
+      +(
+        row.querySelector(
+          ".sale-qty"
+        )?.value || 0
+      );
+
+
+    const product =
+      productIndex !== ""
+        ? db.products[
+            +productIndex
+          ]
+        : null;
+
+
+    if (
+      product &&
+      quantity > 0
+    ) {
+
+      total +=
+        (+product.price || 0) *
+        quantity;
+
+
+      profit +=
+        (
+          (+product.price || 0) -
+          (+product.cost || 0)
+        ) *
+        quantity;
+
+    }
+
+  });
+
+
+  const totalElement =
+    document.getElementById(
+      "saleTotalPreview"
+    );
+
+
+  const profitElement =
+    document.getElementById(
+      "saleProfitPreview"
+    );
+
+
+  if (totalElement)
+    totalElement.textContent =
+      money(total);
+
+
+  if (profitElement)
+    profitElement.textContent =
+      money(profit);
+
+
+  return {
+    total,
+    profit
+  };
+}
+
+
+function openSale() {
+
+  modal(
+
+    "Nueva venta",
+
+    `
+
+      <label>
+
+        Cliente
+
+        <select name="client">
+
+          <option value="">
+            Sin cliente
+          </option>
+
+          ${
+            db.customers
+              .map(
+                customer => `
+
+                  <option
+                    value="${esc(
+                      customer.name
+                    )}"
+                  >
+
+                    ${esc(
+                      customer.name
+                    )}
+
+                  </option>
+
+                `
+              )
+              .join("")
+          }
+
+        </select>
+
+      </label>
+
+
+      <div id="saleRows"></div>
+
+
+      <button
+        type="button"
+        onclick="addSaleRow()"
+      >
+
+        ➕ Agregar producto
+
+      </button>
+
+
+      <div
+        class="panel"
+        style="margin-top:12px;"
+      >
+
+        <b>
+
+          Total:
+
+          <span id="saleTotalPreview">
+            ${money(0)}
+          </span>
+
+        </b>
+
+
+        <div>
+
+          Ganancia estimada:
+
+          <span
+            id="saleProfitPreview"
+          >
+            ${money(0)}
+          </span>
+
+        </div>
+
+      </div>
+
+
+      <label>
+
+        Forma de pago
+
+        <select name="pay">
+
+          <option>
+            Efectivo
+          </option>
+
+          <option>
+            Transferencia
+          </option>
+
+          <option>
+            Nequi
+          </option>
+
+          <option>
+            Daviplata
+          </option>
+
+          <option>
+            Tarjeta
+          </option>
+
+          <option>
+            Otro
+          </option>
+
+        </select>
+
+      </label>
+
+
+      <label>
+
+        Estado
+
+        <select name="status">
+
+          <option>
+            Pagada
+          </option>
+
+          <option>
+            Abono
+          </option>
+
+          <option>
+            Pendiente
+          </option>
+
+        </select>
+
+      </label>
+
+
+      <label>
+
+        Abono recibido
+
+        <input
+          name="paid"
+          type="number"
+          min="0"
+          step="1"
+          value="0"
+        >
+
+      </label>
+
+
+      <div
+        style="
+          display:flex;
+          gap:8px;
+          margin-top:14px;
+        "
+      >
+
+        <button
+          class="primary"
+          type="submit"
+        >
+          💾 Guardar venta
+        </button>
+
+
+        <button
+          type="button"
+          onclick="closeModal()"
+        >
+          Cancelar
+        </button>
+
+      </div>
+
+    `,
+
+    event => {
+
+      event.preventDefault();
+
+
+      const form =
+        event.target;
+
+
+      const items = [];
+
+
+      for (
+        const row of
+        form.querySelectorAll(
+          ".sale-row"
+        )
+      ) {
+
+        const productIndex =
+          row.querySelector(
+            ".sale-product"
+          )?.value;
+
+
+        const quantity =
+          +(
+            row.querySelector(
+              ".sale-qty"
+            )?.value || 0
+          );
+
+
+        if (
+          productIndex === "" ||
+          quantity <= 0
+        )
+          continue;
+
+
+        const product =
+          db.products[
+            +productIndex
+          ];
+
+
+        if (!product)
+          continue;
+
+
+        if (
+          (+product.stock || 0) <
+          quantity
+        ) {
+
+          alert(
+            `No hay suficiente stock de "${product.name}".`
+          );
+
+          return;
+
+        }
+
+
+        items.push({
+
+          product:
+            product.name,
+
+          productIndex:
+            +productIndex,
+
+          qty:
+            quantity,
+
+          price:
+            +product.price || 0,
+
+          cost:
+            +product.cost || 0
+
+        });
+
+      }
+
+
+      if (!items.length) {
+
+        alert(
+          "Agrega al menos un producto."
+        );
+
+        return;
+
+      }
+
+
+      const total =
+        items.reduce(
+          (sum, item) =>
+            sum +
+            item.price *
+            item.qty,
+          0
+        );
+
+
+      let paid =
+        +form.paid.value || 0;
+
+
+      const status =
+        form.status.value;
+
+
+      if (
+        status ===
+        "Pagada"
+      )
+        paid = total;
+
+
+      if (
+        status ===
+        "Pendiente"
+      )
+        paid = 0;
+
+
+      paid =
+        Math.max(
+          0,
+          Math.min(
+            paid,
+            total
+          )
+        );
+
+
+      items.forEach(
+        item => {
+
+          const product =
+            db.products[
+              item.productIndex
+            ];
+
+
+          product.stock =
+            Math.max(
+              0,
+              (+product.stock || 0) -
+              item.qty
+            );
+
+        }
+      );
+
+
+      db.sales.push({
+
+        date:
+          now(),
+
+        client:
+          form.client.value,
+
+        items,
+
+        total,
+
+        paid,
+
+        pay:
+          form.pay.value,
+
+        status,
+
+        profit:
+          items.reduce(
+            (sum, item) =>
+              sum +
+              (
+                item.price -
+                item.cost
+              ) *
+              item.qty,
+            0
+          )
+
+      });
+
+
+      save();
+
+      closeModal();
+
+    }
+
+  );
+
+
+  addSaleRow();
+}
+
+
+/* =========================================================
+   CLIENTES
+   ========================================================= */
+
+function openCustomer(
+  index = null
+) {
+
+  const customer =
+    index === null
+
+      ? {
+          name: "",
+          phone: "",
+          note: ""
+        }
+
+      : db.customers[index];
+
+
+  if (!customer)
+    return;
+
+
+  modal(
+
+    index === null
+      ? "Nuevo cliente"
+      : "Editar cliente",
+
+    `
+
+      <label>
+
+        Nombre
+
+        <input
+          name="name"
+          required
+          value="${esc(
+            customer.name
+          )}"
+        >
+
+      </label>
+
+
+      <label>
+
+        Teléfono
+
+        <input
+          name="phone"
+          value="${esc(
+            customer.phone
+          )}"
+        >
+
+      </label>
+
+
+      <label>
+
+        Nota
+
+        <textarea
+          name="note"
+          rows="3"
+        >${esc(
+          customer.note
+        )}</textarea>
+
+      </label>
+
+
+      <div
+        style="
+          display:flex;
+          gap:8px;
+          margin-top:14px;
+          flex-wrap:wrap;
+        "
+      >
+
+        <button
+          class="primary"
+          type="submit"
+        >
+          💾 Guardar
+        </button>
+
+
+        <button
+          type="button"
+          onclick="closeModal()"
+        >
+          Cancelar
+        </button>
+
+
+        ${
+          index !== null
+
+            ? `
+              <button
+                type="button"
+                onclick="deleteCustomer(
+                  ${index}
+                )"
+              >
+                🗑️ Eliminar
+              </button>
+            `
+
+            : ""
+        }
+
+      </div>
+
+    `,
+
+    event => {
+
+      event.preventDefault();
+
+
+      const form =
+        event.target;
+
+
+      const item = {
+
+        name:
+          form.name.value.trim(),
+
+        phone:
+          form.phone.value.trim(),
+
+        note:
+          form.note.value.trim()
+
+      };
+
+
+      if (!item.name) {
+
+        alert(
+          "Escribe el nombre del cliente."
+        );
+
+        return;
+
+      }
+
+
+      if (index === null) {
+
+        db.customers.push(
+          item
+        );
+
+      } else {
+
+        db.customers[index] =
+          item;
+
+      }
+
+
+      save();
+
+      closeModal();
+
+    }
+
+  );
+}
+
+
+function editCustomer(index) {
+
+  openCustomer(index);
+
+}
+
+
+function deleteCustomer(index) {
+
+  if (!db.customers[index])
+    return;
+
+
+  if (
+    !confirm(
+      `¿Eliminar al cliente "${db.customers[index].name}"?`
+    )
+  )
+    return;
+
+
+  db.customers.splice(
+    index,
+    1
+  );
+
+
+  save();
+
+  closeModal();
+}
+
+
+/* =========================================================
+   ENCARGOS
+   ========================================================= */
+
+function openOrder(
+  index = null
+) {
+
+  const order =
+    index === null
+
+      ? {
+          product: "",
+          client: "",
+          qty: 1,
+          note: "",
+          status: "Pendiente"
+        }
+
+      : db.orders[index];
+
+
+  if (!order)
+    return;
+
+
+  modal(
+
+    index === null
+      ? "Nuevo encargo"
+      : "Editar encargo",
+
+    `
+
+      <label>
+
+        Producto / encargo
+
+        <input
+          name="product"
+          required
+          value="${esc(
+            order.product
+          )}"
+        >
+
+      </label>
+
+
+      <label>
+
+        Cliente
+
+        <input
+          name="client"
+          value="${esc(
+            order.client
+          )}"
+        >
+
+      </label>
+
+
+      <label>
+
+        Cantidad
+
+        <input
+          name="qty"
+          type="number"
+          min="1"
+          value="${
+            +order.qty || 1
+          }"
+        >
+
+      </label>
+
+
+      <label>
+
+        Nota
+
+        <textarea
+          name="note"
+          rows="3"
+        >${esc(
+          order.note
+        )}</textarea>
+
+      </label>
+
+
+      <label>
+
+        Estado
+
+        <select name="status">
+
+          <option
+            ${
+              order.status ===
+              "Pendiente"
+                ? "selected"
+                : ""
+            }
+          >
+            Pendiente
+          </option>
+
+          <option
+            ${
+              order.status ===
+              "Listo"
+                ? "selected"
+                : ""
+            }
+          >
+            Listo
+          </option>
+
+        </select>
+
+      </label>
+
+
+      <div
+        style="
+          display:flex;
+          gap:8px;
+          margin-top:14px;
+          flex-wrap:wrap;
+        "
+      >
+
+        <button
+          class="primary"
+          type="submit"
+        >
+          💾 Guardar
+        </button>
+
+
+        <button
+          type="button"
+          onclick="closeModal()"
+        >
+          Cancelar
+        </button>
+
+
+        ${
+          index !== null
+
+            ? `
+              <button
+                type="button"
+                onclick="deleteOrder(
+                  ${index}
+                )"
+              >
+                🗑️ Eliminar
+              </button>
+            `
+
+            : ""
+        }
+
+      </div>
+
+    `,
+
+    event => {
+
+      event.preventDefault();
+
+
+      const form =
+        event.target;
+
+
+      const item = {
+
+        product:
+          form.product.value.trim(),
+
+        client:
+          form.client.value.trim(),
+
+        qty:
+          Math.max(
+            1,
+            +form.qty.value || 1
+          ),
+
+        note:
+          form.note.value.trim(),
+
+        status:
+          form.status.value,
+
+        date:
+          index === null
+            ? now()
+            : (
+                db.orders[index].date ||
+                now()
+              )
+
+      };
+
+
+      if (!item.product) {
+
+        alert(
+          "Escribe el producto o encargo."
+        );
+
+        return;
+
+      }
+
+
+      if (index === null) {
+
+        db.orders.push(
+          item
+        );
+
+      } else {
+
+        db.orders[index] =
+          {
+            ...db.orders[index],
+            ...item
+          };
+
+      }
+
+
+      save();
+
+      closeModal();
+
+    }
+
+  );
+}
+
+
+function editOrder(index) {
+
+  openOrder(index);
+
+}
+
+
+function deleteOrder(index) {
+
+  if (!db.orders[index])
+    return;
+
+
+  if (
+    !confirm(
+      "¿Eliminar este encargo?"
+    )
+  )
+    return;
+
+
+  db.orders.splice(
+    index,
+    1
+  );
+
+
+  save();
+
+  closeModal();
+}
+
+
+/* =========================================================
+   MOVIMIENTOS
+   ========================================================= */
+
+function openMove() {
+
+  modal(
+
+    "Nuevo movimiento",
+
+    `
+
+      <label>
+
+        Producto
+
+        <select name="product">
+
+          <option value="">
+            Selecciona un producto
+          </option>
+
+          ${
+            db.products
+              .map(
+                (product, index) => `
+
+                  <option
+                    value="${index}"
+                  >
+
+                    ${esc(
+                      product.name
+                    )}
+
+                    —
+                    stock
+                    ${product.stock}
+
+                  </option>
+
+                `
+              )
+              .join("")
+          }
+
+        </select>
+
+      </label>
+
+
+      <label>
+
+        Tipo
+
+        <select name="type">
+
+          <option>
+            Entrada
+          </option>
+
+          <option>
+            Salida
+          </option>
+
+        </select>
+
+      </label>
+
+
+      <label>
+
+        Cantidad
+
+        <input
+          name="qty"
+          type="number"
+          min="1"
+          value="1"
+        >
+
+      </label>
+
+
+      <label>
+
+        Motivo
+
+        <input
+          name="reason"
+          placeholder="Compra, pérdida, ajuste, etc."
+        >
+
+      </label>
+
+
+      <label>
+
+        Responsable
+
+        <input
+          name="responsible"
+          placeholder="Nombre"
+        >
+
+      </label>
+
+
+      <div
+        style="
+          display:flex;
+          gap:8px;
+          margin-top:14px;
+        "
+      >
+
+        <button
+          class="primary"
+          type="submit"
+        >
+          💾 Guardar
+        </button>
+
+
+        <button
+          type="button"
+          onclick="closeModal()"
+        >
+          Cancelar
+        </button>
+
+      </div>
+
+    `,
+
+    event => {
+
+      event.preventDefault();
+
+
+      const form =
+        event.target;
+
+
+      const productIndex =
+        form.product.value;
+
+
+      const quantity =
+        Math.max(
+          1,
+          +form.qty.value || 1
+        );
+
+
+      if (
+        productIndex === ""
+      ) {
+
+        alert(
+          "Selecciona un producto."
+        );
+
+        return;
+
+      }
+
+
+      const product =
+        db.products[
+          +productIndex
+        ];
+
+
+      if (!product)
+        return;
+
+
+      if (
+        form.type.value ===
+        "Entrada"
+      ) {
+
+        product.stock =
+          (+product.stock || 0) +
+          quantity;
+
+      } else {
+
+        if (
+          (+product.stock || 0) <
+          quantity
+        ) {
+
+          alert(
+            `No hay suficiente stock de "${product.name}".`
+          );
+
+          return;
+
+        }
+
+
+        product.stock =
+          (+product.stock || 0) -
+          quantity;
+
+      }
+
+
+      db.moves.push({
+
+        date:
+          now(),
+
+        product:
+          product.name,
+
+        type:
+          form.type.value,
+
+        qty:
+          quantity,
+
+        reason:
+          form.reason.value.trim(),
+
+        responsible:
+          form.responsible.value.trim()
+
+      });
+
+
+      save();
+
+      closeModal();
+
+    }
+
+  );
+}
+
+
+/* =========================================================
+   RESUMEN INTERNO
+   ========================================================= */
+
+function renderInternal() {
+
+  const element =
+    document.getElementById(
+      "internalStats"
+    );
+
+  if (!element)
+    return;
+
+
+  const sales =
+    db.sales.reduce(
+      (sum, sale) =>
+        sum +
+        (+sale.total || 0),
+      0
+    );
+
+
+  const profit =
+    db.sales.reduce(
+      (sum, sale) =>
+        sum +
+        (+sale.profit || 0),
+      0
+    );
+
+
+  const pending =
+    db.sales.reduce(
+      (sum, sale) =>
+        sum +
+        Math.max(
+          0,
+          (+sale.total || 0) -
+          salePaid(sale)
+        ),
+      0
+    );
+
+
+  element.innerHTML = `
+
+    <div class="cards">
+
+      <div class="card">
+
+        <b>
+          Ventas
+        </b>
+
+        <strong>
+          ${money(sales)}
+        </strong>
+
+      </div>
+
+
+      <div class="card">
+
+        <b>
+          Ganancia
+        </b>
+
+        <strong>
+          ${money(profit)}
+        </strong>
+
+      </div>
+
+
+      <div class="card">
+
+        <b>
+          Pendiente
+        </b>
+
+        <strong>
+          ${money(pending)}
+        </strong>
+
+      </div>
+
+
+      <div class="card">
+
+        <b>
+          Productos
+        </b>
+
+        <strong>
+          ${db.products.length}
+        </strong>
+
+      </div>
+
+    </div>
+
+  `;
+}
+
+
+function openInternal() {
+
+  const modalElement =
+    document.getElementById(
+      "internalModal"
+    );
+
+
+  if (
+    modalElement
+  ) {
+
+    renderInternal();
+
+    modalElement.classList.remove(
+      "hidden"
+    );
+
+  }
+}
+
+
+function closeInternal() {
+
+  const modalElement =
+    document.getElementById(
+      "internalModal"
+    );
+
+
+  if (
+    modalElement
+  ) {
+
+    modalElement.classList.add(
+      "hidden"
+    );
+
+  }
+}
+
+
+/* =========================================================
+   RESPALDO
+   ========================================================= */
+
+function exportData() {
+
+  const blob =
+    new Blob(
+      [
+        JSON.stringify(
+          db,
+          null,
+          2
+        )
+      ],
+      {
+        type:
+          "application/json"
+      }
+    );
+
+
+  const url =
+    URL.createObjectURL(
+      blob
+    );
+
+
+  const link =
+    document.createElement(
+      "a"
+    );
+
+
+  link.href =
+    url;
+
+
+  link.download =
+    "aquarium-fish-respaldo.json";
+
+
+  document.body.appendChild(
+    link
+  );
+
+
+  link.click();
+
+
+  link.remove();
+
+
+  URL.revokeObjectURL(
+    url
+  );
+}
+
+
+function importData(input) {
+
+  const file =
+    input?.files?.[0];
+
+
+  if (!file)
+    return;
+
+
+  const reader =
+    new FileReader();
+
+
+  reader.onload =
+    function () {
+
+      try {
+
+        const imported =
+          JSON.parse(
+            reader.result
+          );
+
+
+        if (
+          !imported ||
+          typeof imported !==
+          "object"
+        ) {
+
+          throw new Error(
+            "Formato inválido"
+          );
+
+        }
+
+
+        db = {
+
+          products:
+            Array.isArray(
+              imported.products
+            )
+              ? imported.products
+              : [],
+
+          sales:
+            Array.isArray(
+              imported.sales
+            )
+              ? imported.sales
+              : [],
+
+          moves:
+            Array.isArray(
+              imported.moves
+            )
+              ? imported.moves
+              : [],
+
+          customers:
+            Array.isArray(
+              imported.customers
+            )
+              ? imported.customers
+              : [],
+
+          orders:
+            Array.isArray(
+              imported.orders
+            )
+              ? imported.orders
+              : []
+
+        };
+
+
+        save();
+
+
+        alert(
+          "Respaldo restaurado correctamente."
+        );
+
+
+      } catch (error) {
+
+        console.error(
+          error
+        );
+
+
+        alert(
+          "No se pudo restaurar el respaldo."
+        );
+
+      }
+
+    };
+
+
+  reader.readAsText(
+    file
+  );
+}
+
+
+/* =========================================================
+   BÚSQUEDAS
+   ========================================================= */
+
+function bindSearches() {
+
+  const search =
+    document.getElementById(
+      "search"
+    );
+
+
+  if (search) {
+
+    search.oninput =
+      function () {
+
+        renderInventory();
+
+      };
+
+  }
+
+
+  const customerSearch =
+    document.getElementById(
+      "customerSearch"
+    );
+
+
+  if (customerSearch) {
+
+    customerSearch.oninput =
+      function () {
+
+        renderCustomers();
+
+      };
+
+  }
+}
+
+
+/* =========================================================
+   HACER FUNCIONES GLOBALES
+   IMPORTANTE PARA LOS onclick DEL HTML
+   ========================================================= */
+
+function exposeFunctions() {
+
+  window.show =
+    show;
+
+  window.openProduct =
+    openProduct;
+
+  window.editProduct =
+    editProduct;
+
+  window.deleteProduct =
+    deleteProduct;
+
+  window.openSale =
+    openSale;
+
+  window.addSaleRow =
+    addSaleRow;
+
+  window.updateSalePreview =
+    updateSalePreview;
+
+  window.openCustomer =
+    openCustomer;
+
+  window.editCustomer =
+    editCustomer;
+
+  window.deleteCustomer =
+    deleteCustomer;
+
+  window.openOrder =
+    openOrder;
+
+  window.editOrder =
+    editOrder;
+
+  window.deleteOrder =
+    deleteOrder;
+
+  window.toggleOrder =
+    toggleOrder;
+
+  window.openMove =
+    openMove;
+
+  window.toggleDateGroup =
+    toggleDateGroup;
+
+  window.closeModal =
+    closeModal;
+
+  window.openInternal =
+    openInternal;
+
+  window.closeInternal =
+    closeInternal;
+
+  window.exportData =
+    exportData;
+
+  window.importData =
+    importData;
+
+  window.setInventoryCategory =
+    setInventoryCategory;
+
+  window.setInventorySort =
+    setInventorySort;
+
+}
+
+
+/* =========================================================
+   INICIAR APLICACIÓN
+   ========================================================= */
+
+function iniciarApp() {
+
+  exposeFunctions();
+
+  bindNavigation();
+
+  bindSearches();
+
+  renderAll();
+
+  show("home");
+
+}
+
+
+if (
+  document.readyState ===
+  "loading"
+) {
+
+  document.addEventListener(
+    "DOMContentLoaded",
+    iniciarApp
+  );
+
+} else {
+
+  iniciarApp();
+
+}
