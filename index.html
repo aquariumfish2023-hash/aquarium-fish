@@ -1447,3 +1447,29 @@ setTimeout(
 
                 }
               );
+
+  }
+
+
+  if(
+    document.readyState ===
+    "loading"
+  ){
+
+    document.addEventListener(
+      "DOMContentLoaded",
+      configurarNavegacion
+    );
+
+  }else{
+
+    configurarNavegacion();
+
+  }
+
+})();
+
+</script>
+
+</body>
+</html>
