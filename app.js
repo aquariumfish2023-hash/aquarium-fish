@@ -635,6 +635,150 @@ function renderHome() {
    INVENTARIO
    ========================================================= */
 
+
+function inventoryStats() {
+
+  const products = Array.isArray(db.products)
+    ? db.products
+    : [];
+
+  const units = products.reduce(
+    (sum, product) =>
+      sum + Math.max(0, +product.stock || 0),
+    0
+  );
+
+  const costValue = products.reduce(
+    (sum, product) =>
+      sum +
+      Math.max(0, +product.stock || 0) *
+      (+product.cost || 0),
+    0
+  );
+
+  const saleValue = products.reduce(
+    (sum, product) =>
+      sum +
+      Math.max(0, +product.stock || 0) *
+      (+product.price || 0),
+    0
+  );
+
+  const lowStock = products.filter(
+    product =>
+      Math.max(0, +product.stock || 0) <=
+      Math.max(0, +product.min || 0)
+  ).length;
+
+  const zeroStock = products.filter(
+    product =>
+      Math.max(0, +product.stock || 0) <= 0
+  ).length;
+
+  return {
+    units,
+    costValue,
+    saleValue,
+    lowStock,
+    zeroStock
+  };
+
+}
+
+
+function renderInventorySmartPanel(controls) {
+
+  if(!controls){
+    return;
+  }
+
+  const stats = inventoryStats();
+
+  const panel = document.createElement("div");
+
+  panel.innerHTML = `
+    <div class="item" style="margin-bottom:10px;">
+      <div>
+        <b>📦 Inventario inteligente</b>
+        <div class="muted">Resumen del stock actual</div>
+      </div>
+    </div>
+
+    <div style="
+      display:grid;
+      grid-template-columns:repeat(2,minmax(0,1fr));
+      gap:8px;
+      margin-bottom:10px;
+    ">
+      <div class="item">
+        <div>
+          <b>${stats.units}</b>
+          <div class="muted">Unidades</div>
+        </div>
+      </div>
+
+      <div class="item">
+        <div>
+          <b>${money(stats.costValue)}</b>
+          <div class="muted">Valor de compra</div>
+        </div>
+      </div>
+
+      <div class="item">
+        <div>
+          <b>${money(stats.saleValue)}</b>
+          <div class="muted">Valor de venta</div>
+        </div>
+      </div>
+
+      <div class="item">
+        <div>
+          <b>${stats.lowStock}</b>
+          <div class="muted">Stock bajo</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="muted" style="margin:0 0 8px;">
+      ${stats.zeroStock} producto(s) sin stock ·
+      Valor de venta del stock: <b>${money(stats.saleValue)}</b>
+    </div>
+
+    <div style="
+      display:grid;
+      grid-template-columns:repeat(3,minmax(0,1fr));
+      gap:8px;
+    ">
+      <button
+        type="button"
+        class="primary"
+        onclick="openMove('Entrada','Compra')"
+      >
+        ➕ Entrada
+      </button>
+
+      <button
+        type="button"
+        onclick="openMove('Salida','Mortalidad')"
+      >
+        ☠️ Mortalidad/Baja
+      </button>
+
+      <button
+        type="button"
+        onclick="openMove('Salida','Ajuste')"
+      >
+        ⚠️ Ajuste/Pérdida
+      </button>
+    </div>
+  `;
+
+  panel.style.margin = "10px 0 14px";
+  controls.prepend(panel);
+
+}
+
+
 function renderInventory() {
 
   const search =
@@ -906,6 +1050,9 @@ function renderInventory() {
     </div>
 
   `;
+
+
+  renderInventorySmartPanel(controls);
 
 
   const categorySelect =
@@ -1768,10 +1915,14 @@ function renderMoves() {
 
                   <div class="muted">
 
-                    ${esc(
-                      move.reason ||
-                      ""
-                    )}
+                    ${
+                      move.source === "Venta"
+                        ? "Venta automática"
+                        : esc(
+                            move.reason ||
+                            ""
+                          )
+                    }
 
                     ·
 
@@ -3035,6 +3186,26 @@ function openSale() {
       });
 
 
+      items.forEach(
+        item => {
+          const product = db.products[item.productIndex];
+
+          if(!product){
+            return;
+          }
+
+          db.moves.push({
+            date: now(),
+            product: product.name,
+            type: "Salida",
+            qty: item.qty,
+            reason: "Venta",
+            responsible: "Sistema",
+            source: "Venta"
+          });
+        }
+      );
+
       save();
 
       closeModal();
@@ -3591,7 +3762,7 @@ function deleteOrder(index){
    MOVIMIENTOS
    ========================================================= */
 
-function openMove() {
+function openMove(defaultType = "Entrada", defaultReason = "Compra") {
 
   modal(
 
@@ -3649,11 +3820,11 @@ function openMove() {
 
         <select name="type">
 
-          <option>
+          <option ${defaultType === "Entrada" ? "selected" : ""}>
             Entrada
           </option>
 
-          <option>
+          <option ${defaultType === "Salida" ? "selected" : ""}>
             Salida
           </option>
 
@@ -3680,10 +3851,26 @@ function openMove() {
 
         Motivo
 
-        <input
-          name="reason"
-          placeholder="Compra, pérdida, ajuste, etc."
-        >
+        <select name="reason">
+          <option ${defaultReason === "Compra" ? "selected" : ""}>
+            Compra
+          </option>
+          <option ${defaultReason === "Mortalidad" ? "selected" : ""}>
+            Mortalidad
+          </option>
+          <option ${defaultReason === "Pérdida / Daño" ? "selected" : ""}>
+            Pérdida / Daño
+          </option>
+          <option ${defaultReason === "Ajuste" ? "selected" : ""}>
+            Ajuste
+          </option>
+          <option ${defaultReason === "Regalo" ? "selected" : ""}>
+            Regalo
+          </option>
+          <option ${defaultReason === "Otro" ? "selected" : ""}>
+            Otro
+          </option>
+        </select>
 
       </label>
 
