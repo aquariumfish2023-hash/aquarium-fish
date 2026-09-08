@@ -3225,8 +3225,14 @@ function printQuote(id=null){
   if(quote) loadQuote(quote.id);
   if(!quoteItems.length){alert("Agrega al menos un producto a la cotización.");return;}
   const rows=quoteItems.map(item=>`<tr><td>${esc(item.name)}</td><td>${+item.qty||1}</td><td>${money(item.unitPrice)}</td><td>${money((+item.qty||0)*(+item.unitPrice||0))}</td></tr>`).join("");
-  const w=window.open("","_blank","noopener"); if(!w){alert("El navegador bloqueó la ventana de impresión.");return;}
-  w.document.write(`<html><head><title>${esc(quoteEditingId || nextQuoteNumber())}</title><style>body{font-family:Arial,sans-serif;padding:30px;color:#222}table{width:100%;border-collapse:collapse;margin-top:20px}th,td{padding:8px;border-bottom:1px solid #ddd;text-align:left}.total{text-align:right;font-size:20px;font-weight:bold;margin-top:20px}</style></head><body><h1>🐠 AQUARIUM FISH</h1><h2>Cotización ${esc(quoteEditingId || "")}</h2><p>Cliente: ${esc(quoteCustomer || "Sin cliente")}<br>Teléfono: ${esc(quotePhone || "-")}<br>Fecha: ${esc(now())}</p><table><thead><tr><th>Producto</th><th>Cant.</th><th>Precio</th><th>Subtotal</th></tr></thead><tbody>${rows}</tbody></table><p>Subtotal: ${money(quoteSubtotal())}<br>Descuento: ${money(quoteDiscount)}<br><span class="total">TOTAL: ${money(quoteTotal())}</span></p><p>${esc(quoteNote || "")}</p></body></html>`); w.document.close(); w.focus(); w.print();
+  const w=window.open("", "_blank");
+  if(!w){alert("El navegador bloqueó la ventana de impresión. Permite ventanas emergentes para Aquarium Fish.");return;}
+  const html=`<!doctype html><html><head><meta charset="utf-8"><title>${esc(quoteEditingId || nextQuoteNumber())}</title><style>body{font-family:Arial,sans-serif;padding:30px;color:#222}table{width:100%;border-collapse:collapse;margin-top:20px}th,td{padding:8px;border-bottom:1px solid #ddd;text-align:left}.total{text-align:right;font-size:20px;font-weight:bold;margin-top:20px}</style></head><body><h1>🐠 AQUARIUM FISH</h1><h2>Cotización ${esc(quoteEditingId || "")}</h2><p>Cliente: ${esc(quoteCustomer || "Sin cliente")}<br>Teléfono: ${esc(quotePhone || "-")}<br>Fecha: ${esc(now())}</p><table><thead><tr><th>Producto</th><th>Cant.</th><th>Precio</th><th>Subtotal</th></tr></thead><tbody>${rows}</tbody></table><p>Subtotal: ${money(quoteSubtotal())}<br>Descuento: ${money(quoteDiscount)}<br><span class="total">TOTAL: ${money(quoteTotal())}</span></p><p>${esc(quoteNote || "")}</p></body></html>`;
+  w.document.open();
+  w.document.write(html);
+  w.document.close();
+  w.onload=function(){w.focus();setTimeout(function(){w.print();},250);};
+  setTimeout(function(){try{w.focus();w.print();}catch(_){ }},700);
 }
 
 function renderQuoteHistory(){
