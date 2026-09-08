@@ -44,6 +44,30 @@ db.orders =
     ? db.orders
     : [];
 
+db.orders.forEach(order => {
+
+  if(!order || typeof order !== "object"){
+    return;
+  }
+
+  if(!order.status){
+    order.status = "Pendiente";
+  }
+
+  if(order.qty == null){
+    order.qty = 1;
+  }
+
+  if(order.price == null){
+    order.price = 0;
+  }
+
+  if(order.note == null){
+    order.note = "";
+  }
+
+});
+
 db.cash =
   Array.isArray(db.cash)
     ? db.cash
@@ -2520,6 +2544,17 @@ function renderMoves() {
    ENCARGOS
    ========================================================= */
 
+let orderFilter = "Todos";
+let orderSearch = "";
+
+function orderStatusClass(status){
+  const value = String(status || "Pendiente");
+  if(value === "Listo" || value === "Entregado"){
+    return "done";
+  }
+  return "";
+}
+
 function renderOrders() {
 
   const list =
@@ -2527,54 +2562,334 @@ function renderOrders() {
       "ordersList"
     );
 
-
   if(!list){
-
     return;
+  }
+
+  let panel =
+    document.getElementById(
+      "ordersSmartPanel"
+    );
+
+  if(!panel){
+
+    panel =
+      document.createElement(
+        "div"
+      );
+
+    panel.id =
+      "ordersSmartPanel";
+
+    list.insertAdjacentElement(
+      "beforebegin",
+      panel
+    );
 
   }
 
+  const pendingCount =
+    db.orders.filter(
+      order =>
+        String(order.status || "Pendiente") !==
+        "Entregado" &&
+        String(order.status || "Pendiente") !==
+        "Cancelado"
+    ).length;
+
+  const readyCount =
+    db.orders.filter(
+      order =>
+        String(order.status || "") ===
+        "Listo"
+    ).length;
+
+  const deliveredCount =
+    db.orders.filter(
+      order =>
+        String(order.status || "") ===
+        "Entregado"
+    ).length;
+
+  panel.innerHTML = `
+
+    <div class="cards" style="margin:10px 0;">
+
+      <div class="card">
+        <b>📦 Activos</b>
+        <strong>${pendingCount}</strong>
+      </div>
+
+      <div class="card">
+        <b>✅ Listos</b>
+        <strong>${readyCount}</strong>
+      </div>
+
+      <div class="card">
+        <b>🤝 Entregados</b>
+        <strong>${deliveredCount}</strong>
+      </div>
+
+    </div>
+
+    <div style="
+      display:grid;
+      grid-template-columns:1fr 1fr;
+      gap:8px;
+      margin:10px 0;
+    ">
+
+      <input
+        id="orderSearch"
+        class="search"
+        placeholder="🔎 Buscar encargo o cliente"
+        value="${esc(orderSearch)}"
+      >
+
+      <select
+        id="orderFilter"
+        class="search"
+      >
+        <option value="Todos" ${orderFilter === "Todos" ? "selected" : ""}>
+          Todos
+        </option>
+        <option value="Pendiente" ${orderFilter === "Pendiente" ? "selected" : ""}>
+          🕐 Pendientes
+        </option>
+        <option value="Conseguir" ${orderFilter === "Conseguir" ? "selected" : ""}>
+          🔎 Por conseguir
+        </option>
+        <option value="Listo" ${orderFilter === "Listo" ? "selected" : ""}>
+          ✅ Listos
+        </option>
+        <option value="Entregado" ${orderFilter === "Entregado" ? "selected" : ""}>
+          🤝 Entregados
+        </option>
+        <option value="Cancelado" ${orderFilter === "Cancelado" ? "selected" : ""}>
+          ❌ Cancelados
+        </option>
+      </select>
+
+    </div>
+
+    <button
+      class="primary"
+      type="button"
+      onclick="openOrder()"
+      style="margin-bottom:10px;"
+    >
+      ➕ Nuevo encargo
+    </button>
+
+  `;
+
+  const searchInput =
+    document.getElementById(
+      "orderSearch"
+    );
+
+  if(searchInput){
+
+    searchInput.oninput =
+      function(){
+
+        orderSearch =
+          this.value;
+
+        renderOrders();
+
+        const input =
+          document.getElementById(
+            "orderSearch"
+          );
+
+        if(input){
+
+          input.focus();
+
+          try{
+            input.setSelectionRange(
+              input.value.length,
+              input.value.length
+            );
+          }catch(_){}
+
+        }
+
+      };
+
+  }
+
+  const filterSelect =
+    document.getElementById(
+      "orderFilter"
+    );
+
+  if(filterSelect){
+
+    filterSelect.onchange =
+      function(){
+
+        orderFilter =
+          this.value;
+
+        renderOrders();
+
+      };
+
+  }
+
+  const searchText =
+    orderSearch
+      .trim()
+      .toLowerCase();
 
   const rows =
     db.orders
-      .slice()
-      .reverse();
+      .map(
+        (order,index) => ({
+          order,
+          index
+        })
+      )
+      .filter(
+        ({order}) => {
 
+          const status =
+            String(
+              order.status ||
+              "Pendiente"
+            );
+
+          if(
+            orderFilter !==
+            "Todos" &&
+            status !==
+            orderFilter
+          ){
+            return false;
+          }
+
+          if(!searchText){
+            return true;
+          }
+
+          return (
+            String(order.product || "")
+              .toLowerCase()
+              .includes(searchText) ||
+            String(order.client || "")
+              .toLowerCase()
+              .includes(searchText) ||
+            String(order.note || "")
+              .toLowerCase()
+              .includes(searchText)
+          );
+
+        }
+      )
+      .sort(
+        (a,b) =>
+          String(
+            b.order.date ||
+            ""
+          ).localeCompare(
+            String(
+              a.order.date ||
+              ""
+            )
+          )
+      );
 
   list.innerHTML =
     rows.length
 
       ? rows.map(
-          (
-            order,
-            reverseIndex
-          ) => {
+          ({order,index}) => {
 
-            const index =
-              db.orders.length -
-              1 -
-              reverseIndex;
+            const status =
+              String(
+                order.status ||
+                "Pendiente"
+              );
 
+            const dueDate =
+              String(
+                order.dueDate ||
+                ""
+              );
+
+            let dueText =
+              "";
+
+            if(dueDate){
+
+              const parsed =
+                parseLocalDate(
+                  dueDate
+                );
+
+              if(parsed){
+
+                const today =
+                  startOfDay(
+                    new Date()
+                  );
+
+                const due =
+                  startOfDay(
+                    parsed
+                  );
+
+                if(
+                  due.getTime() ===
+                  today.getTime()
+                ){
+                  dueText =
+                    " · 📅 Para hoy";
+                }else if(
+                  due.getTime() <
+                  today.getTime() &&
+                  status !==
+                  "Entregado" &&
+                  status !==
+                  "Cancelado"
+                ){
+                  dueText =
+                    " · ⚠️ Vencido";
+                }
+
+              }
+
+            }
 
             return `
 
-              <div class="item">
+              <div
+                class="item"
+                style="
+                  align-items:flex-start;
+                  gap:10px;
+                "
+              >
 
-                <div>
+                <div
+                  style="
+                    flex:1;
+                    min-width:0;
+                  "
+                >
 
                   <b>
-
                     ${esc(
                       order.product ||
                       "Encargo"
                     )}
-
                   </b>
-
 
                   <div class="muted">
 
-                    Cliente:
+                    👤 Cliente:
                     ${esc(
                       order.client ||
                       "Sin cliente"
@@ -2582,58 +2897,103 @@ function renderOrders() {
 
                     ·
 
-                    Cantidad:
+                    📦 Cantidad:
                     ${esc(
                       order.qty ||
                       1
                     )}
 
+                    ${dueText}
+
                   </div>
 
-
                   <div class="muted">
+
+                    ${
+                      order.dueDate
+                        ? `📅 Fecha solicitada: ${esc(order.dueDate)} · `
+                        : ""
+                    }
 
                     ${esc(
                       order.note ||
                       "Sin nota"
                     )}
 
-                    ·
+                  </div>
 
+                  <div class="muted">
+                    Registrado:
                     ${esc(
                       order.date ||
                       ""
                     )}
+                  </div>
+
+                  ${
+                    (+order.price || 0) > 0
+                      ? `
+                        <div
+                          style="
+                            margin-top:4px;
+                            font-weight:700;
+                          "
+                        >
+                          Valor estimado:
+                          ${money(order.price)}
+                        </div>
+                      `
+                      : ""
+                  }
+
+                  <div
+                    style="
+                      display:flex;
+                      gap:6px;
+                      flex-wrap:wrap;
+                      margin-top:8px;
+                    "
+                  >
+
+                    <button
+                      type="button"
+                      onclick="editOrder(${index})"
+                    >
+                      ✏️ Editar
+                    </button>
+
+                    <button
+                      type="button"
+                      onclick="advanceOrderStatus(${index})"
+                    >
+                      🔄 Cambiar estado
+                    </button>
+
+                    <button
+                      type="button"
+                      onclick="deleteOrder(${index})"
+                    >
+                      🗑️
+                    </button>
 
                   </div>
 
                 </div>
-
 
                 <button
                   type="button"
                   class="
                     badge
                     order-status
-                    ${
-                      order.status ===
-                      "Listo"
-                        ? "done"
-                        : ""
-                    }
+                    ${orderStatusClass(status)}
                   "
                   onclick="
-                    toggleOrder(
+                    advanceOrderStatus(
                       ${index}
                     )
                   "
                 >
-
-                  ${esc(
-                    order.status ||
-                    "Pendiente"
-                  )}
-
+                  ${esc(status)}
                 </button>
 
               </div>
@@ -2646,7 +3006,11 @@ function renderOrders() {
       : `
 
         <div class="empty">
-          No hay encargos pendientes.
+          ${
+            db.orders.length
+              ? "No hay encargos que coincidan con el filtro."
+              : "No hay encargos registrados."
+          }
         </div>
 
       `;
@@ -2654,25 +3018,59 @@ function renderOrders() {
 }
 
 
-function toggleOrder(index) {
+function advanceOrderStatus(index){
 
   if(!db.orders[index]){
-
     return;
+  }
+
+  const sequence = [
+    "Pendiente",
+    "Conseguir",
+    "Listo",
+    "Entregado"
+  ];
+
+  const current =
+    String(
+      db.orders[index].status ||
+      "Pendiente"
+    );
+
+  let next;
+
+  if(current === "Cancelado"){
+    next = "Pendiente";
+  }else{
+
+    const position =
+      sequence.indexOf(
+        current
+      );
+
+    next =
+      sequence[
+        position < 0
+          ? 0
+          : (position + 1) % sequence.length
+      ];
 
   }
 
-
   db.orders[index].status =
-    db.orders[index].status ===
-    "Listo"
+    next;
 
-      ? "Pendiente"
-
-      : "Listo";
-
+  db.orders[index].updated =
+    now();
 
   save();
+
+}
+
+
+function toggleOrder(index) {
+
+  advanceOrderStatus(index);
 
 }
 
@@ -4029,36 +4427,57 @@ function openOrder(
     index === null
 
       ? {
-
           product: "",
-
           client: "",
-
+          customerIndex: "",
           qty: 1,
-
+          price: 0,
+          dueDate: "",
           note: "",
-
-          status:
-            "Pendiente"
-
+          status: "Pendiente"
         }
 
-      : db.orders[index];
-
+      : {
+          ...db.orders[index]
+        };
 
   if(!order){
-
     return;
-
   }
 
+  const customerOptions =
+    db.customers
+      .map(
+        (customer,customerIndex) => `
+          <option
+            value="${customerIndex}"
+            ${
+              String(
+                order.customerIndex
+              ) ===
+              String(customerIndex)
+                ? "selected"
+                : ""
+            }
+          >
+            ${esc(
+              customer.name
+            )}
+            ${
+              customer.phone
+                ? ` · ${esc(customer.phone)}`
+                : ""
+            }
+          </option>
+        `
+      )
+      .join("");
 
   modal(
 
     index === null
       ? "Nuevo encargo"
       : "Editar encargo",
-
 
     `
 
@@ -4070,9 +4489,29 @@ function openOrder(
           name="product"
           required
           value="${esc(
-            order.product
+            order.product || ""
           )}"
+          placeholder="Ej. Oscar 10 cm"
         >
+
+      </label>
+
+
+      <label>
+
+        Cliente registrado
+
+        <select
+          name="customerIndex"
+        >
+
+          <option value="">
+            — Sin cliente registrado —
+          </option>
+
+          ${customerOptions}
+
+        </select>
 
       </label>
 
@@ -4084,8 +4523,9 @@ function openOrder(
         <input
           name="client"
           value="${esc(
-            order.client
+            order.client || ""
           )}"
+          placeholder="Nombre del cliente"
         >
 
       </label>
@@ -4099,9 +4539,43 @@ function openOrder(
           name="qty"
           type="number"
           min="1"
+          step="1"
           value="${
             +order.qty || 1
           }"
+        >
+
+      </label>
+
+
+      <label>
+
+        Valor estimado
+
+        <input
+          name="price"
+          type="number"
+          min="0"
+          step="1"
+          value="${
+            +order.price || 0
+          }"
+          placeholder="Opcional"
+        >
+
+      </label>
+
+
+      <label>
+
+        Fecha solicitada
+
+        <input
+          name="dueDate"
+          type="date"
+          value="${esc(
+            order.dueDate || ""
+          )}"
         >
 
       </label>
@@ -4114,8 +4588,9 @@ function openOrder(
         <textarea
           name="note"
           rows="3"
+          placeholder="Color, tamaño, especie, proveedor, etc."
         >${esc(
-          order.note
+          order.note || ""
         )}</textarea>
 
       </label>
@@ -4128,6 +4603,7 @@ function openOrder(
         <select name="status">
 
           <option
+            value="Pendiente"
             ${
               order.status ===
               "Pendiente"
@@ -4135,10 +4611,23 @@ function openOrder(
                 : ""
             }
           >
-            Pendiente
+            🕐 Pendiente
           </option>
 
           <option
+            value="Conseguir"
+            ${
+              order.status ===
+              "Conseguir"
+                ? "selected"
+                : ""
+            }
+          >
+            🔎 Por conseguir
+          </option>
+
+          <option
+            value="Listo"
             ${
               order.status ===
               "Listo"
@@ -4146,12 +4635,50 @@ function openOrder(
                 : ""
             }
           >
-            Listo
+            ✅ Listo
+          </option>
+
+          <option
+            value="Entregado"
+            ${
+              order.status ===
+              "Entregado"
+                ? "selected"
+                : ""
+            }
+          >
+            🤝 Entregado
+          </option>
+
+          <option
+            value="Cancelado"
+            ${
+              order.status ===
+              "Cancelado"
+                ? "selected"
+                : ""
+            }
+          >
+            ❌ Cancelado
           </option>
 
         </select>
 
       </label>
+
+
+      ${
+        order.date
+          ? `
+            <div
+              class="muted"
+              style="margin-top:6px;"
+            >
+              Registrado: ${esc(order.date)}
+            </div>
+          `
+          : ""
+      }
 
 
       <div
@@ -4167,9 +4694,8 @@ function openOrder(
           class="primary"
           type="submit"
         >
-          💾 Guardar
+          💾 Guardar encargo
         </button>
-
 
         <button
           type="button"
@@ -4178,23 +4704,16 @@ function openOrder(
           Cancelar
         </button>
 
-
         ${
           index !== null
-
             ? `
-
               <button
                 type="button"
-                onclick="deleteOrder(
-                  ${index}
-                )"
+                onclick="deleteOrder(${index})"
               >
                 🗑️ Eliminar
               </button>
-
             `
-
             : ""
         }
 
@@ -4202,15 +4721,29 @@ function openOrder(
 
     `,
 
-
     event => {
 
       event.preventDefault();
 
-
       const form =
         event.target;
 
+      const selectedCustomerIndex =
+        form.customerIndex.value;
+
+      const selectedCustomer =
+        selectedCustomerIndex !== ""
+          ? db.customers[
+              +selectedCustomerIndex
+            ]
+          : null;
+
+      const clientText =
+        String(
+          selectedCustomer
+            ? selectedCustomer.name
+            : form.client.value
+        ).trim();
 
       const item = {
 
@@ -4218,13 +4751,27 @@ function openOrder(
           form.product.value.trim(),
 
         client:
-          form.client.value.trim(),
+          clientText,
+
+        customerIndex:
+          selectedCustomer
+            ? +selectedCustomerIndex
+            : "",
 
         qty:
           Math.max(
             1,
             +form.qty.value || 1
           ),
+
+        price:
+          Math.max(
+            0,
+            +form.price.value || 0
+          ),
+
+        dueDate:
+          form.dueDate.value || "",
 
         note:
           form.note.value.trim(),
@@ -4234,16 +4781,16 @@ function openOrder(
 
         date:
           index === null
-
             ? now()
-
             : (
                 db.orders[index].date ||
                 now()
-              )
+              ),
+
+        updated:
+          now()
 
       };
-
 
       if(!item.product){
 
@@ -4254,7 +4801,6 @@ function openOrder(
         return;
 
       }
-
 
       if(index === null){
 
@@ -4271,7 +4817,6 @@ function openOrder(
           };
 
       }
-
 
       save();
 
@@ -6523,6 +7068,10 @@ function exposeFunctions() {
 
   window.toggleOrder =
     toggleOrder;
+
+
+  window.advanceOrderStatus =
+    advanceOrderStatus;
 
 
   window.openMove =
