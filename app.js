@@ -49,6 +49,18 @@ db.cash =
     ? db.cash
     : [];
 
+/* =========================================================
+   CLIENTES - CUENTAS PENDIENTES
+   ========================================================= */
+
+db.customers.forEach(customer => {
+
+  if(!Array.isArray(customer.payments)){
+    customer.payments = [];
+  }
+
+});
+
 
 /* =========================================================
    UTILIDADES
@@ -1643,7 +1655,35 @@ function toggleDateGroup(button) {
    CLIENTES
    ========================================================= */
 
+function customerPaymentTotal(customer) {
+
+  if(!customer || !Array.isArray(customer.payments)){
+    return 0;
+  }
+
+
+  return customer.payments.reduce(
+    (sum,payment) =>
+      sum +
+      Math.max(
+        0,
+        +payment.amount || 0
+      ),
+    0
+  );
+
+}
+
+
 function customerStats(name) {
+
+  const customer =
+    db.customers.find(
+      item =>
+        item.name ===
+        name
+    );
+
 
   const sales =
     db.sales.filter(
@@ -1662,13 +1702,24 @@ function customerStats(name) {
     );
 
 
-  const paid =
+  const salePaidAmount =
     sales.reduce(
       (sum,sale) =>
         sum +
         salePaid(sale),
       0
     );
+
+
+  const extraPayments =
+    customerPaymentTotal(
+      customer
+    );
+
+
+  const paid =
+    salePaidAmount +
+    extraPayments;
 
 
   return {
@@ -1679,6 +1730,12 @@ function customerStats(name) {
 
     paid,
 
+    salePaid:
+      salePaidAmount,
+
+    payments:
+      extraPayments,
+
     balance:
       Math.max(
         0,
@@ -1686,6 +1743,464 @@ function customerStats(name) {
       )
 
   };
+
+}
+
+
+function customerBalance(name){
+
+  return customerStats(
+    name
+  ).balance;
+
+}
+
+
+function openCustomerAccount(index){
+
+  const customer =
+    db.customers[index];
+
+
+  if(!customer){
+    return;
+  }
+
+
+  const stats =
+    customerStats(
+      customer.name
+    );
+
+
+  const payments =
+    Array.isArray(
+      customer.payments
+    )
+      ? customer.payments
+      : [];
+
+
+  modal(
+    `Cuenta de ${customer.name}`,
+    `
+
+      <div class="panel">
+
+        <b>
+          Resumen de cuenta
+        </b>
+
+        <div
+          style="
+            display:grid;
+            grid-template-columns:repeat(auto-fit,minmax(120px,1fr));
+            gap:8px;
+            margin-top:10px;
+          "
+        >
+
+          <div class="card">
+            <span>Comprado</span>
+            <b>${money(stats.bought)}</b>
+          </div>
+
+          <div class="card">
+            <span>Pagado</span>
+            <b>${money(stats.paid)}</b>
+          </div>
+
+          <div class="card">
+            <span>Saldo pendiente</span>
+            <b>${money(stats.balance)}</b>
+          </div>
+
+        </div>
+
+      </div>
+
+
+      <h3 style="margin:16px 0 8px;">
+        Ventas
+      </h3>
+
+      ${
+        stats.sales.length
+          ? `
+            <div>
+              ${
+                stats.sales
+                  .map(
+                    sale => `
+                      <div
+                        class="item"
+                        style="margin-bottom:8px;"
+                      >
+
+                        <div>
+                          <b>
+                            ${esc(
+                              dateKey(
+                                sale.date
+                              )
+                            )}
+                          </b>
+
+                          <div class="muted">
+                            ${esc(
+                              saleLabel(
+                                sale
+                              )
+                            )}
+                          </div>
+
+                        </div>
+
+                        <div class="right">
+
+                          <b>
+                            ${money(
+                              sale.total
+                            )}
+                          </b>
+
+                          <small>
+                            Pagado:
+                            ${money(
+                              salePaid(
+                                sale
+                              )
+                            )}
+                          </small>
+
+                        </div>
+
+                      </div>
+                    `
+                  )
+                  .join("")
+              }
+            </div>
+          `
+          : `
+            <div class="empty">
+              No hay ventas registradas.
+            </div>
+          `
+      }
+
+
+      <h3 style="margin:16px 0 8px;">
+        Abonos registrados
+      </h3>
+
+      ${
+        payments.length
+          ? `
+            <div>
+              ${
+                payments
+                  .slice()
+                  .reverse()
+                  .map(
+                    payment => `
+                      <div
+                        class="item"
+                        style="margin-bottom:8px;"
+                      >
+
+                        <div>
+                          <b>
+                            ${money(
+                              payment.amount
+                            )}
+                          </b>
+
+                          <div class="muted">
+                            ${esc(
+                              payment.method ||
+                              "Otro"
+                            )}
+                            ·
+                            ${esc(
+                              payment.date ||
+                              ""
+                            )}
+                          </div>
+
+                          ${
+                            payment.note
+                              ? `
+                                <div class="muted">
+                                  ${esc(
+                                    payment.note
+                                  )}
+                                </div>
+                              `
+                              : ""
+                          }
+
+                        </div>
+
+                        <span class="badge">
+                          Abono
+                        </span>
+
+                      </div>
+                    `
+                  )
+                  .join("")
+              }
+            </div>
+          `
+          : `
+            <div class="empty">
+              No hay abonos adicionales.
+            </div>
+          `
+      }
+
+
+      <div
+        style="
+          display:flex;
+          gap:8px;
+          flex-wrap:wrap;
+          margin-top:16px;
+        "
+      >
+
+        ${
+          stats.balance > 0
+            ? `
+              <button
+                class="primary"
+                type="button"
+                onclick="openCustomerPayment(${index})"
+              >
+                💰 Registrar abono
+              </button>
+            `
+            : `
+              <button
+                type="button"
+                disabled
+              >
+                ✅ Cuenta al día
+              </button>
+            `
+        }
+
+        <button
+          type="button"
+          onclick="openCustomer(${index})"
+        >
+          ✏️ Editar cliente
+        </button>
+
+        <button
+          type="button"
+          onclick="closeModal()"
+        >
+          Cerrar
+        </button>
+
+      </div>
+
+    `
+  );
+
+}
+
+
+function openCustomerPayment(index){
+
+  const customer =
+    db.customers[index];
+
+
+  if(!customer){
+    return;
+  }
+
+
+  const stats =
+    customerStats(
+      customer.name
+    );
+
+
+  if(stats.balance <= 0){
+
+    alert(
+      "Este cliente no tiene saldo pendiente."
+    );
+
+    return;
+
+  }
+
+
+  modal(
+    `Registrar abono - ${customer.name}`,
+    `
+
+      <div class="panel">
+
+        <b>
+          Saldo pendiente:
+          ${money(stats.balance)}
+        </b>
+
+      </div>
+
+
+      <label>
+
+        Valor del abono
+
+        <input
+          name="amount"
+          type="number"
+          min="1"
+          max="${stats.balance}"
+          step="1"
+          value="${stats.balance}"
+          required
+        >
+
+      </label>
+
+
+      <label>
+
+        Forma de pago
+
+        <select name="method">
+
+          <option>Efectivo</option>
+          <option>Transferencia</option>
+          <option>Nequi</option>
+          <option>Daviplata</option>
+          <option>Tarjeta</option>
+          <option>Otro</option>
+
+        </select>
+
+      </label>
+
+
+      <label>
+
+        Nota
+
+        <textarea
+          name="note"
+          rows="3"
+          placeholder="Ej.: Abono a cuenta"
+        ></textarea>
+
+      </label>
+
+
+      <div
+        style="
+          display:flex;
+          gap:8px;
+          flex-wrap:wrap;
+          margin-top:14px;
+        "
+      >
+
+        <button
+          class="primary"
+          type="submit"
+        >
+          💾 Guardar abono
+        </button>
+
+        <button
+          type="button"
+          onclick="openCustomerAccount(${index})"
+        >
+          Volver a cuenta
+        </button>
+
+      </div>
+
+    `,
+    event => {
+
+      event.preventDefault();
+
+
+      const form =
+        event.target;
+
+
+      const amount =
+        +form.amount.value || 0;
+
+
+      if(amount <= 0){
+
+        alert(
+          "Escribe un valor de abono."
+        );
+
+        return;
+
+      }
+
+
+      if(amount > stats.balance){
+
+        alert(
+          `El abono no puede superar el saldo pendiente de ${money(stats.balance)}.`
+        );
+
+        return;
+
+      }
+
+
+      if(!Array.isArray(customer.payments)){
+        customer.payments = [];
+      }
+
+
+      customer.payments.push({
+
+        date:
+          now(),
+
+        amount,
+
+        method:
+          form.method.value,
+
+        note:
+          form.note.value.trim(),
+
+        source:
+          "Abono cliente"
+
+      });
+
+
+      save();
+
+      closeModal();
+
+
+      setTimeout(
+        () =>
+          openCustomerAccount(index),
+        0
+      );
+
+    }
+  );
 
 }
 
@@ -1833,25 +2348,57 @@ function renderCustomers() {
                   </div>
 
 
-                  <span
-                    class="badge ${
-                      stats.balance > 0
-                        ? "low"
-                        : ""
-                    }"
+                  <div
+                    style="
+                      display:flex;
+                      flex-direction:column;
+                      align-items:flex-end;
+                      gap:6px;
+                    "
                   >
 
-                    ${
-                      stats.sales.length
-                    }
+                    <span
+                      class="badge ${
+                        stats.balance > 0
+                          ? "low"
+                          : ""
+                      }"
+                    >
+
+                      ${
+                        stats.sales.length
+                      }
+
+                      ${
+                        stats.sales.length === 1
+                          ? "venta"
+                          : "ventas"
+                      }
+
+                    </span>
+
+                    <button
+                      type="button"
+                      onclick="event.stopPropagation();openCustomerAccount(${index})"
+                    >
+                      💳 Ver cuenta
+                    </button>
 
                     ${
-                      stats.sales.length === 1
-                        ? "venta"
-                        : "ventas"
+                      stats.balance > 0
+                        ? `
+                          <button
+                            type="button"
+                            class="primary"
+                            onclick="event.stopPropagation();openCustomerPayment(${index})"
+                          >
+                            💰 Abonar
+                          </button>
+                        `
+                        : ""
                     }
 
-                  </span>
+                  </div>
 
                 </div>
 
@@ -3101,6 +3648,25 @@ function openSale() {
 
 
       if(
+        (
+          status === "Abono" ||
+          status === "Pendiente"
+        ) &&
+        !String(
+          form.client.value || ""
+        ).trim()
+      ){
+
+        alert(
+          "Para una venta con abono o pendiente debes seleccionar un cliente."
+        );
+
+        return;
+
+      }
+
+
+      if(
         status ===
         "Pagada"
       ){
@@ -4184,6 +4750,78 @@ function getSaleCashEntries(){
    Movimientos manuales de caja.
 */
 
+function getCustomerPaymentCashEntries(){
+
+  const entries = [];
+
+
+  db.customers.forEach(
+    (customer,customerIndex) => {
+
+      const payments =
+        Array.isArray(
+          customer.payments
+        )
+          ? customer.payments
+          : [];
+
+
+      payments.forEach(
+        (payment,paymentIndex) => {
+
+          const amount =
+            Math.abs(
+              +payment.amount || 0
+            );
+
+
+          if(amount <= 0){
+            return;
+          }
+
+
+          entries.push({
+
+            id:
+              `customer-payment-${customerIndex}-${paymentIndex}`,
+
+            date:
+              payment.date,
+
+            type:
+              "Entrada",
+
+            amount,
+
+            method:
+              normalizePaymentMethod(
+                payment.method
+              ),
+
+            concept:
+              `Abono cliente: ${customer.name}`,
+
+            source:
+              "Abono cliente",
+
+            customerIndex,
+
+            paymentIndex
+
+          });
+
+        }
+      );
+
+    }
+  );
+
+
+  return entries;
+
+}
+
+
 function getManualCashEntries(){
 
   return db.cash.map(
@@ -4224,6 +4862,8 @@ function getAllCashEntries(){
   return [
 
     ...getSaleCashEntries(),
+
+    ...getCustomerPaymentCashEntries(),
 
     ...getManualCashEntries()
 
@@ -4526,16 +5166,56 @@ function calculateCashTotals(
 
 function calculateReceivable(){
 
-  return db.sales.reduce(
-    (sum,sale) =>
-      sum +
-      Math.max(
-        0,
-        (+sale.total || 0) -
-        salePaid(sale)
-      ),
-    0
+  let total = 0;
+
+
+  const customerNames =
+    new Set(
+      db.customers
+        .map(
+          customer =>
+            customer.name
+        )
+        .filter(Boolean)
+    );
+
+
+  customerNames.forEach(
+    name => {
+
+      total +=
+        customerBalance(
+          name
+        );
+
+    }
   );
+
+
+  total +=
+    db.sales
+      .filter(
+        sale =>
+          !String(
+            sale.client || ""
+          ).trim() ||
+          !customerNames.has(
+            sale.client
+          )
+      )
+      .reduce(
+        (sum,sale) =>
+          sum +
+          Math.max(
+            0,
+            (+sale.total || 0) -
+            salePaid(sale)
+          ),
+        0
+      );
+
+
+  return total;
 
 }
 
