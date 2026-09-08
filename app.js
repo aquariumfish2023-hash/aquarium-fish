@@ -1,4 +1,5 @@
-const KEY = "aquarium_fish_data_v5";
+const BASE_KEY = "aquarium_fish_data_v5";
+let KEY = BASE_KEY;
 
 /* =========================================================
    DATOS
@@ -8167,7 +8168,54 @@ function exposeFunctions() {
    INICIAR APLICACIÓN
    ========================================================= */
 
+let appInitialized = false;
+
 function iniciarApp() {
+
+  if(appInitialized){
+    return;
+  }
+
+  // Firebase Authentication controla cuándo puede iniciarse la aplicación.
+  // Esto evita mostrar la interfaz de negocio antes de autenticar al usuario.
+  if(
+    window.AQ_AUTH_READY !== true ||
+    !window.AQ_AUTH_USER
+  ){
+    return;
+  }
+
+  const userKey =
+    BASE_KEY + "_" + window.AQ_AUTH_USER.uid;
+
+  try{
+    const existing =
+      localStorage.getItem(userKey);
+
+    if(existing){
+      db = normalize(JSON.parse(existing));
+    }else{
+      // Primera entrada del usuario: conserva los datos locales existentes
+      // como migración inicial, pero desde ahora cada cuenta usa su propia clave.
+      const legacy =
+        localStorage.getItem(BASE_KEY);
+
+      if(legacy){
+        db = normalize(JSON.parse(legacy));
+        localStorage.setItem(userKey, JSON.stringify(db));
+      }else{
+        db = normalize(db);
+        localStorage.setItem(userKey, JSON.stringify(db));
+      }
+    }
+  }catch(error){
+    console.error("No se pudo preparar el almacenamiento del usuario:", error);
+  }
+
+  KEY = userKey;
+  window.AQ_DATA_KEY = KEY;
+
+  appInitialized = true;
 
   exposeFunctions();
 
@@ -8183,6 +8231,7 @@ function iniciarApp() {
 
 }
 
+window.iniciarApp = iniciarApp;
 
 if(
   document.readyState ===
@@ -8199,3 +8248,8 @@ if(
   iniciarApp();
 
 }
+
+window.addEventListener(
+  "aquarium-auth-ready",
+  iniciarApp
+);
