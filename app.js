@@ -427,13 +427,224 @@ function setInventorySort(
 }
 
 
+
+
+/* =========================================================
+   REPORTES
+   ========================================================= */
+
+let reportPeriod = "today";
+
+function reportRange(period = reportPeriod){
+  const nowDate = new Date();
+  let start = null;
+  let end = new Date(nowDate);
+  end.setHours(23,59,59,999);
+
+  if(period === "today"){
+    start = new Date(nowDate);
+    start.setHours(0,0,0,0);
+  }else if(period === "7days"){
+    start = new Date(nowDate);
+    start.setDate(start.getDate()-6);
+    start.setHours(0,0,0,0);
+  }else if(period === "month"){
+    start = new Date(nowDate.getFullYear(), nowDate.getMonth(), 1);
+    start.setHours(0,0,0,0);
+  }else{
+    start = null;
+  }
+  return {start,end};
+}
+
+function inReportRange(value, range){
+  const d = parseLocalDate(value);
+  if(!d) return false;
+  if(range.start && d < range.start) return false;
+  if(range.end && d > range.end) return false;
+  return true;
+}
+
+function reportSales(){
+  const range = reportRange();
+  return db.sales.filter(s => reportPeriod === "all" ? !!parseLocalDate(s.date) : inReportRange(s.date, range));
+}
+
+function saleCost(sale){
+  if(Array.isArray(sale.items)){
+    return sale.items.reduce((sum,item)=>sum + ((+item.cost||0) * (+item.qty||0)),0);
+  }
+  return (+sale.cost||0) * (+sale.qty||0);
+}
+
+function reportExpenses(){
+  const range = reportRange();
+  return db.cash.filter(m => {
+    if(String(m.type||"").toLowerCase() !== "gasto") return false;
+    return reportPeriod === "all" ? !!parseLocalDate(m.date) : inReportRange(m.date, range);
+  });
+}
+
+function reportPayments(){
+  return reportSales().reduce((sum,sale)=>sum + salePaid(sale),0);
+}
+
+function reportRevenue(){
+  return reportSales().reduce((sum,sale)=>sum + (+sale.total||0),0);
+}
+
+function reportPending(){
+  return reportSales().reduce((sum,sale)=>sum + Math.max(0,(+sale.total||0)-salePaid(sale)),0);
+}
+
+function reportProfit(){
+  return reportSales().reduce((sum,sale)=>sum + ((+sale.total||0)-saleCost(sale)),0);
+}
+
+function reportExpenseTotal(){
+  return reportExpenses().reduce((sum,m)=>sum + (+m.amount||0),0);
+}
+
+function reportAverageTicket(){
+  const sales = reportSales();
+  return sales.length ? reportRevenue()/sales.length : 0;
+}
+
+function reportProductRanking(){
+  const map = {};
+  reportSales().forEach(sale => {
+    if(Array.isArray(sale.items) && sale.items.length){
+      sale.items.forEach(item => {
+        const name = String(item.product||"Producto");
+        map[name] = (map[name]||0) + (+item.qty||0);
+      });
+    }else if(sale.product){
+      const name = String(sale.product);
+      map[name] = (map[name]||0) + (+sale.qty||0);
+    }
+  });
+  return Object.entries(map).sort((a,b)=>b[1]-a[1]).slice(0,10);
+}
+
+function reportPaymentMethods(){
+  const map = {};
+  reportSales().forEach(sale => {
+    const method = String(sale.pay || "Otro");
+    map[method] = (map[method]||0) + salePaid(sale);
+  });
+  return Object.entries(map).sort((a,b)=>b[1]-a[1]);
+}
+
+function reportDaily(){
+  const map = {};
+  reportSales().forEach(sale => {
+    const d = parseLocalDate(sale.date);
+    if(!d) return;
+    const key = d.toISOString().slice(0,10);
+    if(!map[key]) map[key] = {date:d,total:0,count:0};
+    map[key].total += (+sale.total||0);
+    map[key].count += 1;
+  });
+  return Object.values(map).sort((a,b)=>b.date-a.date);
+}
+
+function setupReportsUI(){
+  const main = document.querySelector("main");
+  const nav = document.querySelector("nav");
+  if(!main || !nav) return;
+
+  let section = document.getElementById("reports");
+  if(!section){
+    section = document.createElement("section");
+    section.id = "reports";
+    section.className = "screen";
+    main.appendChild(section);
+  }
+
+  let navButton = nav.querySelector('button[data-tab="reports"]');
+  if(!navButton){
+    navButton = document.createElement("button");
+    navButton.type = "button";
+    navButton.dataset.tab = "reports";
+    navButton.innerHTML = `📊<span>Reportes</span>`;
+    nav.appendChild(navButton);
+  }
+
+  renderReports();
+}
+
+function renderReports(){
+  const section = document.getElementById("reports");
+  if(!section) return;
+
+  const sales = reportSales();
+  const expenses = reportExpenseTotal();
+  const revenue = reportRevenue();
+  const payments = reportPayments();
+  const pending = reportPending();
+  const profit = reportProfit();
+  const net = profit - expenses;
+  const ticket = reportAverageTicket();
+  const ranking = reportProductRanking();
+  const methods = reportPaymentMethods();
+  const daily = reportDaily();
+
+  section.innerHTML = `
+    <div class="section-head">
+      <h1>📊 Reportes</h1>
+    </div>
+
+    <div class="panel">
+      <h2>Periodo</h2>
+      <select class="search" onchange="setReportPeriod(this.value)">
+        <option value="today" ${reportPeriod==='today'?'selected':''}>📅 Hoy</option>
+        <option value="7days" ${reportPeriod==='7days'?'selected':''}>📆 Últimos 7 días</option>
+        <option value="month" ${reportPeriod==='month'?'selected':''}>🗓️ Este mes</option>
+        <option value="all" ${reportPeriod==='all'?'selected':''}>📚 Todo</option>
+      </select>
+    </div>
+
+    <div class="cards">
+      <div class="card"><span>Ventas</span><b>${money(revenue)}</b><small>${sales.length} transacciones</small></div>
+      <div class="card"><span>Pagado</span><b>${money(payments)}</b><small>recibido</small></div>
+      <div class="card"><span>Pendiente</span><b>${money(pending)}</b><small>por cobrar</small></div>
+      <div class="card"><span>Ganancia</span><b>${money(profit)}</b><small>antes de gastos</small></div>
+      <div class="card"><span>Gastos</span><b>${money(expenses)}</b><small>registrados en caja</small></div>
+      <div class="card"><span>Resultado</span><b>${money(net)}</b><small>ganancia − gastos</small></div>
+      <div class="card"><span>Ticket promedio</span><b>${money(ticket)}</b><small>por venta</small></div>
+    </div>
+
+    <div class="panel">
+      <h2>🏆 Productos más vendidos</h2>
+      ${ranking.length ? ranking.map((r,i)=>`<div class="item"><div><b>${i+1}. ${esc(r[0])}</b></div><div class="right"><b>${r[1]}</b><small>unidades</small></div></div>`).join('') : '<div class="empty">No hay ventas en este periodo.</div>'}
+    </div>
+
+    <div class="panel">
+      <h2>💳 Ventas por forma de pago</h2>
+      ${methods.length ? methods.map(r=>`<div class="item"><div><b>${esc(r[0])}</b></div><div class="right"><b>${money(r[1])}</b></div></div>`).join('') : '<div class="empty">No hay pagos en este periodo.</div>'}
+    </div>
+
+    <div class="panel">
+      <h2>📅 Ventas por día</h2>
+      ${daily.length ? daily.map(r=>`<div class="item"><div><b>${esc(r.date.toLocaleDateString('es-CO',{weekday:'short',day:'numeric',month:'short'}))}</b><small>${r.count} venta${r.count===1?'':'s'}</small></div><div class="right"><b>${money(r.total)}</b></div></div>`).join('') : '<div class="empty">No hay ventas en este periodo.</div>'}
+    </div>
+  `;
+}
+
+function setReportPeriod(value){
+  reportPeriod = ["today","7days","month","all"].includes(value) ? value : "today";
+  renderReports();
+}
+
+
 /* =========================================================
    RENDER GENERAL
    ========================================================= */
 
 function renderAll() {
 
-  ensureReportsUI();
+  // La interfaz de reportes se prepara por separado para evitar detener el resto de la aplicación.
+  setupReportsUI();
   renderHome();
 
   renderInventory();
@@ -7941,6 +8152,10 @@ function exposeFunctions() {
 
   window.shareSaleReceiptWhatsApp =
     shareSaleReceiptWhatsApp;
+
+  window.setReportPeriod =
+    setReportPeriod;
+
 
   window.printSaleReceipt =
     printSaleReceipt;
