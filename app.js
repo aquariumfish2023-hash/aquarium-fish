@@ -3135,24 +3135,49 @@ function clearQuote(){
 }
 
 function saveQuote(){
-  if(!quoteItems.length){ alert("Agrega al menos un producto a la cotización."); return; }
-  const subtotal = quoteSubtotal();
-  const discount = Math.min(subtotal, Math.max(0,+quoteDiscount || 0));
-  const existing = quoteEditingId ? db.quotes.find(q => q.id === quoteEditingId) : null;
-  const quote = existing || { id: nextQuoteNumber(), createdAt: now(), status:"Pendiente" };
-  quote.updatedAt = now();
-  quote.customer = quoteCustomer.trim();
-  quote.phone = quotePhone.trim();
-  quote.note = quoteNote.trim();
-  quote.discount = discount;
-  quote.subtotal = subtotal;
-  quote.total = Math.max(0, subtotal-discount);
-  quote.items = quoteItems.map(item => ({productIndex:item.productIndex,name:item.name,qty:+item.qty || 1,unitPrice:+item.unitPrice || 0}));
-  if(!existing) db.quotes.push(quote);
-  save();
-  quoteEditingId = quote.id;
-  alert(`${quote.id} guardada correctamente.`);
-  renderCotizador();
+  try{
+    if(!Array.isArray(db.quotes)) db.quotes = [];
+    if(!quoteItems.length){
+      alert("Agrega al menos un producto a la cotización.");
+      return;
+    }
+
+    const subtotal = quoteSubtotal();
+    const discount = Math.min(subtotal, Math.max(0,+quoteDiscount || 0));
+    const existing = quoteEditingId
+      ? db.quotes.find(q => q.id === quoteEditingId)
+      : null;
+
+    const quote = existing || {
+      id: nextQuoteNumber(),
+      createdAt: now(),
+      status: "Pendiente"
+    };
+
+    quote.updatedAt = now();
+    quote.customer = String(quoteCustomer || "").trim();
+    quote.phone = String(quotePhone || "").trim();
+    quote.note = String(quoteNote || "").trim();
+    quote.discount = discount;
+    quote.subtotal = subtotal;
+    quote.total = Math.max(0, subtotal - discount);
+    quote.items = quoteItems.map(item => ({
+      productIndex: +item.productIndex,
+      name: String(item.name || "Producto"),
+      qty: Math.max(1, +item.qty || 1),
+      unitPrice: Math.max(0, +item.unitPrice || 0)
+    }));
+
+    if(!existing) db.quotes.push(quote);
+
+    save();
+    quoteEditingId = quote.id;
+    renderCotizador();
+    alert(`${quote.id} guardada correctamente.`);
+  }catch(error){
+    console.error("Error guardando cotización:", error);
+    alert("No se pudo guardar la cotización. Revisa la consola para más detalles.");
+  }
 }
 
 function loadQuote(id){
@@ -3221,18 +3246,75 @@ function shareQuoteWhatsApp(){
 }
 
 function printQuote(id=null){
-  const quote=id?db.quotes.find(q=>q.id===id):null;
-  if(quote) loadQuote(quote.id);
-  if(!quoteItems.length){alert("Agrega al menos un producto a la cotización.");return;}
-  const rows=quoteItems.map(item=>`<tr><td>${esc(item.name)}</td><td>${+item.qty||1}</td><td>${money(item.unitPrice)}</td><td>${money((+item.qty||0)*(+item.unitPrice||0))}</td></tr>`).join("");
-  const w=window.open("", "_blank");
-  if(!w){alert("El navegador bloqueó la ventana de impresión. Permite ventanas emergentes para Aquarium Fish.");return;}
-  const html=`<!doctype html><html><head><meta charset="utf-8"><title>${esc(quoteEditingId || nextQuoteNumber())}</title><style>body{font-family:Arial,sans-serif;padding:30px;color:#222}table{width:100%;border-collapse:collapse;margin-top:20px}th,td{padding:8px;border-bottom:1px solid #ddd;text-align:left}.total{text-align:right;font-size:20px;font-weight:bold;margin-top:20px}</style></head><body><h1>🐠 AQUARIUM FISH</h1><h2>Cotización ${esc(quoteEditingId || "")}</h2><p>Cliente: ${esc(quoteCustomer || "Sin cliente")}<br>Teléfono: ${esc(quotePhone || "-")}<br>Fecha: ${esc(now())}</p><table><thead><tr><th>Producto</th><th>Cant.</th><th>Precio</th><th>Subtotal</th></tr></thead><tbody>${rows}</tbody></table><p>Subtotal: ${money(quoteSubtotal())}<br>Descuento: ${money(quoteDiscount)}<br><span class="total">TOTAL: ${money(quoteTotal())}</span></p><p>${esc(quoteNote || "")}</p></body></html>`;
-  w.document.open();
-  w.document.write(html);
-  w.document.close();
-  w.onload=function(){w.focus();setTimeout(function(){w.print();},250);};
-  setTimeout(function(){try{w.focus();w.print();}catch(_){ }},700);
+  try{
+    const quote=id ? db.quotes.find(q=>q.id===id) : null;
+    if(quote) loadQuote(quote.id);
+
+    if(!quoteItems.length){
+      alert("Agrega al menos un producto a la cotización.");
+      return;
+    }
+
+    const rows=quoteItems.map(item=>`<tr><td>${esc(item.name)}</td><td>${+item.qty||1}</td><td>${money(item.unitPrice)}</td><td>${money((+item.qty||0)*(+item.unitPrice||0))}</td></tr>`).join("");
+
+    const html=`<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>${esc(quoteEditingId || nextQuoteNumber())}</title>
+<style>
+body{font-family:Arial,sans-serif;padding:30px;color:#222;max-width:900px;margin:auto}
+h1{margin-bottom:4px}
+table{width:100%;border-collapse:collapse;margin-top:20px}
+th,td{padding:9px;border-bottom:1px solid #ddd;text-align:left}
+.total{text-align:right;font-size:20px;font-weight:bold;margin-top:20px}
+@media print{body{padding:0;max-width:none}}
+</style>
+</head>
+<body>
+<h1>🐠 AQUARIUM FISH</h1>
+<h2>Cotización ${esc(quoteEditingId || "")}</h2>
+<p>Cliente: ${esc(quoteCustomer || "Sin cliente")}<br>
+Teléfono: ${esc(quotePhone || "-")}<br>
+Fecha: ${esc(now())}</p>
+<table>
+<thead><tr><th>Producto</th><th>Cant.</th><th>Precio</th><th>Subtotal</th></tr></thead>
+<tbody>${rows}</tbody>
+</table>
+<p>Subtotal: ${money(quoteSubtotal())}<br>
+Descuento: ${money(quoteDiscount)}<br>
+<span class="total">TOTAL: ${money(quoteTotal())}</span></p>
+<p>${esc(quoteNote || "")}</p>
+</body>
+</html>`;
+
+    const blob = new Blob([html], {type:"text/html;charset=utf-8"});
+    const url = URL.createObjectURL(blob);
+    const w = window.open(url, "_blank");
+
+    if(!w){
+      URL.revokeObjectURL(url);
+      alert("El navegador bloqueó la ventana de impresión. Permite ventanas emergentes para Aquarium Fish.");
+      return;
+    }
+
+    const doPrint = () => {
+      try{
+        w.focus();
+        w.print();
+      }catch(error){
+        console.error("Error al imprimir:", error);
+      }
+      setTimeout(()=>URL.revokeObjectURL(url), 5000);
+    };
+
+    w.addEventListener("load", () => setTimeout(doPrint, 300), {once:true});
+    setTimeout(doPrint, 1500);
+  }catch(error){
+    console.error("Error preparando impresión:", error);
+    alert("No se pudo preparar la impresión.");
+  }
 }
 
 function renderQuoteHistory(){
