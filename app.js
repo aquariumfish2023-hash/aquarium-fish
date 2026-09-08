@@ -8173,11 +8173,11 @@ function iniciarApp() {
 
   setupCotizadorUI();
 
-  bindNavigation();
-
   bindSearches();
 
   renderAll();
+
+  bindNavigation();
 
   show("home");
 
