@@ -1616,6 +1616,14 @@ function renderSales() {
 
                             </small>
 
+                            <button
+                              type="button"
+                              style="margin-top:6px;"
+                              onclick="openReceipt(${db.sales.indexOf(sale)})"
+                            >
+                              🧾 Comprobante
+                            </button>
+
                           </div>
 
                         </div>
@@ -1671,6 +1679,366 @@ function toggleDateGroup(button) {
         : "▼";
 
   }
+
+}
+
+
+/* =========================================================
+   COMPROBANTE DE VENTA
+   ========================================================= */
+
+function getSaleCustomer(sale) {
+
+  if(!sale || !sale.client){
+    return null;
+  }
+
+  const wanted =
+    String(sale.client)
+      .trim()
+      .toLowerCase();
+
+  return db.customers.find(
+    customer =>
+      String(customer?.name || "")
+        .trim()
+        .toLowerCase() === wanted
+  ) || null;
+
+}
+
+
+function formatReceiptDate(value) {
+
+  const parsed =
+    parseLocalDate(value);
+
+  if(!parsed){
+    return String(value || "");
+  }
+
+  return parsed.toLocaleString(
+    "es-CO",
+    {
+      dateStyle: "short",
+      timeStyle: "short"
+    }
+  );
+
+}
+
+
+function receiptNumber(index) {
+
+  return String(
+    Math.max(0, Number(index) || 0) + 1
+  ).padStart(5,"0");
+
+}
+
+
+function saleBalance(sale) {
+
+  return Math.max(
+    0,
+    (+sale.total || 0) - salePaid(sale)
+  );
+
+}
+
+
+function buildSaleReceiptText(sale,index) {
+
+  if(!sale){
+    return "";
+  }
+
+  const items =
+    Array.isArray(sale.items) && sale.items.length
+      ? sale.items
+      : [{
+          product: sale.product || "Producto",
+          qty: sale.qty || 0,
+          price: +sale.price || 0
+        }];
+
+  const customer =
+    getSaleCustomer(sale);
+
+  const lines = [
+    "🐠 AQUARIUM FISH",
+    "COMPROBANTE DE VENTA",
+    "",
+    `No.: ${receiptNumber(index)}`,
+    `Fecha: ${formatReceiptDate(sale.date)}`,
+    `Cliente: ${sale.client || "Venta mostrador"}`
+  ];
+
+  if(customer?.phone){
+    lines.push(`Teléfono: ${customer.phone}`);
+  }
+
+  lines.push("", "DETALLE");
+
+  items.forEach(item => {
+    const qty = Math.max(0, +item.qty || 0);
+    const total =
+      (+item.price || 0) * qty;
+
+    lines.push(
+      `${qty} x ${item.product || "Producto"} — ${money(total)}`
+    );
+  });
+
+  lines.push(
+    "",
+    `TOTAL: ${money(sale.total)}`,
+    `Forma de pago: ${sale.pay || ""}`,
+    `Estado: ${sale.status || "Pagada"}`,
+    `Pagado: ${money(salePaid(sale))}`,
+    `Saldo: ${money(saleBalance(sale))}`,
+    "",
+    "Gracias por elegir Aquarium Fish 🐠"
+  );
+
+  return lines.join("\n");
+
+}
+
+
+function receiptPhone(phone) {
+
+  let digits =
+    String(phone || "")
+      .replace(/\D/g, "");
+
+  if(digits.length === 10 && digits.startsWith("3")){
+    digits = "57" + digits;
+  }
+
+  return digits;
+
+}
+
+
+function openReceipt(index) {
+
+  const sale =
+    db.sales[index];
+
+  if(!sale){
+    return;
+  }
+
+  const text =
+    buildSaleReceiptText(
+      sale,
+      index
+    );
+
+  const customer =
+    getSaleCustomer(sale);
+
+  modal(
+
+    `🧾 Comprobante #${receiptNumber(index)}`,
+
+    `
+      <div
+        style="
+          background:#f7f7f7;
+          border-radius:12px;
+          padding:14px;
+          white-space:pre-wrap;
+          line-height:1.5;
+          max-height:55vh;
+          overflow:auto;
+        "
+      >${esc(text)}</div>
+
+      <div
+        style="
+          display:flex;
+          gap:8px;
+          margin-top:14px;
+          flex-wrap:wrap;
+        "
+      >
+
+        <button
+          class="primary"
+          type="button"
+          onclick="copySaleReceipt(${index})"
+        >
+          📋 Copiar
+        </button>
+
+        <button
+          type="button"
+          onclick="shareSaleReceiptWhatsApp(${index})"
+        >
+          📲 WhatsApp
+        </button>
+
+        <button
+          type="button"
+          onclick="printSaleReceipt(${index})"
+        >
+          🖨️ Imprimir
+        </button>
+
+        <button
+          type="button"
+          onclick="closeModal()"
+        >
+          Cerrar
+        </button>
+
+      </div>
+
+      <p class="muted" style="margin-top:10px;">
+        ${
+          customer?.phone
+            ? `WhatsApp preparado para ${esc(customer.phone)}.`
+            : "No hay teléfono guardado para este cliente; WhatsApp abrirá el mensaje para que elijas el contacto."
+        }
+      </p>
+    `,
+
+    null
+
+  );
+
+}
+
+
+async function copySaleReceipt(index) {
+
+  const sale =
+    db.sales[index];
+
+  if(!sale){
+    return;
+  }
+
+  const text =
+    buildSaleReceiptText(
+      sale,
+      index
+    );
+
+  try{
+    if(navigator.clipboard?.writeText){
+      await navigator.clipboard.writeText(text);
+    }else{
+      const area = document.createElement("textarea");
+      area.value = text;
+      area.style.position = "fixed";
+      area.style.opacity = "0";
+      document.body.appendChild(area);
+      area.select();
+      document.execCommand("copy");
+      area.remove();
+    }
+
+    alert("Comprobante copiado.");
+  }catch(error){
+    console.error(error);
+    alert("No se pudo copiar automáticamente. Puedes seleccionar y copiar el texto del comprobante.");
+  }
+
+}
+
+
+function shareSaleReceiptWhatsApp(index) {
+
+  const sale =
+    db.sales[index];
+
+  if(!sale){
+    return;
+  }
+
+  const customer =
+    getSaleCustomer(sale);
+
+  const phone =
+    receiptPhone(customer?.phone);
+
+  const text =
+    buildSaleReceiptText(
+      sale,
+      index
+    );
+
+  const url =
+    phone
+      ? `https://wa.me/${phone}?text=${encodeURIComponent(text)}`
+      : `https://wa.me/?text=${encodeURIComponent(text)}`;
+
+  window.open(
+    url,
+    "_blank",
+    "noopener,noreferrer"
+  );
+
+}
+
+
+function printSaleReceipt(index) {
+
+  const sale =
+    db.sales[index];
+
+  if(!sale){
+    return;
+  }
+
+  const text =
+    buildSaleReceiptText(
+      sale,
+      index
+    );
+
+  const printWindow =
+    window.open(
+      "",
+      "_blank",
+      "width=430,height=720"
+    );
+
+  if(!printWindow){
+    alert("El navegador bloqueó la ventana de impresión. Permite ventanas emergentes para Aquarium Fish.");
+    return;
+  }
+
+  printWindow.document.write(`
+    <!doctype html>
+    <html lang="es">
+    <head>
+      <meta charset="utf-8">
+      <title>Comprobante #${receiptNumber(index)} - Aquarium Fish</title>
+      <style>
+        body{
+          font-family:Arial,Helvetica,sans-serif;
+          padding:24px;
+          color:#111;
+        }
+        pre{
+          white-space:pre-wrap;
+          font:15px/1.5 Arial,Helvetica,sans-serif;
+        }
+      </style>
+    </head>
+    <body>
+      <pre>${esc(text)}</pre>
+    </body>
+    </html>
+  `);
+
+  printWindow.document.close();
+  printWindow.focus();
+  printWindow.print();
 
 }
 
@@ -7561,6 +7929,18 @@ function exposeFunctions() {
 
   window.shareQuoteWhatsApp =
     shareQuoteWhatsApp;
+
+  window.openReceipt =
+    openReceipt;
+
+  window.copySaleReceipt =
+    copySaleReceipt;
+
+  window.shareSaleReceiptWhatsApp =
+    shareSaleReceiptWhatsApp;
+
+  window.printSaleReceipt =
+    printSaleReceipt;
 
 }
 
