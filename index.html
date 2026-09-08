@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#087f8c">
-<meta name="description" content="Aquarium Fish - inventario, ventas, ganancias, clientes y encargos">
+<meta name="description" content="Aquarium Fish - inventario, ventas, caja, clientes y encargos">
 
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icon.svg">
@@ -15,18 +15,9 @@
 
 <body>
 
-<!-- =========================
-     SPLASH
-========================= -->
-
 <div id="splash" aria-label="Aquarium Fish">
   <img src="splash-v7.png" alt="Aquarium Fish - Gestión del negocio">
 </div>
-
-
-<!-- =========================
-     ENCABEZADO
-========================= -->
 
 <header>
   <div class="brand">
@@ -42,16 +33,7 @@
   </button>
 </header>
 
-
-<!-- =========================
-     CONTENIDO
-========================= -->
-
 <main>
-
-<!-- =========================
-     INICIO
-========================= -->
 
 <section id="home" class="screen active">
 
@@ -83,42 +65,30 @@
       <small>requieren atención</small>
     </div>
 
+    <div class="card">
+      <span>💰 Caja</span>
+      <b id="cashBalance">$0</b>
+      <small>saldo actual</small>
+    </div>
+
   </div>
 
-
-  <!-- ÚLTIMAS VENTAS -->
-
   <div class="panel">
-
     <h2>Últimas ventas</h2>
-
     <div id="recentSales" class="list"></div>
-
   </div>
 
-
-  <!-- RESUMEN INTERNO -->
-
   <div class="panel">
-
     <h2>Resumen interno</h2>
 
     <p class="muted">
       Las ganancias no aparecen en las pantallas de venta.
     </p>
 
-    <button
-      class="primary"
-      type="button"
-      onclick="openInternal()"
-    >
+    <button class="primary" type="button" onclick="openInternal()">
       🔒 Ver ganancias y cuentas
     </button>
-
   </div>
-
-
-  <!-- DATOS -->
 
   <div class="panel">
 
@@ -148,7 +118,7 @@
 
     <p class="muted">
       El respaldo guarda productos, ventas, clientes,
-      encargos y movimientos.
+      encargos, movimientos y caja.
     </p>
 
     <p id="syncStatus" class="muted">
@@ -160,9 +130,9 @@
 </section>
 
 
-<!-- =========================
+<!-- =====================================================
      INVENTARIO
-========================= -->
+===================================================== -->
 
 <section id="inventory" class="screen">
 
@@ -191,9 +161,9 @@
 </section>
 
 
-<!-- =========================
+<!-- =====================================================
      VENTAS
-========================= -->
+===================================================== -->
 
 <section id="sales" class="screen">
 
@@ -216,9 +186,86 @@
 </section>
 
 
-<!-- =========================
+<!-- =====================================================
+     CAJA
+===================================================== -->
+
+<section id="cash" class="screen">
+
+  <div class="section-head">
+
+    <h1>💰 Caja</h1>
+
+    <button
+      class="primary"
+      type="button"
+      onclick="openCashMovement()"
+    >
+      + Movimiento
+    </button>
+
+  </div>
+
+
+  <div class="panel">
+
+    <h2>Resumen de caja</h2>
+
+    <div id="cashSummary" class="cards"></div>
+
+  </div>
+
+
+  <div class="panel">
+
+    <h2>Periodo</h2>
+
+    <select
+      id="cashPeriod"
+      class="search"
+    >
+
+      <option value="today">
+        📅 Hoy
+      </option>
+
+      <option value="7days">
+        📆 Últimos 7 días
+      </option>
+
+      <option value="month">
+        🗓️ Este mes
+      </option>
+
+      <option value="all">
+        📚 Todo
+      </option>
+
+    </select>
+
+  </div>
+
+
+  <div class="panel">
+
+    <h2>Movimientos de caja</h2>
+
+    <p class="muted">
+      Las ventas cobradas aparecen automáticamente.
+      Los ingresos y gastos que registres manualmente
+      también aparecerán aquí.
+    </p>
+
+    <div id="cashList" class="list"></div>
+
+  </div>
+
+</section>
+
+
+<!-- =====================================================
      CLIENTES
-========================= -->
+===================================================== -->
 
 <section id="customers" class="screen">
 
@@ -247,9 +294,9 @@
 </section>
 
 
-<!-- =========================
+<!-- =====================================================
      ENCARGOS
-========================= -->
+===================================================== -->
 
 <section id="orders" class="screen">
 
@@ -277,9 +324,9 @@
 </section>
 
 
-<!-- =========================
+<!-- =====================================================
      MOVIMIENTOS
-========================= -->
+===================================================== -->
 
 <section id="moves" class="screen">
 
@@ -304,9 +351,9 @@
 </main>
 
 
-<!-- =========================
+<!-- =====================================================
      NAVEGACIÓN
-========================= -->
+===================================================== -->
 
 <nav>
 
@@ -337,6 +384,14 @@
 
   <button
     type="button"
+    data-tab="cash"
+  >
+    💰
+    <span>Caja</span>
+  </button>
+
+  <button
+    type="button"
     data-tab="customers"
   >
     ♙
@@ -362,9 +417,9 @@
 </nav>
 
 
-<!-- =========================
-     MODAL PRINCIPAL
-========================= -->
+<!-- =====================================================
+     MODAL GENERAL
+===================================================== -->
 
 <div id="modal" class="modal hidden">
 
@@ -390,9 +445,9 @@
 </div>
 
 
-<!-- =========================
-     MODAL INTERNO
-========================= -->
+<!-- =====================================================
+     MODAL RESUMEN INTERNO
+===================================================== -->
 
 <div id="internalModal" class="modal hidden">
 
@@ -436,9 +491,9 @@
 </div>
 
 
-<!-- =========================
+<!-- =====================================================
      SPLASH
-========================= -->
+===================================================== -->
 
 <script>
 
@@ -463,25 +518,21 @@
 </script>
 
 
-<!-- =========================
-     APLICACIÓN
-========================= -->
+<!-- =====================================================
+     APP.JS
+===================================================== -->
 
 <script src="app.js"></script>
 
 
-<!-- =========================
+<!-- =====================================================
      FIREBASE
-========================= -->
+===================================================== -->
 
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
 
-
-<!-- =========================
-     CONFIGURACIÓN FIREBASE
-========================= -->
 
 <script>
 
@@ -510,9 +561,9 @@ const firebaseConfig = {
 </script>
 
 
-<!-- =========================
+<!-- =====================================================
      SINCRONIZACIÓN FIREBASE
-========================= -->
+===================================================== -->
 
 <script>
 
@@ -520,27 +571,40 @@ const firebaseConfig = {
 
 "use strict";
 
-const DATA_KEY = "aquarium_fish_data_v5";
-const COLLECTION = "appData";
-const DOCUMENT = "aquariumFish";
+
+const DATA_KEY =
+  "aquarium_fish_data_v5";
+
+
+const COLLECTION =
+  "appData";
+
+
+const DOCUMENT =
+  "aquariumFish";
+
 
 let syncing = false;
+
 let ready = false;
+
 let uploadTimer = null;
+
 let firestoreRef = null;
+
 let lastCloudJSON = null;
 
-const originalSetItem = Storage.prototype.setItem;
 
+const originalSetItem =
+  Storage.prototype.setItem;
 
-/* =========================
-   ESTADO
-========================= */
 
 function setStatus(text){
 
   const el =
-    document.getElementById("syncStatus");
+    document.getElementById(
+      "syncStatus"
+    );
 
   if(el){
     el.textContent = text;
@@ -550,10 +614,6 @@ function setStatus(text){
 
 }
 
-
-/* =========================
-   NORMALIZAR
-========================= */
 
 function normalize(data){
 
@@ -584,6 +644,11 @@ function normalize(data){
     orders:
       Array.isArray(data.orders)
         ? data.orders
+        : [],
+
+    cash:
+      Array.isArray(data.cash)
+        ? data.cash
         : []
 
   };
@@ -591,28 +656,29 @@ function normalize(data){
 }
 
 
-/* =========================
-   COMPROBAR DATOS
-========================= */
-
 function hasRealData(data){
 
-  const d = normalize(data);
+  const d =
+    normalize(data);
 
   return (
+
     d.products.length > 0 ||
+
     d.sales.length > 0 ||
+
     d.moves.length > 0 ||
+
     d.customers.length > 0 ||
-    d.orders.length > 0
+
+    d.orders.length > 0 ||
+
+    d.cash.length > 0
+
   );
 
 }
 
-
-/* =========================
-   DATOS LOCALES
-========================= */
 
 function getLocalData(){
 
@@ -622,11 +688,17 @@ function getLocalData(){
       typeof db !== "undefined" &&
       db
     ){
+
       return normalize(db);
+
     }
 
+
     const saved =
-      localStorage.getItem(DATA_KEY);
+      localStorage.getItem(
+        DATA_KEY
+      );
+
 
     if(saved){
 
@@ -635,6 +707,7 @@ function getLocalData(){
       );
 
     }
+
 
     return normalize(null);
 
@@ -652,10 +725,6 @@ function getLocalData(){
 }
 
 
-/* =========================
-   GUARDAR V5
-========================= */
-
 function saveLocalV5(data){
 
   try{
@@ -668,7 +737,9 @@ function saveLocalV5(data){
     originalSetItem.call(
       localStorage,
       DATA_KEY,
-      JSON.stringify(normalized)
+      JSON.stringify(
+        normalized
+      )
     );
 
     syncing = false;
@@ -691,18 +762,17 @@ function saveLocalV5(data){
 }
 
 
-/* =========================
-   ACTUALIZAR APLICACIÓN
-========================= */
-
 function refreshApp(){
 
   try{
 
     if(
-      typeof renderAll === "function"
+      typeof renderAll ===
+      "function"
     ){
+
       renderAll();
+
     }
 
   }catch(error){
@@ -717,10 +787,6 @@ function refreshApp(){
 }
 
 
-/* =========================
-   SUBIR DATOS
-========================= */
-
 function uploadLocalData(){
 
   if(
@@ -728,71 +794,89 @@ function uploadLocalData(){
     syncing ||
     !firestoreRef
   ){
+
     return;
+
   }
 
-  clearTimeout(uploadTimer);
+
+  clearTimeout(
+    uploadTimer
+  );
+
 
   uploadTimer =
-    setTimeout(async function(){
+    setTimeout(
+      async function(){
 
-      try{
+        try{
 
-        const localData =
-          getLocalData();
+          const localData =
+            getLocalData();
 
-        const localJSON =
-          JSON.stringify(localData);
+          const localJSON =
+            JSON.stringify(
+              localData
+            );
 
-        if(
-          localJSON === lastCloudJSON
-        ){
-          return;
+
+          if(
+            localJSON ===
+            lastCloudJSON
+          ){
+
+            return;
+
+          }
+
+
+          setStatus(
+            "☁️ Guardando datos en Firebase..."
+          );
+
+
+          await firestoreRef.set({
+
+            data:
+              localData,
+
+            updatedAt:
+              firebase.firestore
+                .FieldValue
+                .serverTimestamp()
+
+          });
+
+
+          lastCloudJSON =
+            localJSON;
+
+
+          setStatus(
+            "☁️ Datos sincronizados"
+          );
+
+
+        }catch(error){
+
+          console.error(
+            "Error guardando en Firebase:",
+            error
+          );
+
+
+          setStatus(
+            "⚠️ No se pudo sincronizar"
+          );
+
         }
 
-        setStatus(
-          "☁️ Guardando datos en Firebase..."
-        );
-
-        await firestoreRef.set({
-
-          data: localData,
-
-          updatedAt:
-            firebase.firestore
-              .FieldValue
-              .serverTimestamp()
-
-        });
-
-        lastCloudJSON =
-          localJSON;
-
-        setStatus(
-          "☁️ Datos sincronizados"
-        );
-
-      }catch(error){
-
-        console.error(
-          "Error guardando en Firebase:",
-          error
-        );
-
-        setStatus(
-          "⚠️ No se pudo sincronizar"
-        );
-
-      }
-
-    },700);
+      },
+      700
+    );
 
 }
 
-
-/* =========================
-   DETECTAR CAMBIOS LOCALES
-========================= */
 
 Storage.prototype.setItem =
   function(key,value){
@@ -803,10 +887,15 @@ Storage.prototype.setItem =
       value
     );
 
+
     if(
+
       key === DATA_KEY &&
+
       ready &&
+
       !syncing
+
     ){
 
       uploadLocalData();
@@ -816,32 +905,38 @@ Storage.prototype.setItem =
   };
 
 
-/* =========================
-   APLICAR DATOS REMOTOS
-========================= */
-
 function applyRemoteData(remoteData){
 
   if(!remoteData){
     return;
   }
 
+
   try{
 
     const normalized =
       normalize(remoteData);
 
+
     const remoteJSON =
-      JSON.stringify(normalized);
+      JSON.stringify(
+        normalized
+      );
+
 
     const localData =
       getLocalData();
 
+
     const localJSON =
-      JSON.stringify(localData);
+      JSON.stringify(
+        localData
+      );
+
 
     if(
-      remoteJSON === localJSON
+      remoteJSON ===
+      localJSON
     ){
 
       lastCloudJSON =
@@ -852,17 +947,20 @@ function applyRemoteData(remoteData){
     }
 
 
-    /*
-      No borrar datos locales
-      por un Firebase vacío.
-    */
-
     if(
-      !hasRealData(normalized) &&
-      hasRealData(localData)
+
+      !hasRealData(
+        normalized
+      ) &&
+
+      hasRealData(
+        localData
+      )
+
     ){
 
-      lastCloudJSON = null;
+      lastCloudJSON =
+        null;
 
       setStatus(
         "☁️ Conservando datos locales..."
@@ -877,24 +975,32 @@ function applyRemoteData(remoteData){
 
     syncing = true;
 
+
     originalSetItem.call(
       localStorage,
       DATA_KEY,
       remoteJSON
     );
 
-    db = normalized;
+
+    db =
+      normalized;
+
 
     syncing = false;
 
+
     refreshApp();
+
 
     lastCloudJSON =
       remoteJSON;
 
+
     setStatus(
       "☁️ Datos actualizados desde Firebase"
     );
+
 
   }catch(error){
 
@@ -910,16 +1016,13 @@ function applyRemoteData(remoteData){
 }
 
 
-/* =========================
-   INICIAR FIREBASE
-========================= */
-
 function initFirebase(){
 
   try{
 
     if(
-      typeof firebase === "undefined"
+      typeof firebase ===
+      "undefined"
     ){
 
       throw new Error(
@@ -927,6 +1030,7 @@ function initFirebase(){
       );
 
     }
+
 
     if(
       !firebase.apps.length
@@ -938,19 +1042,28 @@ function initFirebase(){
 
     }
 
+
     const firestore =
       firebase.firestore();
 
+
     firestoreRef =
       firestore
-        .collection(COLLECTION)
-        .doc(DOCUMENT);
+        .collection(
+          COLLECTION
+        )
+        .doc(
+          DOCUMENT
+        );
+
 
     setStatus(
       "🟢 Firebase conectado"
     );
 
+
     return true;
+
 
   }catch(error){
 
@@ -959,9 +1072,11 @@ function initFirebase(){
       error
     );
 
+
     setStatus(
       "⚠️ Firebase no disponible. Datos locales activos."
     );
+
 
     return false;
 
@@ -970,15 +1085,12 @@ function initFirebase(){
 }
 
 
-/* =========================
-   INICIAR SINCRONIZACIÓN
-========================= */
-
 async function startSync(){
 
   if(!firestoreRef){
     return;
   }
+
 
   try{
 
@@ -986,16 +1098,15 @@ async function startSync(){
       "☁️ Comprobando datos..."
     );
 
+
     const localData =
       getLocalData();
 
-    /*
-      Migrar datos anteriores
-      a la versión 5.
-    */
 
     if(
-      hasRealData(localData)
+      hasRealData(
+        localData
+      )
     ){
 
       saveLocalV5(
@@ -1009,15 +1120,14 @@ async function startSync(){
       await firestoreRef.get();
 
 
-    /* =========================
-       FIREBASE NO EXISTE
-    ========================= */
-
-    if(!snapshot.exists){
+    if(
+      !snapshot.exists
+    ){
 
       ready = true;
 
-      lastCloudJSON = null;
+      lastCloudJSON =
+        null;
 
       setStatus(
         "☁️ Subiendo tus datos a Firebase..."
@@ -1025,14 +1135,8 @@ async function startSync(){
 
       uploadLocalData();
 
-    }
 
-
-    /* =========================
-       FIREBASE EXISTE
-    ========================= */
-
-    else{
+    }else{
 
       const cloudData =
         snapshot.data() &&
@@ -1042,23 +1146,34 @@ async function startSync(){
       if(cloudData){
 
         const normalizedCloud =
-          normalize(cloudData);
+          normalize(
+            cloudData
+          );
 
 
         if(
-          !hasRealData(normalizedCloud) &&
-          hasRealData(localData)
+
+          !hasRealData(
+            normalizedCloud
+          ) &&
+
+          hasRealData(
+            localData
+          )
+
         ){
 
           ready = true;
 
-          lastCloudJSON = null;
+          lastCloudJSON =
+            null;
 
           setStatus(
             "☁️ Subiendo datos existentes..."
           );
 
           uploadLocalData();
+
 
         }else{
 
@@ -1074,11 +1189,13 @@ async function startSync(){
 
         }
 
+
       }else{
 
         ready = true;
 
-        lastCloudJSON = null;
+        lastCloudJSON =
+          null;
 
         setStatus(
           "☁️ Guardando datos..."
@@ -1091,48 +1208,60 @@ async function startSync(){
     }
 
 
-    /* =========================
-       ESCUCHAR OTROS DISPOSITIVOS
-    ========================= */
-
     firestoreRef.onSnapshot(
 
       function(snapshot){
 
-        if(!snapshot.exists){
+        if(
+          !snapshot.exists
+        ){
+
           return;
+
         }
+
 
         const snapshotData =
           snapshot.data();
 
+
         if(
+
           !snapshotData ||
+
           !snapshotData.data
+
         ){
+
           return;
+
         }
+
 
         const remote =
           normalize(
             snapshotData.data
           );
 
+
         const local =
           getLocalData();
 
 
-        /*
-          No permitir que Firebase
-          vacío borre información.
-        */
-
         if(
-          !hasRealData(remote) &&
-          hasRealData(local)
+
+          !hasRealData(
+            remote
+          ) &&
+
+          hasRealData(
+            local
+          )
+
         ){
 
-          lastCloudJSON = null;
+          lastCloudJSON =
+            null;
 
           uploadLocalData();
 
@@ -1142,13 +1271,20 @@ async function startSync(){
 
 
         const remoteJSON =
-          JSON.stringify(remote);
+          JSON.stringify(
+            remote
+          );
+
 
         const localJSON =
-          JSON.stringify(local);
+          JSON.stringify(
+            local
+          );
+
 
         if(
-          remoteJSON === localJSON
+          remoteJSON ===
+          localJSON
         ){
 
           lastCloudJSON =
@@ -1158,9 +1294,13 @@ async function startSync(){
 
         }
 
-        applyRemoteData(remote);
+
+        applyRemoteData(
+          remote
+        );
 
       },
+
 
       function(error){
 
@@ -1168,6 +1308,7 @@ async function startSync(){
           "Error escuchando Firebase:",
           error
         );
+
 
         setStatus(
           "⚠️ Firebase desconectado. Datos locales activos."
@@ -1177,12 +1318,14 @@ async function startSync(){
 
     );
 
+
   }catch(error){
 
     console.error(
       "Error de sincronización:",
       error
     );
+
 
     setStatus(
       "⚠️ Firebase no disponible. Datos locales activos."
@@ -1193,29 +1336,34 @@ async function startSync(){
 }
 
 
-/* =========================
-   ARRANCAR
-========================= */
+setTimeout(
 
-setTimeout(function(){
+  function(){
 
-  const connected =
-    initFirebase();
+    const connected =
+      initFirebase();
 
-  if(connected){
-    startSync();
-  }
 
-},1200);
+    if(connected){
+
+      startSync();
+
+    }
+
+  },
+
+  1200
+
+);
 
 })();
 
 </script>
 
 
-<!-- =========================
-     NAVEGACIÓN
-========================= -->
+<!-- =====================================================
+     NAVEGACIÓN DE RESPALDO
+===================================================== -->
 
 <script>
 
@@ -1228,82 +1376,74 @@ setTimeout(function(){
         "nav button[data-tab]"
       );
 
-    /*
-      app.js ya tiene la función show().
-      Aquí solamente aseguramos que los
-      botones sigan funcionando.
-    */
 
-    botones.forEach(function(boton){
+    botones.forEach(
+      function(boton){
 
-      boton.onclick = function(event){
+        boton.onclick =
+          function(event){
 
-        event.preventDefault();
-
-        const tab =
-          this.getAttribute("data-tab");
-
-        if(
-          typeof show === "function"
-        ){
-
-          show(tab);
-
-        }else{
-
-          document
-            .querySelectorAll(".screen")
-            .forEach(function(p){
-
-              p.classList.remove("active");
-
-            });
-
-          const pantalla =
-            document.getElementById(tab);
-
-          if(pantalla){
-
-            pantalla.classList.add("active");
-
-          }
-
-          botones.forEach(function(b){
-
-            b.classList.toggle(
-              "active",
-              b.getAttribute("data-tab") === tab
-            );
-
-          });
-
-        }
-
-      };
-
-    });
-
-  }
+            event.preventDefault();
 
 
-  if(
-    document.readyState === "loading"
-  ){
+            const tab =
+              this.getAttribute(
+                "data-tab"
+              );
 
-    document.addEventListener(
-      "DOMContentLoaded",
-      configurarNavegacion
-    );
 
-  }else{
+            if(
+              typeof show ===
+              "function"
+            ){
 
-    configurarNavegacion();
+              show(tab);
 
-  }
 
-})();
+            }else{
 
-</script>
+              document
+                .querySelectorAll(
+                  ".screen"
+                )
+                .forEach(
+                  function(p){
 
-</body>
-</html>
+                    p.classList.remove(
+                      "active"
+                    );
+
+                  }
+                );
+
+
+              const pantalla =
+                document.getElementById(
+                  tab
+                );
+
+
+              if(pantalla){
+
+                pantalla.classList.add(
+                  "active"
+                );
+
+              }
+
+
+              botones.forEach(
+                function(b){
+
+                  b.classList.toggle(
+
+                    "active",
+
+                    b.getAttribute(
+                      "data-tab"
+                    ) === tab
+
+                  );
+
+                }
+              );
