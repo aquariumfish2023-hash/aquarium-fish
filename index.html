@@ -782,6 +782,11 @@ function normalize(data){
     cash:
       Array.isArray(data.cash)
         ? data.cash
+        : [],
+
+    quotes:
+      Array.isArray(data.quotes)
+        ? data.quotes
         : []
 
   };
@@ -806,7 +811,9 @@ function hasRealData(data){
 
     d.orders.length > 0 ||
 
-    d.cash.length > 0
+    d.cash.length > 0 ||
+
+    d.quotes.length > 0
 
   );
 
