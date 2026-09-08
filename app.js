@@ -2446,6 +2446,415 @@ function renderCustomers() {
 }
 
 
+
+/* =========================================================
+   COTIZADOR
+   ========================================================= */
+
+let quoteItems = [];
+let quoteCategory = "Todas";
+let quoteSearch = "";
+let quoteCustomer = "";
+let quotePhone = "";
+let quoteNote = "";
+
+function setupCotizadorUI(){
+  const main = document.querySelector("main");
+  const nav = document.querySelector("nav");
+  if(!main || !nav){
+    return;
+  }
+
+  let section = document.getElementById("cotizador");
+  if(!section){
+    section = document.createElement("section");
+    section.id = "cotizador";
+    section.className = "screen";
+    main.appendChild(section);
+  }
+
+  let navButton = nav.querySelector('button[data-tab="cotizador"]');
+  if(!navButton){
+    navButton = document.createElement("button");
+    navButton.type = "button";
+    navButton.dataset.tab = "cotizador";
+    navButton.innerHTML = `🧾<span>Cotizador</span>`;
+    nav.appendChild(navButton);
+  }
+
+  renderCotizador();
+}
+
+function quoteCategories(){
+  return [
+    "Todas",
+    ...new Set(
+      db.products
+        .map(p => String(p.category || "").trim())
+        .filter(Boolean)
+    )
+  ];
+}
+
+function quoteTotal(){
+  return quoteItems.reduce(
+    (sum,item) =>
+      sum + ((+item.qty || 0) * (+item.unitPrice || 0)),
+    0
+  );
+}
+
+function quoteItemKey(index){
+  return `${index}`;
+}
+
+function addQuoteItem(index){
+  const product = db.products[index];
+  if(!product){
+    return;
+  }
+
+  const key = quoteItemKey(index);
+  const existing = quoteItems.find(item => item.key === key);
+
+  if(existing){
+    existing.qty = Math.max(1, (+existing.qty || 0) + 1);
+  }else{
+    quoteItems.push({
+      key,
+      productIndex: index,
+      name: String(product.name || "Producto"),
+      qty: 1,
+      unitPrice: Math.max(0, +product.price || 0)
+    });
+  }
+
+  renderCotizador();
+}
+
+function updateQuoteItem(key, field, value){
+  const item = quoteItems.find(i => i.key === String(key));
+  if(!item){
+    return;
+  }
+
+  if(field === "qty"){
+    item.qty = Math.max(1, parseInt(value,10) || 1);
+  }else if(field === "unitPrice"){
+    item.unitPrice = Math.max(0, +value || 0);
+  }
+
+  renderCotizador();
+}
+
+function removeQuoteItem(key){
+  quoteItems = quoteItems.filter(item => item.key !== String(key));
+  renderCotizador();
+}
+
+function clearQuote(){
+  if(!quoteItems.length && !quoteCustomer && !quotePhone && !quoteNote){
+    return;
+  }
+
+  if(confirm("¿Limpiar la cotización actual?")){
+    quoteItems = [];
+    quoteCustomer = "";
+    quotePhone = "";
+    quoteNote = "";
+    renderCotizador();
+  }
+}
+
+function buildQuoteText(){
+  const lines = [
+    "🐠 AQUARIUM FISH",
+    "COTIZACIÓN",
+    ""
+  ];
+
+  if(quoteCustomer.trim()){
+    lines.push(`Cliente: ${quoteCustomer.trim()}`);
+  }
+
+  if(quotePhone.trim()){
+    lines.push(`Teléfono: ${quotePhone.trim()}`);
+  }
+
+  if(quoteCustomer.trim() || quotePhone.trim()){
+    lines.push("");
+  }
+
+  quoteItems.forEach(item => {
+    const subtotal = (+item.qty || 0) * (+item.unitPrice || 0);
+    lines.push(
+      `${item.qty} x ${item.name} — ${money(subtotal)}`
+    );
+  });
+
+  lines.push("");
+  lines.push(`TOTAL: ${money(quoteTotal())}`);
+
+  if(quoteNote.trim()){
+    lines.push("");
+    lines.push(`Nota: ${quoteNote.trim()}`);
+  }
+
+  lines.push("");
+  lines.push("Gracias por elegir Aquarium Fish 🐠");
+
+  return lines.join("\n");
+}
+
+async function copyQuote(){
+  if(!quoteItems.length){
+    alert("Agrega al menos un producto a la cotización.");
+    return;
+  }
+
+  const text = buildQuoteText();
+
+  try{
+    await navigator.clipboard.writeText(text);
+    alert("Cotización copiada. Puedes pegarla donde quieras.");
+  }catch(_){
+    const area = document.createElement("textarea");
+    area.value = text;
+    area.style.position = "fixed";
+    area.style.opacity = "0";
+    document.body.appendChild(area);
+    area.focus();
+    area.select();
+    try{
+      document.execCommand("copy");
+      alert("Cotización copiada.");
+    }catch(__){
+      alert("No se pudo copiar automáticamente. Puedes usar el botón de WhatsApp.");
+    }
+    area.remove();
+  }
+}
+
+function shareQuoteWhatsApp(){
+  if(!quoteItems.length){
+    alert("Agrega al menos un producto a la cotización.");
+    return;
+  }
+
+  const text = encodeURIComponent(buildQuoteText());
+  let phone = quotePhone.replace(/\D/g, "");
+  if(/^3\d{9}$/.test(phone)){
+    phone = "57" + phone;
+  }
+  const url = phone
+    ? `https://wa.me/${phone}?text=${text}`
+    : `https://wa.me/?text=${text}`;
+
+  window.open(url, "_blank", "noopener");
+}
+
+function renderCotizador(){
+  const section = document.getElementById("cotizador");
+  if(!section){
+    return;
+  }
+
+  const categories = quoteCategories();
+  const q = quoteSearch.trim().toLowerCase();
+
+  const products = db.products
+    .map((product,index) => ({product,index}))
+    .filter(({product}) => {
+      const category = String(product.category || "").trim();
+      if(quoteCategory !== "Todas" && category !== quoteCategory){
+        return false;
+      }
+
+      if(!q){
+        return true;
+      }
+
+      return `${product.name || ""} ${category}`
+        .toLowerCase()
+        .includes(q);
+    })
+    .sort((a,b) =>
+      String(a.product.name || "").localeCompare(
+        String(b.product.name || ""),
+        "es"
+      )
+    );
+
+  section.innerHTML = `
+    <div class="section-head">
+      <h1>🧾 Cotizador</h1>
+      <button type="button" onclick="clearQuote()">Limpiar</button>
+    </div>
+
+    <div class="panel">
+      <h2>Cliente</h2>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+        <input
+          id="quoteCustomer"
+          class="search"
+          placeholder="Nombre del cliente"
+          value="${esc(quoteCustomer)}"
+        >
+        <input
+          id="quotePhone"
+          class="search"
+          type="tel"
+          placeholder="WhatsApp / teléfono"
+          value="${esc(quotePhone)}"
+        >
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>Agregar productos</h2>
+      <p class="muted">
+        Selecciona varios productos. El cotizador usa el precio de venta del inventario y no modifica el stock.
+      </p>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:10px 0;">
+        <input
+          id="quoteSearch"
+          class="search"
+          placeholder="🔎 Buscar producto..."
+          value="${esc(quoteSearch)}"
+        >
+        <select id="quoteCategory" class="search">
+          ${categories.map(category => `
+            <option value="${esc(category)}" ${category === quoteCategory ? "selected" : ""}>
+              ${esc(category)}
+            </option>
+          `).join("")}
+        </select>
+      </div>
+
+      <div class="list" style="max-height:360px;overflow:auto;">
+        ${products.length ? products.map(({product,index}) => `
+          <div class="item" style="align-items:center;gap:8px;">
+            <div style="flex:1;min-width:0;">
+              <b>${esc(product.name || "Producto")}</b>
+              <div class="muted">
+                ${esc(product.category || "Sin categoría")} · ${money(product.price)}
+              </div>
+            </div>
+            <button type="button" class="primary" onclick="addQuoteItem(${index})">
+              + Agregar
+            </button>
+          </div>
+        `).join("") : `
+          <div class="empty">No hay productos que coincidan.</div>
+        `}
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>🛒 Cotización actual</h2>
+      ${quoteItems.length ? quoteItems.map(item => {
+        const subtotal = (+item.qty || 0) * (+item.unitPrice || 0);
+        return `
+          <div class="item" style="align-items:flex-start;gap:8px;">
+            <div style="flex:1;min-width:0;">
+              <b>${esc(item.name)}</b>
+              <div style="display:grid;grid-template-columns:90px 1fr;gap:8px;margin-top:6px;">
+                <input
+                  class="search"
+                  type="number"
+                  min="1"
+                  step="1"
+                  value="${+item.qty || 1}"
+                  aria-label="Cantidad"
+                  onchange="updateQuoteItem('${esc(item.key)}','qty',this.value)"
+                >
+                <input
+                  class="search"
+                  type="number"
+                  min="0"
+                  step="1"
+                  value="${+item.unitPrice || 0}"
+                  aria-label="Precio unitario"
+                  onchange="updateQuoteItem('${esc(item.key)}','unitPrice',this.value)"
+                >
+              </div>
+              <div class="muted" style="margin-top:5px;">
+                ${Number(item.qty) || 1} unidad(es) · Subtotal ${money(subtotal)}
+              </div>
+            </div>
+            <button type="button" onclick="removeQuoteItem('${esc(item.key)}')">🗑️</button>
+          </div>
+        `;
+      }).join("") : `
+        <div class="empty">Agrega productos para comenzar.</div>
+      `}
+
+      <div style="margin-top:12px;padding-top:12px;border-top:1px solid rgba(0,0,0,.08);">
+        <label>
+          Nota para el cliente
+          <textarea
+            id="quoteNote"
+            rows="3"
+            placeholder="Ej. Instalación, domicilio, disponibilidad, etc."
+          >${esc(quoteNote)}</textarea>
+        </label>
+      </div>
+
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:12px;">
+        <span><b>Total</b></span>
+        <strong style="font-size:1.35rem;">${money(quoteTotal())}</strong>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px;">
+        <button type="button" onclick="copyQuote()">📋 Copiar</button>
+        <button type="button" class="primary" onclick="shareQuoteWhatsApp()">📲 WhatsApp</button>
+      </div>
+
+      <p class="muted" style="margin-top:10px;">
+        El cotizador muestra precios de venta. La ganancia nunca se muestra al cliente.
+      </p>
+    </div>
+  `;
+
+  const customer = document.getElementById("quoteCustomer");
+  if(customer){
+    customer.oninput = function(){ quoteCustomer = this.value; };
+  }
+
+  const phone = document.getElementById("quotePhone");
+  if(phone){
+    phone.oninput = function(){ quotePhone = this.value; };
+  }
+
+  const note = document.getElementById("quoteNote");
+  if(note){
+    note.oninput = function(){ quoteNote = this.value; };
+  }
+
+  const search = document.getElementById("quoteSearch");
+  if(search){
+    search.oninput = function(){
+      quoteSearch = this.value;
+      const cursor = this.value.length;
+      renderCotizador();
+      const next = document.getElementById("quoteSearch");
+      if(next){
+        next.focus();
+        try{ next.setSelectionRange(cursor,cursor); }catch(_){ }
+      }
+    };
+  }
+
+  const category = document.getElementById("quoteCategory");
+  if(category){
+    category.onchange = function(){
+      quoteCategory = this.value;
+      renderCotizador();
+    };
+  }
+}
+
 /* =========================================================
    MOVIMIENTOS
    ========================================================= */
@@ -7129,6 +7538,30 @@ function exposeFunctions() {
   window.setCashPeriod =
     setCashPeriod;
 
+
+  window.addQuoteItem =
+    addQuoteItem;
+
+
+  window.updateQuoteItem =
+    updateQuoteItem;
+
+
+  window.removeQuoteItem =
+    removeQuoteItem;
+
+
+  window.clearQuote =
+    clearQuote;
+
+
+  window.copyQuote =
+    copyQuote;
+
+
+  window.shareQuoteWhatsApp =
+    shareQuoteWhatsApp;
+
 }
 
 
@@ -7139,6 +7572,8 @@ function exposeFunctions() {
 function iniciarApp() {
 
   exposeFunctions();
+
+  setupCotizadorUI();
 
   bindNavigation();
 
