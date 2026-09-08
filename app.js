@@ -433,6 +433,7 @@ function setInventorySort(
 
 function renderAll() {
 
+  ensureReportsUI();
   renderHome();
 
   renderInventory();
@@ -448,6 +449,8 @@ function renderAll() {
   renderOrders();
 
   renderInternal();
+
+  if(document.getElementById("reports")) renderReports();
 
 }
 
