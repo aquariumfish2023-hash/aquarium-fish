@@ -15,14 +15,39 @@ let db =
     sales: [],
     moves: [],
     customers: [],
-    orders: []
+    orders: [],
+    cash: []
   };
 
-db.products = Array.isArray(db.products) ? db.products : [];
-db.sales = Array.isArray(db.sales) ? db.sales : [];
-db.moves = Array.isArray(db.moves) ? db.moves : [];
-db.customers = Array.isArray(db.customers) ? db.customers : [];
-db.orders = Array.isArray(db.orders) ? db.orders : [];
+db.products =
+  Array.isArray(db.products)
+    ? db.products
+    : [];
+
+db.sales =
+  Array.isArray(db.sales)
+    ? db.sales
+    : [];
+
+db.moves =
+  Array.isArray(db.moves)
+    ? db.moves
+    : [];
+
+db.customers =
+  Array.isArray(db.customers)
+    ? db.customers
+    : [];
+
+db.orders =
+  Array.isArray(db.orders)
+    ? db.orders
+    : [];
+
+db.cash =
+  Array.isArray(db.cash)
+    ? db.cash
+    : [];
 
 
 /* =========================================================
@@ -36,17 +61,167 @@ const money = n =>
     maximumFractionDigits: 0
   }).format(Number(n) || 0);
 
+
 const now = () =>
   new Date().toLocaleString("es-CO");
 
+
 const esc = s =>
-  String(s ?? "").replace(/[&<>"']/g, m => ({
-    "&": "&amp;",
-    "<": "&lt;",
-    ">": "&gt;",
-    '"': "&quot;",
-    "'": "&#39;"
-  }[m]));
+  String(s ?? "").replace(
+    /[&<>"']/g,
+    m => ({
+      "&": "&amp;",
+      "<": "&lt;",
+      ">": "&gt;",
+      '"': "&quot;",
+      "'": "&#39;"
+    }[m])
+  );
+
+
+function parseLocalDate(value) {
+
+  if (
+    value instanceof Date
+  ) {
+
+    return isNaN(
+      value.getTime()
+    )
+      ? null
+      : value;
+
+  }
+
+
+  const text =
+    String(value || "").trim();
+
+
+  if(!text){
+    return null;
+  }
+
+
+  /*
+     Primero intentamos el formato que utiliza
+     Aquarium Fish:
+
+     d/m/yyyy, hh:mm:ss
+  */
+
+  const match =
+    text.match(
+      /^(\d{1,2})\/(\d{1,2})\/(\d{4})(?:,\s*(\d{1,2}):(\d{2})(?::(\d{2}))?)?/
+    );
+
+
+  if(match){
+
+    const day =
+      Number(match[1]);
+
+    const month =
+      Number(match[2]);
+
+    const year =
+      Number(match[3]);
+
+    const hour =
+      Number(match[4] || 0);
+
+    const minute =
+      Number(match[5] || 0);
+
+    const second =
+      Number(match[6] || 0);
+
+
+    const date =
+      new Date(
+        year,
+        month - 1,
+        day,
+        hour,
+        minute,
+        second
+      );
+
+
+    if(
+      !isNaN(
+        date.getTime()
+      )
+    ){
+
+      return date;
+
+    }
+
+  }
+
+
+  const fallback =
+    new Date(text);
+
+
+  return isNaN(
+    fallback.getTime()
+  )
+    ? null
+    : fallback;
+
+}
+
+
+function startOfDay(date) {
+
+  const d =
+    new Date(date);
+
+  d.setHours(
+    0,
+    0,
+    0,
+    0
+  );
+
+  return d;
+
+}
+
+
+function endOfDay(date) {
+
+  const d =
+    new Date(date);
+
+  d.setHours(
+    23,
+    59,
+    59,
+    999
+  );
+
+  return d;
+
+}
+
+
+function sameDay(a,b){
+
+  return (
+    a.getFullYear() ===
+      b.getFullYear() &&
+
+    a.getMonth() ===
+      b.getMonth() &&
+
+    a.getDate() ===
+      b.getDate()
+  );
+
+}
 
 
 /* =========================================================
@@ -61,6 +236,7 @@ function save() {
   );
 
   renderAll();
+
 }
 
 
@@ -73,18 +249,31 @@ function show(tab) {
   document
     .querySelectorAll(".screen")
     .forEach(screen => {
-      screen.classList.remove("active");
+
+      screen.classList.remove(
+        "active"
+      );
+
     });
+
 
   const screen =
     document.getElementById(tab);
 
-  if (screen) {
-    screen.classList.add("active");
+
+  if(screen){
+
+    screen.classList.add(
+      "active"
+    );
+
   }
 
+
   document
-    .querySelectorAll("nav button[data-tab]")
+    .querySelectorAll(
+      "nav button[data-tab]"
+    )
     .forEach(button => {
 
       button.classList.toggle(
@@ -93,20 +282,29 @@ function show(tab) {
       );
 
     });
+
 }
 
 
 function bindNavigation() {
 
   document
-    .querySelectorAll("nav button[data-tab]")
+    .querySelectorAll(
+      "nav button[data-tab]"
+    )
     .forEach(button => {
 
-      button.onclick = function () {
-        show(this.dataset.tab);
-      };
+      button.onclick =
+        function(){
+
+          show(
+            this.dataset.tab
+          );
+
+        };
 
     });
+
 }
 
 
@@ -114,13 +312,17 @@ function bindNavigation() {
    INVENTARIO
    ========================================================= */
 
-let inventoryCategory = "Todas";
-let inventorySort = "name-asc";
+let inventoryCategory =
+  "Todas";
+
+let inventorySort =
+  "name-asc";
 
 
 function inventoryCategories() {
 
   const base = [
+
     "Peces",
     "Acuarios",
     "Filtros",
@@ -130,43 +332,62 @@ function inventoryCategories() {
     "Alimentos",
     "Accesorios",
     "Otros"
+
   ];
+
 
   const existing =
     db.products
-      .map(p => String(p.category || "").trim())
+      .map(
+        p =>
+          String(
+            p.category || ""
+          ).trim()
+      )
       .filter(Boolean);
+
 
   return [
     ...new Set([
       ...base,
       ...existing
     ])
-  ].sort((a, b) =>
-    a.localeCompare(
-      b,
-      "es",
-      {
-        sensitivity: "base"
-      }
-    )
+  ].sort(
+    (a,b) =>
+      a.localeCompare(
+        b,
+        "es",
+        {
+          sensitivity:
+            "base"
+        }
+      )
   );
+
 }
 
 
-function setInventoryCategory(value) {
+function setInventoryCategory(
+  value
+){
 
-  inventoryCategory = value;
+  inventoryCategory =
+    value;
 
   renderInventory();
+
 }
 
 
-function setInventorySort(value) {
+function setInventorySort(
+  value
+){
 
-  inventorySort = value;
+  inventorySort =
+    value;
 
   renderInventory();
+
 }
 
 
@@ -177,12 +398,21 @@ function setInventorySort(value) {
 function renderAll() {
 
   renderHome();
+
   renderInventory();
+
   renderSales();
+
+  renderCash();
+
   renderCustomers();
+
   renderMoves();
+
   renderOrders();
+
   renderInternal();
+
 }
 
 
@@ -194,35 +424,48 @@ function renderHome() {
 
   const total =
     db.sales.reduce(
-      (sum, sale) =>
-        sum + (+sale.total || 0),
+      (sum,sale) =>
+        sum +
+        (+sale.total || 0),
       0
     );
+
 
   const salesTotal =
     document.getElementById(
       "salesTotal"
     );
 
+
   const salesCount =
     document.getElementById(
       "salesCount"
     );
+
 
   const productCount =
     document.getElementById(
       "productCount"
     );
 
+
   const customerCount =
     document.getElementById(
       "customerCount"
     );
 
+
   const lowStock =
     document.getElementById(
       "lowStock"
     );
+
+
+  const cashBalance =
+    document.getElementById(
+      "cashBalance"
+    );
+
 
   const recentSales =
     document.getElementById(
@@ -230,36 +473,71 @@ function renderHome() {
     );
 
 
-  if (salesTotal)
+  if(salesTotal){
+
     salesTotal.textContent =
       money(total);
 
+  }
 
-  if (salesCount)
+
+  if(salesCount){
+
     salesCount.textContent =
       `${db.sales.length} transacciones`;
 
+  }
 
-  if (productCount)
+
+  if(productCount){
+
     productCount.textContent =
       db.products.length;
 
+  }
 
-  if (customerCount)
+
+  if(customerCount){
+
     customerCount.textContent =
       db.customers.length;
 
+  }
 
-  if (lowStock)
+
+  if(lowStock){
+
     lowStock.textContent =
-      db.products.filter(p =>
-        (+p.stock || 0) <=
-        (+p.min || 0)
+      db.products.filter(
+        p =>
+          (+p.stock || 0) <=
+          (+p.min || 0)
       ).length;
 
+  }
 
-  if (!recentSales)
+
+  if(cashBalance){
+
+    const totalCash =
+      calculateCashTotals(
+        "all"
+      );
+
+
+    cashBalance.textContent =
+      money(
+        totalCash.balance
+      );
+
+  }
+
+
+  if(!recentSales){
+
     return;
+
+  }
 
 
   recentSales.innerHTML =
@@ -268,78 +546,88 @@ function renderHome() {
       ? db.sales
           .slice(-6)
           .reverse()
-          .map(sale => `
+          .map(
+            sale => `
 
-            <div class="item">
+              <div class="item">
 
-              <div>
+                <div>
 
-                <b>
-                  ${esc(
-                    saleLabel(sale)
-                  )}
-                </b>
+                  <b>
+                    ${esc(
+                      saleLabel(sale)
+                    )}
+                  </b>
 
-                <div class="muted">
+                  <div class="muted">
 
-                  ${esc(
-                    sale.client ||
-                    "Sin cliente"
-                  )}
+                    ${esc(
+                      sale.client ||
+                      "Sin cliente"
+                    )}
 
-                  ·
+                    ·
 
-                  ${saleQty(sale)}
-                  und.
+                    ${saleQty(sale)}
+                    und.
 
-                  ·
+                    ·
 
-                  ${esc(
-                    sale.pay || ""
-                  )}
+                    ${esc(
+                      sale.pay || ""
+                    )}
+
+                  </div>
+
+                </div>
+
+                <div class="right">
+
+                  <strong>
+                    ${money(
+                      sale.total
+                    )}
+                  </strong>
+
+                  <small>
+
+                    ${
+                      sale.status ===
+                      "Pendiente"
+
+                        ? "Pendiente de pago"
+
+                        : sale.status ===
+                          "Abono"
+
+                        ? "Abono: " +
+                          money(
+                            salePaid(
+                              sale
+                            )
+                          )
+
+                        : "Pagada"
+                    }
+
+                  </small>
 
                 </div>
 
               </div>
 
-
-              <div class="right">
-
-                <strong>
-                  ${money(sale.total)}
-                </strong>
-
-                <small>
-
-                  ${
-                    sale.status === "Pendiente"
-
-                    ? "Pendiente de pago"
-
-                    : sale.status === "Abono"
-
-                    ? "Abono: " +
-                      money(
-                        salePaid(sale)
-                      )
-
-                    : "Pagada"
-                  }
-
-                </small>
-
-              </div>
-
-            </div>
-
-          `)
+            `
+          )
           .join("")
 
       : `
+
         <div class="empty">
           Todavía no hay ventas.
         </div>
+
       `;
+
 }
 
 
@@ -354,91 +642,106 @@ function renderInventory() {
       "search"
     );
 
+
   const list =
     document.getElementById(
       "inventoryList"
     );
 
-  if (!search || !list)
+
+  if(!search || !list){
+
     return;
+
+  }
 
 
   const q =
-    String(search.value || "")
+    String(
+      search.value || ""
+    )
       .toLowerCase()
       .trim();
 
 
   let rows =
-    db.products.filter(p =>
-
-      `${p.name || ""} ${p.category || ""}`
-        .toLowerCase()
-        .includes(q)
-
+    db.products.filter(
+      p =>
+        `${p.name || ""} ${
+          p.category || ""
+        }`
+          .toLowerCase()
+          .includes(q)
     );
 
 
-  if (
+  if(
     inventoryCategory !==
     "Todas"
-  ) {
+  ){
 
     rows =
-      rows.filter(p =>
-
-        String(
-          p.category || ""
-        )
-          .trim()
-          .toLowerCase() ===
-        inventoryCategory
-          .toLowerCase()
-
+      rows.filter(
+        p =>
+          String(
+            p.category || ""
+          )
+            .trim()
+            .toLowerCase() ===
+          inventoryCategory
+            .toLowerCase()
       );
 
   }
 
 
-  if (
+  if(
     inventorySort ===
     "name-asc"
-  ) {
-
-    rows.sort((a, b) =>
-      String(a.name || "")
-        .localeCompare(
-          String(b.name || ""),
-          "es"
-        )
-    );
-
-  }
-
-
-  if (
-    inventorySort ===
-    "name-desc"
-  ) {
-
-    rows.sort((a, b) =>
-      String(b.name || "")
-        .localeCompare(
-          String(a.name || ""),
-          "es"
-        )
-    );
-
-  }
-
-
-  if (
-    inventorySort ===
-    "stock-desc"
-  ) {
+  ){
 
     rows.sort(
-      (a, b) =>
+      (a,b) =>
+        String(
+          a.name || ""
+        ).localeCompare(
+          String(
+            b.name || ""
+          ),
+          "es"
+        )
+    );
+
+  }
+
+
+  if(
+    inventorySort ===
+    "name-desc"
+  ){
+
+    rows.sort(
+      (a,b) =>
+        String(
+          b.name || ""
+        ).localeCompare(
+          String(
+            a.name || ""
+          ),
+          "es"
+        )
+    );
+
+  }
+
+
+  if(
+    inventorySort ===
+    "stock-desc"
+  ){
+
+    rows.sort(
+      (a,b) =>
         (+b.stock || 0) -
         (+a.stock || 0)
     );
@@ -446,13 +749,13 @@ function renderInventory() {
   }
 
 
-  if (
+  if(
     inventorySort ===
     "stock-asc"
-  ) {
+  ){
 
     rows.sort(
-      (a, b) =>
+      (a,b) =>
         (+a.stock || 0) -
         (+b.stock || 0)
     );
@@ -466,15 +769,17 @@ function renderInventory() {
     );
 
 
-  if (!controls) {
+  if(!controls){
 
     controls =
       document.createElement(
         "div"
       );
 
+
     controls.id =
       "inventoryControls";
+
 
     search.insertAdjacentElement(
       "afterend",
@@ -504,21 +809,27 @@ function renderInventory() {
 
         ${
           inventoryCategories()
-            .map(category => `
+            .map(
+              category => `
 
-              <option
-                value="${esc(category)}"
-                ${
-                  category.toLowerCase() ===
-                  inventoryCategory.toLowerCase()
-                    ? "selected"
-                    : ""
-                }
-              >
-                ${esc(category)}
-              </option>
+                <option
+                  value="${esc(
+                    category
+                  )}"
+                  ${
+                    category.toLowerCase() ===
+                    inventoryCategory.toLowerCase()
+                      ? "selected"
+                      : ""
+                  }
+                >
+                  ${esc(
+                    category
+                  )}
+                </option>
 
-            `)
+              `
+            )
             .join("")
         }
 
@@ -597,106 +908,134 @@ function renderInventory() {
   `;
 
 
-  document
-    .getElementById(
+  const categorySelect =
+    document.getElementById(
       "inventoryCategory"
-    )
-    .onchange = function () {
-
-      setInventoryCategory(
-        this.value
-      );
-
-    };
+    );
 
 
-  document
-    .getElementById(
+  if(categorySelect){
+
+    categorySelect.onchange =
+      function(){
+
+        setInventoryCategory(
+          this.value
+        );
+
+      };
+
+  }
+
+
+  const sortSelect =
+    document.getElementById(
       "inventorySort"
-    )
-    .onchange = function () {
+    );
 
-      setInventorySort(
-        this.value
-      );
 
-    };
+  if(sortSelect){
+
+    sortSelect.onchange =
+      function(){
+
+        setInventorySort(
+          this.value
+        );
+
+      };
+
+  }
 
 
   list.innerHTML =
     rows.length
 
       ? rows
-          .map(product => `
+          .map(
+            product => `
 
-            <div
-              class="item clickable"
-              onclick="editProduct(
-                ${db.products.indexOf(product)}
-              )"
-            >
-
-              <div>
-
-                <b>
-                  ${esc(product.name)}
-                </b>
-
-                <div class="muted">
-                  ${esc(
-                    product.category ||
-                    "Sin categoría"
+              <div
+                class="item clickable"
+                onclick="editProduct(
+                  ${db.products.indexOf(
+                    product
                   )}
+                )"
+              >
+
+                <div>
+
+                  <b>
+                    ${esc(
+                      product.name
+                    )}
+                  </b>
+
+                  <div class="muted">
+
+                    ${esc(
+                      product.category ||
+                      "Sin categoría"
+                    )}
+
+                  </div>
+
+                  <div class="muted">
+
+                    Costo
+                    ${money(
+                      product.cost
+                    )}
+
+                    ·
+
+                    Venta
+                    ${money(
+                      product.price
+                    )}
+
+                    ·
+
+                    Ganancia/u
+                    ${money(
+                      (+product.price || 0) -
+                      (+product.cost || 0)
+                    )}
+
+                  </div>
+
                 </div>
 
-                <div class="muted">
+                <span
+                  class="badge ${
+                    (+product.stock || 0) <=
+                    (+product.min || 0)
+                      ? "low"
+                      : ""
+                  }"
+                >
 
-                  Costo
-                  ${money(product.cost)}
+                  Stock:
+                  ${product.stock}
 
-                  ·
-
-                  Venta
-                  ${money(product.price)}
-
-                  ·
-
-                  Ganancia/u
-                  ${money(
-                    (+product.price || 0) -
-                    (+product.cost || 0)
-                  )}
-
-                </div>
+                </span>
 
               </div>
 
-
-              <span
-                class="badge ${
-                  (+product.stock || 0) <=
-                  (+product.min || 0)
-                    ? "low"
-                    : ""
-                }"
-              >
-
-                Stock:
-                ${product.stock}
-
-              </span>
-
-            </div>
-
-          `)
+            `
+          )
           .join("")
 
       : `
+
         <div class="empty">
           No hay productos
           con estos filtros.
         </div>
+
       `;
+
 }
 
 
@@ -710,13 +1049,15 @@ function saleLabel(sale) {
     sale.items.length
 
     ? sale.items
-        .map(item =>
-          item.product
+        .map(
+          item =>
+            item.product
         )
         .join(", ")
 
     : sale.product ||
       "Venta";
+
 }
 
 
@@ -726,26 +1067,28 @@ function saleQty(sale) {
     sale.items.length
 
     ? sale.items.reduce(
-        (total, item) =>
+        (total,item) =>
           total +
           (+item.qty || 0),
         0
       )
 
     : (+sale.qty || 0);
+
 }
 
 
 function salePaid(sale) {
 
-  if (
+  if(
     sale.paid ===
     undefined
-  ) {
+  ){
 
     return +sale.total || 0;
 
   }
+
 
   return Math.max(
     0,
@@ -754,6 +1097,7 @@ function salePaid(sale) {
       +sale.total || 0
     )
   );
+
 }
 
 
@@ -764,13 +1108,10 @@ function salePaid(sale) {
 function dateKey(value) {
 
   const date =
-    new Date(value);
+    parseLocalDate(value);
 
-  if (
-    !Number.isNaN(
-      date.getTime()
-    )
-  ) {
+
+  if(date){
 
     return date.toLocaleDateString(
       "es-CO"
@@ -778,26 +1119,31 @@ function dateKey(value) {
 
   }
 
+
   return "Sin fecha";
+
 }
 
 
 function dateLabel(key) {
 
-  if (
+  if(
     key ===
     "Sin fecha"
-  )
+  ){
+
     return key;
+
+  }
 
 
   const parts =
     key.split("/");
 
 
-  if (
+  if(
     parts.length === 3
-  ) {
+  ){
 
     const day =
       +parts[0];
@@ -816,10 +1162,14 @@ function dateLabel(key) {
     ).toLocaleDateString(
       "es-CO",
       {
-        weekday: "long",
-        day: "numeric",
-        month: "long",
-        year: "numeric"
+        weekday:
+          "long",
+        day:
+          "numeric",
+        month:
+          "long",
+        year:
+          "numeric"
       }
     );
 
@@ -827,6 +1177,7 @@ function dateLabel(key) {
 
 
   return key;
+
 }
 
 
@@ -837,19 +1188,26 @@ function renderSales() {
       "salesList"
     );
 
-  if (!list)
+
+  if(!list){
+
     return;
 
+  }
 
-  if (!db.sales.length) {
+
+  if(!db.sales.length){
 
     list.innerHTML = `
+
       <div class="empty">
         No hay ventas registradas.
       </div>
+
     `;
 
     return;
+
   }
 
 
@@ -864,8 +1222,13 @@ function renderSales() {
           sale.date
         );
 
-      if (!groups[key])
+
+      if(!groups[key]){
+
         groups[key] = [];
+
+      }
+
 
       groups[key].push(
         sale
@@ -877,208 +1240,218 @@ function renderSales() {
 
   const keys =
     Object.keys(groups)
-      .sort((a, b) =>
-        b.localeCompare(a)
+      .sort(
+        (a,b) =>
+          b.localeCompare(a)
       );
 
 
   list.innerHTML =
-    keys.map(
-      (key, groupIndex) => {
+    keys
+      .map(
+        (key,groupIndex) => {
 
-        const sales =
-          groups[key]
-            .slice()
-            .reverse();
-
-
-        const total =
-          sales.reduce(
-            (sum, sale) =>
-              sum +
-              (+sale.total || 0),
-            0
-          );
+          const sales =
+            groups[key]
+              .slice()
+              .reverse();
 
 
-        return `
+          const total =
+            sales.reduce(
+              (sum,sale) =>
+                sum +
+                (+sale.total || 0),
+              0
+            );
 
-          <div class="date-group">
 
-            <button
-              class="date-group-head"
-              type="button"
-              onclick="toggleDateGroup(this)"
-            >
+          return `
 
-              <span>
+            <div class="date-group">
 
-                <b>
-                  ${esc(
-                    dateLabel(key)
-                  )}
-                </b>
+              <button
+                class="date-group-head"
+                type="button"
+                onclick="toggleDateGroup(this)"
+              >
 
-                <small>
+                <span>
 
-                  ${sales.length}
+                  <b>
+                    ${esc(
+                      dateLabel(key)
+                    )}
+                  </b>
+
+                  <small>
+
+                    ${sales.length}
+
+                    ${
+                      sales.length === 1
+                        ? "venta"
+                        : "ventas"
+                    }
+
+                    ·
+
+                    ${money(total)}
+
+                  </small>
+
+                </span>
+
+
+                <span
+                  class="date-chevron"
+                >
 
                   ${
-                    sales.length === 1
-                      ? "venta"
-                      : "ventas"
+                    groupIndex === 0
+                      ? "▲"
+                      : "▼"
                   }
 
-                  ·
+                </span>
 
-                  ${money(total)}
-
-                </small>
-
-              </span>
+              </button>
 
 
-              <span
-                class="date-chevron"
+              <div
+                class="
+                  date-group-body
+                  ${
+                    groupIndex === 0
+                      ? "open"
+                      : ""
+                  }
+                "
               >
+
                 ${
-                  groupIndex === 0
-                    ? "▲"
-                    : "▼"
-                }
-              </span>
+                  sales
+                    .map(
+                      sale => `
 
-            </button>
+                        <div class="item">
 
+                          <div>
 
-            <div
-              class="
-                date-group-body
-                ${
-                  groupIndex === 0
-                    ? "open"
-                    : ""
-                }
-              "
-            >
-
-              ${
-                sales.map(
-                  sale => `
-
-                    <div class="item">
-
-                      <div>
-
-                        <b>
-                          ${esc(
-                            sale.client ||
-                            "Sin cliente"
-                          )}
-                        </b>
+                            <b>
+                              ${esc(
+                                sale.client ||
+                                "Sin cliente"
+                              )}
+                            </b>
 
 
-                        <div class="muted">
+                            <div class="muted">
 
-                          ${
-                            sale.items &&
-                            sale.items.length
+                              ${
+                                sale.items &&
+                                sale.items.length
 
-                              ? sale.items
-                                  .map(
-                                    item =>
-                                      `${esc(
-                                        item.product
-                                      )} × ${
-                                        item.qty
-                                      }`
-                                  )
-                                  .join(" · ")
+                                  ? sale.items
+                                      .map(
+                                        item =>
+                                          `${esc(
+                                            item.product
+                                          )} × ${
+                                            item.qty
+                                          }`
+                                      )
+                                      .join(
+                                        " · "
+                                      )
 
-                              : `${esc(
-                                  sale.product ||
-                                  "Producto"
-                                )} × ${
-                                  sale.qty || 0
-                                }`
-                          }
+                                  : `${esc(
+                                      sale.product ||
+                                      "Producto"
+                                    )} × ${
+                                      sale.qty || 0
+                                    }`
+                              }
+
+                            </div>
+
+
+                            <div class="muted">
+
+                              ${esc(
+                                sale.date ||
+                                ""
+                              )}
+
+                              ·
+
+                              ${esc(
+                                sale.pay ||
+                                ""
+                              )}
+
+                              ·
+
+                              ${esc(
+                                sale.status ||
+                                "Pagada"
+                              )}
+
+                            </div>
+
+                          </div>
+
+
+                          <div class="right">
+
+                            <b>
+                              ${money(
+                                sale.total
+                              )}
+                            </b>
+
+                            <small>
+
+                              ${
+                                sale.status ===
+                                "Pendiente"
+
+                                  ? "Pendiente"
+
+                                  : sale.status ===
+                                    "Abono"
+
+                                  ? "Abono " +
+                                    money(
+                                      salePaid(
+                                        sale
+                                      )
+                                    )
+
+                                  : "Pagada"
+                              }
+
+                            </small>
+
+                          </div>
 
                         </div>
 
+                      `
+                    )
+                    .join("")
+                }
 
-                        <div class="muted">
-
-                          ${esc(
-                            sale.date ||
-                            ""
-                          )}
-
-                          ·
-
-                          ${esc(
-                            sale.pay ||
-                            ""
-                          )}
-
-                          ·
-
-                          ${esc(
-                            sale.status ||
-                            "Pagada"
-                          )}
-
-                        </div>
-
-                      </div>
-
-
-                      <div class="right">
-
-                        <b>
-                          ${money(
-                            sale.total
-                          )}
-                        </b>
-
-                        <small>
-
-                          ${
-                            sale.status ===
-                            "Pendiente"
-
-                              ? "Pendiente"
-
-                              : sale.status ===
-                                "Abono"
-
-                              ? "Abono " +
-                                money(
-                                  salePaid(
-                                    sale
-                                  )
-                                )
-
-                              : "Pagada"
-                          }
-
-                        </small>
-
-                      </div>
-
-                    </div>
-
-                  `
-                ).join("")
-              }
+              </div>
 
             </div>
 
-          </div>
+          `;
 
-        `;
+        }
+      )
+      .join("");
 
-      }
-    ).join("");
 }
 
 
@@ -1087,8 +1460,12 @@ function toggleDateGroup(button) {
   const body =
     button.nextElementSibling;
 
-  if (!body)
+
+  if(!body){
+
     return;
+
+  }
 
 
   const open =
@@ -1103,7 +1480,7 @@ function toggleDateGroup(button) {
     );
 
 
-  if (arrow) {
+  if(arrow){
 
     arrow.textContent =
       open
@@ -1111,6 +1488,7 @@ function toggleDateGroup(button) {
         : "▼";
 
   }
+
 }
 
 
@@ -1123,13 +1501,14 @@ function customerStats(name) {
   const sales =
     db.sales.filter(
       sale =>
-        sale.client === name
+        sale.client ===
+        name
     );
 
 
   const bought =
     sales.reduce(
-      (sum, sale) =>
+      (sum,sale) =>
         sum +
         (+sale.total || 0),
       0
@@ -1138,7 +1517,7 @@ function customerStats(name) {
 
   const paid =
     sales.reduce(
-      (sum, sale) =>
+      (sum,sale) =>
         sum +
         salePaid(sale),
       0
@@ -1160,6 +1539,7 @@ function customerStats(name) {
       )
 
   };
+
 }
 
 
@@ -1170,13 +1550,21 @@ function renderCustomers() {
       "customerSearch"
     );
 
+
   const list =
     document.getElementById(
       "customersList"
     );
 
-  if (!search || !list)
+
+  if(
+    !search ||
+    !list
+  ){
+
     return;
+
+  }
 
 
   const q =
@@ -1189,17 +1577,22 @@ function renderCustomers() {
 
   const rows =
     db.customers
-      .filter(customer =>
-        `${customer.name || ""} ${
-          customer.phone || ""
-        }`
-          .toLowerCase()
-          .includes(q)
+      .filter(
+        customer =>
+          `${customer.name || ""} ${
+            customer.phone || ""
+          }`
+            .toLowerCase()
+            .includes(q)
       )
-      .sort((a, b) =>
-        String(a.name || "")
-          .localeCompare(
-            String(b.name || ""),
+      .sort(
+        (a,b) =>
+          String(
+            a.name || ""
+          ).localeCompare(
+            String(
+              b.name || ""
+            ),
             "es"
           )
       );
@@ -1208,116 +1601,130 @@ function renderCustomers() {
   list.innerHTML =
     rows.length
 
-      ? rows.map(customer => {
+      ? rows
+          .map(
+            customer => {
 
-          const index =
-            db.customers.indexOf(
-              customer
-            );
-
-          const stats =
-            customerStats(
-              customer.name
-            );
+              const index =
+                db.customers.indexOf(
+                  customer
+                );
 
 
-          return `
+              const stats =
+                customerStats(
+                  customer.name
+                );
 
-            <div
-              class="item clickable"
-              onclick="editCustomer(
-                ${index}
-              )"
-            >
 
-              <div>
+              return `
 
-                <b>
-                  ${esc(
-                    customer.name
-                  )}
-                </b>
+                <div
+                  class="item clickable"
+                  onclick="editCustomer(
+                    ${index}
+                  )"
+                >
 
-                <div class="muted">
-                  ${esc(
-                    customer.phone ||
-                    "Sin teléfono"
-                  )}
+                  <div>
+
+                    <b>
+                      ${esc(
+                        customer.name
+                      )}
+                    </b>
+
+                    <div class="muted">
+
+                      ${esc(
+                        customer.phone ||
+                        "Sin teléfono"
+                      )}
+
+                    </div>
+
+                    <div class="muted">
+
+                      Comprado
+                      ${money(
+                        stats.bought
+                      )}
+
+                      ·
+
+                      Pagado
+                      ${money(
+                        stats.paid
+                      )}
+
+                      ·
+
+                      Saldo
+                      ${money(
+                        stats.balance
+                      )}
+
+                    </div>
+
+                    ${
+                      customer.note
+                        ? `
+
+                          <div class="muted">
+
+                            Nota:
+                            ${esc(
+                              customer.note
+                            )}
+
+                          </div>
+
+                        `
+                        : ""
+                    }
+
+                  </div>
+
+
+                  <span
+                    class="badge ${
+                      stats.balance > 0
+                        ? "low"
+                        : ""
+                    }"
+                  >
+
+                    ${
+                      stats.sales.length
+                    }
+
+                    ${
+                      stats.sales.length === 1
+                        ? "venta"
+                        : "ventas"
+                    }
+
+                  </span>
+
                 </div>
 
-                <div class="muted">
+              `;
 
-                  Comprado
-                  ${money(
-                    stats.bought
-                  )}
-
-                  ·
-
-                  Pagado
-                  ${money(
-                    stats.paid
-                  )}
-
-                  ·
-
-                  Saldo
-                  ${money(
-                    stats.balance
-                  )}
-
-                </div>
-
-                ${
-                  customer.note
-
-                    ? `
-                      <div class="muted">
-                        Nota:
-                        ${esc(
-                          customer.note
-                        )}
-                      </div>
-                    `
-
-                    : ""
-                }
-
-              </div>
-
-
-              <span
-                class="badge ${
-                  stats.balance > 0
-                    ? "low"
-                    : ""
-                }"
-              >
-
-                ${
-                  stats.sales.length
-                }
-
-                ${
-                  stats.sales.length === 1
-                    ? "venta"
-                    : "ventas"
-                }
-
-              </span>
-
-            </div>
-
-          `;
-
-        }).join("")
+            }
+          )
+          .join("")
 
       : `
+
         <div class="empty">
+
           No hay clientes.
           Agrega el primero.
+
         </div>
+
       `;
+
 }
 
 
@@ -1332,8 +1739,12 @@ function renderMoves() {
       "movesList"
     );
 
-  if (!list)
+
+  if(!list){
+
     return;
+
+  }
 
 
   list.innerHTML =
@@ -1342,64 +1753,68 @@ function renderMoves() {
       ? db.moves
           .slice()
           .reverse()
-          .map(move => `
+          .map(
+            move => `
 
-            <div class="item">
+              <div class="item">
 
-              <div>
+                <div>
 
-                <b>
-                  ${esc(
-                    move.product
-                  )}
-                </b>
+                  <b>
+                    ${esc(
+                      move.product
+                    )}
+                  </b>
 
-                <div class="muted">
+                  <div class="muted">
 
-                  ${esc(
-                    move.reason ||
-                    ""
-                  )}
+                    ${esc(
+                      move.reason ||
+                      ""
+                    )}
 
-                  ·
+                    ·
 
-                  ${esc(
-                    move.responsible ||
-                    ""
-                  )}
+                    ${esc(
+                      move.responsible ||
+                      ""
+                    )}
 
-                  ·
+                    ·
 
-                  ${esc(
-                    move.date ||
-                    ""
-                  )}
+                    ${esc(
+                      move.date ||
+                      ""
+                    )}
+
+                  </div>
 
                 </div>
 
+                <span class="badge">
+
+                  ${esc(
+                    move.type
+                  )}
+
+                  ${move.qty}
+
+                </span>
+
               </div>
 
-
-              <span class="badge">
-
-                ${esc(
-                  move.type
-                )}
-
-                ${move.qty}
-
-              </span>
-
-            </div>
-
-          `)
+            `
+          )
           .join("")
 
       : `
+
         <div class="empty">
           No hay movimientos.
         </div>
+
       `;
+
 }
 
 
@@ -1414,8 +1829,12 @@ function renderOrders() {
       "ordersList"
     );
 
-  if (!list)
+
+  if(!list){
+
     return;
+
+  }
 
 
   const rows =
@@ -1428,7 +1847,10 @@ function renderOrders() {
     rows.length
 
       ? rows.map(
-          (order, reverseIndex) => {
+          (
+            order,
+            reverseIndex
+          ) => {
 
             const index =
               db.orders.length -
@@ -1443,11 +1865,14 @@ function renderOrders() {
                 <div>
 
                   <b>
+
                     ${esc(
                       order.product ||
                       "Encargo"
                     )}
+
                   </b>
+
 
                   <div class="muted">
 
@@ -1521,17 +1946,23 @@ function renderOrders() {
         ).join("")
 
       : `
+
         <div class="empty">
           No hay encargos pendientes.
         </div>
+
       `;
+
 }
 
 
 function toggleOrder(index) {
 
-  if (!db.orders[index])
+  if(!db.orders[index]){
+
     return;
+
+  }
 
 
   db.orders[index].status =
@@ -1544,6 +1975,7 @@ function toggleOrder(index) {
 
 
   save();
+
 }
 
 
@@ -1556,6 +1988,7 @@ function getModal() {
   return document.getElementById(
     "modal"
   );
+
 }
 
 
@@ -1568,10 +2001,12 @@ function modal(
   const modalElement =
     getModal();
 
+
   const titleElement =
     document.getElementById(
       "modalTitle"
     );
+
 
   const formElement =
     document.getElementById(
@@ -1579,11 +2014,11 @@ function modal(
     );
 
 
-  if (
+  if(
     !modalElement ||
     !titleElement ||
     !formElement
-  ) {
+  ){
 
     console.error(
       "No se encontró el modal."
@@ -1614,6 +2049,7 @@ function modal(
       ? submitHandler
 
       : null;
+
 }
 
 
@@ -1622,13 +2058,15 @@ function closeModal() {
   const modalElement =
     getModal();
 
-  if (modalElement) {
+
+  if(modalElement){
 
     modalElement.classList.add(
       "hidden"
     );
 
   }
+
 }
 
 
@@ -1644,19 +2082,30 @@ function openProduct(
     index === null
 
       ? {
+
           name: "",
-          category: "Peces",
+
+          category:
+            "Peces",
+
           cost: 0,
+
           price: 0,
+
           stock: 0,
+
           min: 1
+
         }
 
       : db.products[index];
 
 
-  if (!product)
+  if(!product){
+
     return;
+
+  }
 
 
   modal(
@@ -1664,6 +2113,7 @@ function openProduct(
     index === null
       ? "Nuevo producto"
       : "Editar producto",
+
 
     `
 
@@ -1821,6 +2271,7 @@ function openProduct(
           index !== null
 
             ? `
+
               <button
                 type="button"
                 onclick="deleteProduct(
@@ -1829,6 +2280,7 @@ function openProduct(
               >
                 🗑️ Eliminar
               </button>
+
             `
 
             : ""
@@ -1837,6 +2289,7 @@ function openProduct(
       </div>
 
     `,
+
 
     event => {
 
@@ -1876,7 +2329,7 @@ function openProduct(
       };
 
 
-      if (!item.name) {
+      if(!item.name){
 
         alert(
           "Escribe el nombre del producto."
@@ -1887,13 +2340,13 @@ function openProduct(
       }
 
 
-      if (index === null) {
+      if(index === null){
 
         db.products.push(
           item
         );
 
-      } else {
+      }else{
 
         db.products[index] =
           item;
@@ -1908,6 +2361,7 @@ function openProduct(
     }
 
   );
+
 }
 
 
@@ -1920,16 +2374,22 @@ function editProduct(index) {
 
 function deleteProduct(index) {
 
-  if (!db.products[index])
+  if(!db.products[index]){
+
     return;
 
+  }
 
-  if (
+
+  if(
     !confirm(
       `¿Eliminar "${db.products[index].name}"?`
     )
-  )
+  ){
+
     return;
+
+  }
 
 
   db.products.splice(
@@ -1941,6 +2401,7 @@ function deleteProduct(index) {
   save();
 
   closeModal();
+
 }
 
 
@@ -1955,8 +2416,12 @@ function addSaleRow() {
       "saleRows"
     );
 
-  if (!container)
+
+  if(!container){
+
     return;
+
+  }
 
 
   const row =
@@ -1991,7 +2456,10 @@ function addSaleRow() {
       ${
         db.products
           .map(
-            (product, index) => `
+            (
+              product,
+              index
+            ) => `
 
               <option
                 value="${index}"
@@ -2002,6 +2470,7 @@ function addSaleRow() {
                 )}
 
                 —
+
                 stock
                 ${product.stock}
 
@@ -2052,7 +2521,7 @@ function addSaleRow() {
   row.querySelector(
     "button"
   ).onclick =
-    function () {
+    function(){
 
       row.remove();
 
@@ -2062,6 +2531,7 @@ function addSaleRow() {
 
 
   updateSalePreview();
+
 }
 
 
@@ -2080,50 +2550,52 @@ function updateSalePreview() {
   let profit = 0;
 
 
-  rows.forEach(row => {
+  rows.forEach(
+    row => {
 
-    const productIndex =
-      row.querySelector(
-        ".sale-product"
-      )?.value;
-
-
-    const quantity =
-      +(
+      const productIndex =
         row.querySelector(
-          ".sale-qty"
-        )?.value || 0
-      );
+          ".sale-product"
+        )?.value;
 
 
-    const product =
-      productIndex !== ""
-        ? db.products[
-            +productIndex
-          ]
-        : null;
+      const quantity =
+        +(
+          row.querySelector(
+            ".sale-qty"
+          )?.value || 0
+        );
 
 
-    if (
-      product &&
-      quantity > 0
-    ) {
-
-      total +=
-        (+product.price || 0) *
-        quantity;
+      const product =
+        productIndex !== ""
+          ? db.products[
+              +productIndex
+            ]
+          : null;
 
 
-      profit +=
-        (
-          (+product.price || 0) -
-          (+product.cost || 0)
-        ) *
-        quantity;
+      if(
+        product &&
+        quantity > 0
+      ){
+
+        total +=
+          (+product.price || 0) *
+          quantity;
+
+
+        profit +=
+          (
+            (+product.price || 0) -
+            (+product.cost || 0)
+          ) *
+          quantity;
+
+      }
 
     }
-
-  });
+  );
 
 
   const totalElement =
@@ -2138,20 +2610,30 @@ function updateSalePreview() {
     );
 
 
-  if (totalElement)
+  if(totalElement){
+
     totalElement.textContent =
       money(total);
 
+  }
 
-  if (profitElement)
+
+  if(profitElement){
+
     profitElement.textContent =
       money(profit);
 
+  }
+
 
   return {
+
     total,
+
     profit
+
   };
+
 }
 
 
@@ -2160,6 +2642,7 @@ function openSale() {
   modal(
 
     "Nueva venta",
+
 
     `
 
@@ -2207,9 +2690,7 @@ function openSale() {
         type="button"
         onclick="addSaleRow()"
       >
-
         ➕ Agregar producto
-
       </button>
 
 
@@ -2222,7 +2703,9 @@ function openSale() {
 
           Total:
 
-          <span id="saleTotalPreview">
+          <span
+            id="saleTotalPreview"
+          >
             ${money(0)}
           </span>
 
@@ -2344,6 +2827,7 @@ function openSale() {
 
     `,
 
+
     event => {
 
       event.preventDefault();
@@ -2356,12 +2840,12 @@ function openSale() {
       const items = [];
 
 
-      for (
+      for(
         const row of
         form.querySelectorAll(
           ".sale-row"
         )
-      ) {
+      ){
 
         const productIndex =
           row.querySelector(
@@ -2377,11 +2861,14 @@ function openSale() {
           );
 
 
-        if (
+        if(
           productIndex === "" ||
           quantity <= 0
-        )
+        ){
+
           continue;
+
+        }
 
 
         const product =
@@ -2390,14 +2877,17 @@ function openSale() {
           ];
 
 
-        if (!product)
+        if(!product){
+
           continue;
 
+        }
 
-        if (
+
+        if(
           (+product.stock || 0) <
           quantity
-        ) {
+        ){
 
           alert(
             `No hay suficiente stock de "${product.name}".`
@@ -2430,7 +2920,7 @@ function openSale() {
       }
 
 
-      if (!items.length) {
+      if(!items.length){
 
         alert(
           "Agrega al menos un producto."
@@ -2443,7 +2933,7 @@ function openSale() {
 
       const total =
         items.reduce(
-          (sum, item) =>
+          (sum,item) =>
             sum +
             item.price *
             item.qty,
@@ -2459,18 +2949,26 @@ function openSale() {
         form.status.value;
 
 
-      if (
+      if(
         status ===
         "Pagada"
-      )
-        paid = total;
+      ){
+
+        paid =
+          total;
+
+      }
 
 
-      if (
+      if(
         status ===
         "Pendiente"
-      )
-        paid = 0;
+      ){
+
+        paid =
+          0;
+
+      }
 
 
       paid =
@@ -2524,7 +3022,7 @@ function openSale() {
 
         profit:
           items.reduce(
-            (sum, item) =>
+            (sum,item) =>
               sum +
               (
                 item.price -
@@ -2547,6 +3045,7 @@ function openSale() {
 
 
   addSaleRow();
+
 }
 
 
@@ -2562,16 +3061,23 @@ function openCustomer(
     index === null
 
       ? {
+
           name: "",
+
           phone: "",
+
           note: ""
+
         }
 
       : db.customers[index];
 
 
-  if (!customer)
+  if(!customer){
+
     return;
+
+  }
 
 
   modal(
@@ -2579,6 +3085,7 @@ function openCustomer(
     index === null
       ? "Nuevo cliente"
       : "Editar cliente",
+
 
     `
 
@@ -2654,6 +3161,7 @@ function openCustomer(
           index !== null
 
             ? `
+
               <button
                 type="button"
                 onclick="deleteCustomer(
@@ -2662,6 +3170,7 @@ function openCustomer(
               >
                 🗑️ Eliminar
               </button>
+
             `
 
             : ""
@@ -2670,6 +3179,7 @@ function openCustomer(
       </div>
 
     `,
+
 
     event => {
 
@@ -2694,7 +3204,7 @@ function openCustomer(
       };
 
 
-      if (!item.name) {
+      if(!item.name){
 
         alert(
           "Escribe el nombre del cliente."
@@ -2705,13 +3215,13 @@ function openCustomer(
       }
 
 
-      if (index === null) {
+      if(index === null){
 
         db.customers.push(
           item
         );
 
-      } else {
+      }else{
 
         db.customers[index] =
           item;
@@ -2726,28 +3236,35 @@ function openCustomer(
     }
 
   );
+
 }
 
 
-function editCustomer(index) {
+function editCustomer(index){
 
   openCustomer(index);
 
 }
 
 
-function deleteCustomer(index) {
+function deleteCustomer(index){
 
-  if (!db.customers[index])
+  if(!db.customers[index]){
+
     return;
 
+  }
 
-  if (
+
+  if(
     !confirm(
       `¿Eliminar al cliente "${db.customers[index].name}"?`
     )
-  )
+  ){
+
     return;
+
+  }
 
 
   db.customers.splice(
@@ -2759,6 +3276,7 @@ function deleteCustomer(index) {
   save();
 
   closeModal();
+
 }
 
 
@@ -2774,18 +3292,28 @@ function openOrder(
     index === null
 
       ? {
+
           product: "",
+
           client: "",
+
           qty: 1,
+
           note: "",
-          status: "Pendiente"
+
+          status:
+            "Pendiente"
+
         }
 
       : db.orders[index];
 
 
-  if (!order)
+  if(!order){
+
     return;
+
+  }
 
 
   modal(
@@ -2793,6 +3321,7 @@ function openOrder(
     index === null
       ? "Nuevo encargo"
       : "Editar encargo",
+
 
     `
 
@@ -2917,6 +3446,7 @@ function openOrder(
           index !== null
 
             ? `
+
               <button
                 type="button"
                 onclick="deleteOrder(
@@ -2925,6 +3455,7 @@ function openOrder(
               >
                 🗑️ Eliminar
               </button>
+
             `
 
             : ""
@@ -2933,6 +3464,7 @@ function openOrder(
       </div>
 
     `,
+
 
     event => {
 
@@ -2965,7 +3497,9 @@ function openOrder(
 
         date:
           index === null
+
             ? now()
+
             : (
                 db.orders[index].date ||
                 now()
@@ -2974,7 +3508,7 @@ function openOrder(
       };
 
 
-      if (!item.product) {
+      if(!item.product){
 
         alert(
           "Escribe el producto o encargo."
@@ -2985,13 +3519,13 @@ function openOrder(
       }
 
 
-      if (index === null) {
+      if(index === null){
 
         db.orders.push(
           item
         );
 
-      } else {
+      }else{
 
         db.orders[index] =
           {
@@ -3009,28 +3543,35 @@ function openOrder(
     }
 
   );
+
 }
 
 
-function editOrder(index) {
+function editOrder(index){
 
   openOrder(index);
 
 }
 
 
-function deleteOrder(index) {
+function deleteOrder(index){
 
-  if (!db.orders[index])
+  if(!db.orders[index]){
+
     return;
 
+  }
 
-  if (
+
+  if(
     !confirm(
       "¿Eliminar este encargo?"
     )
-  )
+  ){
+
     return;
+
+  }
 
 
   db.orders.splice(
@@ -3042,6 +3583,7 @@ function deleteOrder(index) {
   save();
 
   closeModal();
+
 }
 
 
@@ -3054,6 +3596,7 @@ function openMove() {
   modal(
 
     "Nuevo movimiento",
+
 
     `
 
@@ -3070,7 +3613,10 @@ function openMove() {
           ${
             db.products
               .map(
-                (product, index) => `
+                (
+                  product,
+                  index
+                ) => `
 
                   <option
                     value="${index}"
@@ -3081,6 +3627,7 @@ function openMove() {
                     )}
 
                     —
+
                     stock
                     ${product.stock}
 
@@ -3180,6 +3727,7 @@ function openMove() {
 
     `,
 
+
     event => {
 
       event.preventDefault();
@@ -3200,9 +3748,9 @@ function openMove() {
         );
 
 
-      if (
+      if(
         productIndex === ""
-      ) {
+      ){
 
         alert(
           "Selecciona un producto."
@@ -3219,25 +3767,29 @@ function openMove() {
         ];
 
 
-      if (!product)
+      if(!product){
+
         return;
 
+      }
 
-      if (
+
+      if(
         form.type.value ===
         "Entrada"
-      ) {
+      ){
 
         product.stock =
           (+product.stock || 0) +
           quantity;
 
-      } else {
 
-        if (
+      }else{
+
+        if(
           (+product.stock || 0) <
           quantity
-        ) {
+        ){
 
           alert(
             `No hay suficiente stock de "${product.name}".`
@@ -3285,6 +3837,1364 @@ function openMove() {
     }
 
   );
+
+}
+
+
+/* =========================================================
+   CAJA
+   ========================================================= */
+
+
+/*
+   Periodo seleccionado.
+*/
+
+let cashPeriod =
+  "today";
+
+
+/*
+   Normaliza el método de pago.
+*/
+
+function normalizePaymentMethod(
+  method
+){
+
+  const value =
+    String(
+      method || ""
+    )
+      .trim()
+      .toLowerCase();
+
+
+  if(
+    value ===
+    "efectivo"
+  ){
+
+    return "Efectivo";
+
+  }
+
+
+  if(
+    value ===
+    "nequi"
+  ){
+
+    return "Nequi";
+
+  }
+
+
+  if(
+    value ===
+    "transferencia" ||
+    value ===
+    "transferencias"
+  ){
+
+    return "Transferencia";
+
+  }
+
+
+  if(
+    value ===
+    "daviplata"
+  ){
+
+    return "Daviplata";
+
+  }
+
+
+  if(
+    value ===
+    "tarjeta"
+  ){
+
+    return "Tarjeta";
+
+  }
+
+
+  return "Otro";
+
+}
+
+
+/*
+   Convierte las ventas en movimientos virtuales
+   de caja.
+
+   NO se guardan nuevamente en db.cash.
+   Esto evita duplicar el dinero.
+*/
+
+function getSaleCashEntries(){
+
+  return db.sales
+    .map(
+      (
+        sale,
+        index
+      ) => {
+
+        const amount =
+          salePaid(sale);
+
+
+        if(amount <= 0){
+
+          return null;
+
+        }
+
+
+        return {
+
+          id:
+            `sale-${index}`,
+
+          date:
+            sale.date,
+
+          type:
+            "Entrada",
+
+          amount,
+
+          method:
+            normalizePaymentMethod(
+              sale.pay
+            ),
+
+          concept:
+            `Venta: ${saleLabel(
+              sale
+            )}`,
+
+          source:
+            "Venta",
+
+          saleIndex:
+            index
+
+        };
+
+      }
+    )
+    .filter(Boolean);
+
+}
+
+
+/*
+   Movimientos manuales de caja.
+*/
+
+function getManualCashEntries(){
+
+  return db.cash.map(
+    (
+      entry,
+      index
+    ) => ({
+
+      ...entry,
+
+      index,
+
+      amount:
+        Math.abs(
+          +entry.amount || 0
+        ),
+
+      method:
+        normalizePaymentMethod(
+          entry.method
+        ),
+
+      source:
+        "Manual"
+
+    })
+  );
+
+}
+
+
+/*
+   Todos los movimientos.
+*/
+
+function getAllCashEntries(){
+
+  return [
+
+    ...getSaleCashEntries(),
+
+    ...getManualCashEntries()
+
+  ];
+
+}
+
+
+/*
+   Rango de fechas.
+*/
+
+function getCashRange(
+  period
+){
+
+  const nowDate =
+    new Date();
+
+
+  if(
+    period ===
+    "today"
+  ){
+
+    return {
+
+      start:
+        startOfDay(
+          nowDate
+        ),
+
+      end:
+        endOfDay(
+          nowDate
+        )
+
+    };
+
+  }
+
+
+  if(
+    period ===
+    "7days"
+  ){
+
+    const start =
+      startOfDay(
+        nowDate
+      );
+
+
+    start.setDate(
+      start.getDate() - 6
+    );
+
+
+    return {
+
+      start,
+
+      end:
+        endOfDay(
+          nowDate
+        )
+
+    };
+
+  }
+
+
+  if(
+    period ===
+    "month"
+  ){
+
+    const start =
+      new Date(
+        nowDate.getFullYear(),
+        nowDate.getMonth(),
+        1
+      );
+
+
+    return {
+
+      start:
+        startOfDay(start),
+
+      end:
+        endOfDay(
+          nowDate
+        )
+
+    };
+
+  }
+
+
+  return {
+
+    start: null,
+
+    end: null
+
+  };
+
+}
+
+
+/*
+   Filtra movimientos por periodo.
+*/
+
+function getCashEntries(
+  period =
+    cashPeriod
+){
+
+  const range =
+    getCashRange(
+      period
+    );
+
+
+  return getAllCashEntries()
+    .filter(
+      entry => {
+
+        const date =
+          parseLocalDate(
+            entry.date
+          );
+
+
+        if(!date){
+
+          return period ===
+            "all";
+
+        }
+
+
+        if(
+          range.start &&
+          date < range.start
+        ){
+
+          return false;
+
+        }
+
+
+        if(
+          range.end &&
+          date > range.end
+        ){
+
+          return false;
+
+        }
+
+
+        return true;
+
+      }
+    )
+    .sort(
+      (a,b) => {
+
+        const dateA =
+          parseLocalDate(
+            a.date
+          );
+
+
+        const dateB =
+          parseLocalDate(
+            b.date
+          );
+
+
+        return (
+          (dateB?.getTime() || 0) -
+          (dateA?.getTime() || 0)
+        );
+
+      }
+    );
+
+}
+
+
+/*
+   Calcula totales de caja.
+*/
+
+function calculateCashTotals(
+  period =
+    cashPeriod
+){
+
+  const entries =
+    getCashEntries(
+      period
+    );
+
+
+  let received = 0;
+
+  let expenses = 0;
+
+
+  const methods = {
+
+    Efectivo: 0,
+
+    Nequi: 0,
+
+    Transferencia: 0,
+
+    Daviplata: 0,
+
+    Tarjeta: 0,
+
+    Otro: 0
+
+  };
+
+
+  entries.forEach(
+    entry => {
+
+      const amount =
+        Math.abs(
+          +entry.amount || 0
+        );
+
+
+      const method =
+        normalizePaymentMethod(
+          entry.method
+        );
+
+
+      if(
+        entry.type ===
+        "Gasto"
+      ){
+
+        expenses +=
+          amount;
+
+        methods[method] =
+          (methods[method] || 0) -
+          amount;
+
+
+      }else{
+
+        received +=
+          amount;
+
+        methods[method] =
+          (methods[method] || 0) +
+          amount;
+
+      }
+
+    }
+  );
+
+
+  return {
+
+    entries,
+
+    received,
+
+    expenses,
+
+    balance:
+      received -
+      expenses,
+
+    methods
+
+  };
+
+}
+
+
+/*
+   Por cobrar.
+
+   Se calcula con todas las ventas,
+   independientemente del filtro de caja.
+*/
+
+function calculateReceivable(){
+
+  return db.sales.reduce(
+    (sum,sale) =>
+      sum +
+      Math.max(
+        0,
+        (+sale.total || 0) -
+        salePaid(sale)
+      ),
+    0
+  );
+
+}
+
+
+/*
+   Cambiar periodo.
+*/
+
+function setCashPeriod(
+  value
+){
+
+  cashPeriod =
+    value ||
+    "today";
+
+
+  renderCash();
+
+}
+
+
+/*
+   Renderizar Caja.
+*/
+
+function renderCash(){
+
+  const summary =
+    document.getElementById(
+      "cashSummary"
+    );
+
+
+  const list =
+    document.getElementById(
+      "cashList"
+    );
+
+
+  const periodSelect =
+    document.getElementById(
+      "cashPeriod"
+    );
+
+
+  if(
+    periodSelect
+  ){
+
+    periodSelect.value =
+      cashPeriod;
+
+
+    periodSelect.onchange =
+      function(){
+
+        setCashPeriod(
+          this.value
+        );
+
+      };
+
+  }
+
+
+  if(
+    !summary ||
+    !list
+  ){
+
+    return;
+
+  }
+
+
+  const totals =
+    calculateCashTotals(
+      cashPeriod
+    );
+
+
+  const receivable =
+    calculateReceivable();
+
+
+  summary.innerHTML = `
+
+    <div class="card">
+
+      <span>
+        Recibido
+      </span>
+
+      <b>
+        ${money(
+          totals.received
+        )}
+      </b>
+
+      <small>
+        ventas + ingresos
+      </small>
+
+    </div>
+
+
+    <div class="card">
+
+      <span>
+        Efectivo
+      </span>
+
+      <b>
+        ${money(
+          totals.methods.Efectivo
+        )}
+      </b>
+
+      <small>
+        dinero físico
+      </small>
+
+    </div>
+
+
+    <div class="card">
+
+      <span>
+        Nequi
+      </span>
+
+      <b>
+        ${money(
+          totals.methods.Nequi
+        )}
+      </b>
+
+      <small>
+        saldo registrado
+      </small>
+
+    </div>
+
+
+    <div class="card">
+
+      <span>
+        Transferencias
+      </span>
+
+      <b>
+        ${money(
+          totals.methods.Transferencia
+        )}
+      </b>
+
+      <small>
+        bancos
+      </small>
+
+    </div>
+
+
+    <div class="card">
+
+      <span>
+        Tarjeta
+      </span>
+
+      <b>
+        ${money(
+          totals.methods.Tarjeta
+        )}
+      </b>
+
+      <small>
+        pagos
+      </small>
+
+    </div>
+
+
+    <div class="card">
+
+      <span>
+        Gastos
+      </span>
+
+      <b>
+        ${money(
+          totals.expenses
+        )}
+      </b>
+
+      <small>
+        periodo
+      </small>
+
+    </div>
+
+
+    <div class="card">
+
+      <span>
+        Saldo
+      </span>
+
+      <b>
+        ${money(
+          totals.balance
+        )}
+      </b>
+
+      <small>
+        disponible registrado
+      </small>
+
+    </div>
+
+
+    <div class="card">
+
+      <span>
+        Por cobrar
+      </span>
+
+      <b>
+        ${money(
+          receivable
+        )}
+      </b>
+
+      <small>
+        cuentas pendientes
+      </small>
+
+    </div>
+
+  `;
+
+
+  if(!totals.entries.length){
+
+    list.innerHTML = `
+
+      <div class="empty">
+
+        No hay movimientos
+        de caja en este periodo.
+
+      </div>
+
+    `;
+
+    return;
+
+  }
+
+
+  list.innerHTML =
+    totals.entries
+      .map(
+        entry => {
+
+          const isExpense =
+            entry.type ===
+            "Gasto";
+
+
+          const amount =
+            Math.abs(
+              +entry.amount || 0
+            );
+
+
+          const index =
+            entry.index;
+
+
+          const clickable =
+            entry.source ===
+            "Manual";
+
+
+          return `
+
+            <div
+              class="item ${
+                clickable
+                  ? "clickable"
+                  : ""
+              }"
+              ${
+                clickable
+                  ? `onclick="editCashMovement(
+                      ${index}
+                    )"`
+                  : ""
+              }
+            >
+
+              <div>
+
+                <b>
+
+                  ${
+                    entry.source ===
+                    "Venta"
+
+                      ? "🧾 "
+
+                      : isExpense
+                        ? "💸 "
+                        : "💰 "
+                  }
+
+                  ${esc(
+                    entry.concept ||
+                    "Movimiento"
+                  )}
+
+                </b>
+
+
+                <div class="muted">
+
+                  ${esc(
+                    entry.date ||
+                    ""
+                  )}
+
+                  ·
+
+                  ${esc(
+                    entry.method ||
+                    "Otro"
+                  )}
+
+                  ·
+
+                  ${
+                    entry.source ===
+                    "Venta"
+
+                      ? "Venta"
+
+                      : "Manual"
+                  }
+
+                </div>
+
+
+                ${
+                  entry.note
+
+                    ? `
+
+                      <div class="muted">
+
+                        ${esc(
+                          entry.note
+                        )}
+
+                      </div>
+
+                    `
+
+                    : ""
+                }
+
+              </div>
+
+
+              <div class="right">
+
+                <b>
+
+                  ${
+                    isExpense
+                      ? "-"
+                      : "+"
+                  }
+
+                  ${money(
+                    amount
+                  )}
+
+                </b>
+
+
+                <small>
+
+                  ${
+                    isExpense
+                      ? "Gasto"
+                      : "Entrada"
+                  }
+
+                </small>
+
+              </div>
+
+            </div>
+
+          `;
+
+        }
+      )
+      .join("");
+
+}
+
+
+/* =========================================================
+   NUEVO MOVIMIENTO DE CAJA
+========================================================= */
+
+function openCashMovement(
+  index = null
+){
+
+  const editing =
+    index !== null;
+
+
+  const existing =
+    editing
+      ? db.cash[index]
+      : {
+
+          type:
+            "Gasto",
+
+          amount:
+            0,
+
+          method:
+            "Efectivo",
+
+          concept:
+            "",
+
+          note:
+            ""
+
+        };
+
+
+  if(
+    editing &&
+    !existing
+  ){
+
+    return;
+
+  }
+
+
+  modal(
+
+    editing
+      ? "Editar movimiento"
+      : "Nuevo movimiento de caja",
+
+
+    `
+
+      <label>
+
+        Tipo
+
+        <select name="type">
+
+          <option
+            ${
+              existing.type ===
+              "Ingreso"
+                ? "selected"
+                : ""
+            }
+          >
+            Ingreso
+          </option>
+
+          <option
+            ${
+              existing.type ===
+              "Gasto"
+                ? "selected"
+                : ""
+            }
+          >
+            Gasto
+          </option>
+
+        </select>
+
+      </label>
+
+
+      <label>
+
+        Forma
+
+        <select name="method">
+
+          <option
+            ${
+              normalizePaymentMethod(
+                existing.method
+              ) ===
+              "Efectivo"
+                ? "selected"
+                : ""
+            }
+          >
+            Efectivo
+          </option>
+
+          <option
+            ${
+              normalizePaymentMethod(
+                existing.method
+              ) ===
+              "Nequi"
+                ? "selected"
+                : ""
+            }
+          >
+            Nequi
+          </option>
+
+          <option
+            ${
+              normalizePaymentMethod(
+                existing.method
+              ) ===
+              "Transferencia"
+                ? "selected"
+                : ""
+            }
+          >
+            Transferencia
+          </option>
+
+          <option
+            ${
+              normalizePaymentMethod(
+                existing.method
+              ) ===
+              "Daviplata"
+                ? "selected"
+                : ""
+            }
+          >
+            Daviplata
+          </option>
+
+          <option
+            ${
+              normalizePaymentMethod(
+                existing.method
+              ) ===
+              "Tarjeta"
+                ? "selected"
+                : ""
+            }
+          >
+            Tarjeta
+          </option>
+
+          <option
+            ${
+              normalizePaymentMethod(
+                existing.method
+              ) ===
+              "Otro"
+                ? "selected"
+                : ""
+            }
+          >
+            Otro
+          </option>
+
+        </select>
+
+      </label>
+
+
+      <label>
+
+        Valor
+
+        <input
+          name="amount"
+          type="number"
+          min="1"
+          step="1"
+          required
+          value="${
+            +existing.amount || 0
+          }"
+        >
+
+      </label>
+
+
+      <label>
+
+        Concepto
+
+        <input
+          name="concept"
+          required
+          value="${esc(
+            existing.concept
+          )}"
+          placeholder="Ej. Compra de alimento"
+        >
+
+      </label>
+
+
+      <label>
+
+        Nota
+
+        <textarea
+          name="note"
+          rows="3"
+          placeholder="Observación opcional"
+        >${esc(
+          existing.note
+        )}</textarea>
+
+      </label>
+
+
+      <div
+        style="
+          display:flex;
+          gap:8px;
+          margin-top:14px;
+          flex-wrap:wrap;
+        "
+      >
+
+        <button
+          class="primary"
+          type="submit"
+        >
+          💾 Guardar
+        </button>
+
+
+        <button
+          type="button"
+          onclick="closeModal()"
+        >
+          Cancelar
+        </button>
+
+
+        ${
+          editing
+
+            ? `
+
+              <button
+                type="button"
+                onclick="deleteCashMovement(
+                  ${index}
+                )"
+              >
+                🗑️ Eliminar
+              </button>
+
+            `
+
+            : ""
+        }
+
+      </div>
+
+    `,
+
+
+    event => {
+
+      event.preventDefault();
+
+
+      const form =
+        event.target;
+
+
+      const amount =
+        Math.max(
+          0,
+          +form.amount.value || 0
+        );
+
+
+      if(amount <= 0){
+
+        alert(
+          "Escribe un valor mayor que cero."
+        );
+
+        return;
+
+      }
+
+
+      const concept =
+        form.concept.value.trim();
+
+
+      if(!concept){
+
+        alert(
+          "Escribe el concepto del movimiento."
+        );
+
+        return;
+
+      }
+
+
+      const item = {
+
+        id:
+          editing &&
+          existing.id
+
+            ? existing.id
+
+            : (
+                Date.now() +
+                "-" +
+                Math.random()
+                  .toString(36)
+                  .slice(2)
+              ),
+
+        date:
+          editing &&
+          existing.date
+
+            ? existing.date
+
+            : now(),
+
+        type:
+          form.type.value,
+
+        amount,
+
+        method:
+          normalizePaymentMethod(
+            form.method.value
+          ),
+
+        concept,
+
+        note:
+          form.note.value.trim(),
+
+        source:
+          "Manual"
+
+      };
+
+
+      if(editing){
+
+        db.cash[index] =
+          {
+            ...db.cash[index],
+            ...item
+          };
+
+      }else{
+
+        db.cash.push(
+          item
+        );
+
+      }
+
+
+      save();
+
+      closeModal();
+
+    }
+
+  );
+
+}
+
+
+function editCashMovement(
+  index
+){
+
+  openCashMovement(
+    index
+  );
+
+}
+
+
+function deleteCashMovement(
+  index
+){
+
+  if(!db.cash[index]){
+
+    return;
+
+  }
+
+
+  if(
+    !confirm(
+      "¿Eliminar este movimiento de caja?"
+    )
+  ){
+
+    return;
+
+  }
+
+
+  db.cash.splice(
+    index,
+    1
+  );
+
+
+  save();
+
+  closeModal();
+
 }
 
 
@@ -3299,13 +5209,17 @@ function renderInternal() {
       "internalStats"
     );
 
-  if (!element)
+
+  if(!element){
+
     return;
+
+  }
 
 
   const sales =
     db.sales.reduce(
-      (sum, sale) =>
+      (sum,sale) =>
         sum +
         (+sale.total || 0),
       0
@@ -3314,7 +5228,7 @@ function renderInternal() {
 
   const profit =
     db.sales.reduce(
-      (sum, sale) =>
+      (sum,sale) =>
         sum +
         (+sale.profit || 0),
       0
@@ -3323,7 +5237,7 @@ function renderInternal() {
 
   const pending =
     db.sales.reduce(
-      (sum, sale) =>
+      (sum,sale) =>
         sum +
         Math.max(
           0,
@@ -3331,6 +5245,12 @@ function renderInternal() {
           salePaid(sale)
         ),
       0
+    );
+
+
+  const cashTotals =
+    calculateCashTotals(
+      "all"
     );
 
 
@@ -3380,6 +5300,21 @@ function renderInternal() {
       <div class="card">
 
         <b>
+          Caja
+        </b>
+
+        <strong>
+          ${money(
+            cashTotals.balance
+          )}
+        </strong>
+
+      </div>
+
+
+      <div class="card">
+
+        <b>
           Productos
         </b>
 
@@ -3392,6 +5327,7 @@ function renderInternal() {
     </div>
 
   `;
+
 }
 
 
@@ -3403,17 +5339,17 @@ function openInternal() {
     );
 
 
-  if (
-    modalElement
-  ) {
+  if(modalElement){
 
     renderInternal();
+
 
     modalElement.classList.remove(
       "hidden"
     );
 
   }
+
 }
 
 
@@ -3425,15 +5361,14 @@ function closeInternal() {
     );
 
 
-  if (
-    modalElement
-  ) {
+  if(modalElement){
 
     modalElement.classList.add(
       "hidden"
     );
 
   }
+
 }
 
 
@@ -3493,6 +5428,7 @@ function exportData() {
   URL.revokeObjectURL(
     url
   );
+
 }
 
 
@@ -3502,8 +5438,11 @@ function importData(input) {
     input?.files?.[0];
 
 
-  if (!file)
+  if(!file){
+
     return;
+
+  }
 
 
   const reader =
@@ -3511,9 +5450,9 @@ function importData(input) {
 
 
   reader.onload =
-    function () {
+    function(){
 
-      try {
+      try{
 
         const imported =
           JSON.parse(
@@ -3521,11 +5460,11 @@ function importData(input) {
           );
 
 
-        if (
+        if(
           !imported ||
           typeof imported !==
           "object"
-        ) {
+        ){
 
           throw new Error(
             "Formato inválido"
@@ -3569,6 +5508,13 @@ function importData(input) {
               imported.orders
             )
               ? imported.orders
+              : [],
+
+          cash:
+            Array.isArray(
+              imported.cash
+            )
+              ? imported.cash
               : []
 
         };
@@ -3582,7 +5528,7 @@ function importData(input) {
         );
 
 
-      } catch (error) {
+      }catch(error){
 
         console.error(
           error
@@ -3601,6 +5547,7 @@ function importData(input) {
   reader.readAsText(
     file
   );
+
 }
 
 
@@ -3616,10 +5563,10 @@ function bindSearches() {
     );
 
 
-  if (search) {
+  if(search){
 
     search.oninput =
-      function () {
+      function(){
 
         renderInventory();
 
@@ -3634,16 +5581,17 @@ function bindSearches() {
     );
 
 
-  if (customerSearch) {
+  if(customerSearch){
 
     customerSearch.oninput =
-      function () {
+      function(){
 
         renderCustomers();
 
       };
 
   }
+
 }
 
 
@@ -3657,71 +5605,113 @@ function exposeFunctions() {
   window.show =
     show;
 
+
   window.openProduct =
     openProduct;
+
 
   window.editProduct =
     editProduct;
 
+
   window.deleteProduct =
     deleteProduct;
+
 
   window.openSale =
     openSale;
 
+
   window.addSaleRow =
     addSaleRow;
+
 
   window.updateSalePreview =
     updateSalePreview;
 
+
   window.openCustomer =
     openCustomer;
+
 
   window.editCustomer =
     editCustomer;
 
+
   window.deleteCustomer =
     deleteCustomer;
+
 
   window.openOrder =
     openOrder;
 
+
   window.editOrder =
     editOrder;
+
 
   window.deleteOrder =
     deleteOrder;
 
+
   window.toggleOrder =
     toggleOrder;
+
 
   window.openMove =
     openMove;
 
+
   window.toggleDateGroup =
     toggleDateGroup;
+
 
   window.closeModal =
     closeModal;
 
+
   window.openInternal =
     openInternal;
+
 
   window.closeInternal =
     closeInternal;
 
+
   window.exportData =
     exportData;
+
 
   window.importData =
     importData;
 
+
   window.setInventoryCategory =
     setInventoryCategory;
 
+
   window.setInventorySort =
     setInventorySort;
+
+
+  /* =====================================================
+     FUNCIONES DE CAJA
+  ===================================================== */
+
+  window.openCashMovement =
+    openCashMovement;
+
+
+  window.editCashMovement =
+    editCashMovement;
+
+
+  window.deleteCashMovement =
+    deleteCashMovement;
+
+
+  window.setCashPeriod =
+    setCashPeriod;
 
 }
 
@@ -3745,17 +5735,17 @@ function iniciarApp() {
 }
 
 
-if (
+if(
   document.readyState ===
   "loading"
-) {
+){
 
   document.addEventListener(
     "DOMContentLoaded",
     iniciarApp
   );
 
-} else {
+}else{
 
   iniciarApp();
 
