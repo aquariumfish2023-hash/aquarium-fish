@@ -1,1 +1,1553 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#087f8c">
+<meta name="description" content="Aquarium Fish - inventario, ventas, caja, clientes y encargos">
 
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon.svg">
+<link rel="stylesheet" href="style.css">
+
+<title>Aquarium Fish</title>
+<style>
+  .auth-gate{position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;padding:24px;background:rgba(248,250,252,.98)}
+  .auth-gate.hidden{display:none}
+  .auth-card{width:min(420px,100%);background:#fff;border:1px solid #e5e7eb;border-radius:20px;padding:24px;box-shadow:0 18px 50px rgba(15,23,42,.12)}
+  .auth-brand{margin-bottom:20px}
+  .auth-card h1{margin:0 0 8px}
+  .auth-card form{display:grid;gap:10px}
+  .auth-card label{font-weight:600;margin-top:6px}
+  .auth-card input{width:100%;box-sizing:border-box;padding:12px;border:1px solid #cbd5e1;border-radius:10px;font:inherit}
+  #loginError{min-height:20px;margin:4px 0 0}
+  #appHeader.hidden{display:none}
+  body.auth-locked main, body.auth-locked nav{display:none!important}
+</style>
+</head>
+
+<body>
+
+<div id="splash" aria-label="Aquarium Fish">
+  <img src="splash-v7.png" alt="Aquarium Fish - Gestión del negocio">
+</div>
+
+<div id="authGate" class="auth-gate">
+  <div class="auth-card">
+    <div class="brand auth-brand">
+      <img src="icon.svg" alt="">
+      <div>
+        <strong>Aquarium Fish</strong>
+        <small>Acceso seguro</small>
+      </div>
+    </div>
+
+    <h1>Iniciar sesión</h1>
+    <p class="muted">Ingresa con tu cuenta de Firebase para acceder a los datos del negocio.</p>
+
+    <form id="loginForm" autocomplete="on">
+      <label>Correo electrónico</label>
+      <input id="loginEmail" type="email" autocomplete="username" required placeholder="tu-correo@ejemplo.com">
+
+      <label>Contraseña</label>
+      <input id="loginPassword" type="password" autocomplete="current-password" required minlength="6" placeholder="••••••••">
+
+      <button id="loginBtn" class="primary" type="submit">Iniciar sesión</button>
+      <p id="loginError" class="muted" role="alert"></p>
+    </form>
+  </div>
+</div>
+
+<header id="appHeader" class="hidden">
+  <div class="brand">
+    <img src="icon.svg" alt="">
+    <div>
+      <strong>Aquarium Fish</strong>
+      <small>Gestión del negocio</small>
+    </div>
+  </div>
+
+  <div style="display:flex;gap:8px;align-items:center">
+    <span id="authUserEmail" class="muted" style="font-size:12px"></span>
+    <button id="logoutBtn" class="ghost" type="button" onclick="aquariumLogout()">Salir</button>
+    <button id="installBtn" class="ghost hidden" type="button">
+      Instalar
+    </button>
+  </div>
+</header>
+
+<main>
+
+<section id="home" class="screen active">
+
+  <h1>Inicio</h1>
+
+  <div class="cards">
+
+    <div class="card">
+      <span>Ventas</span>
+      <b id="salesTotal">$0</b>
+      <small id="salesCount">0 transacciones</small>
+    </div>
+
+    <div class="card">
+      <span>Productos</span>
+      <b id="productCount">0</b>
+      <small>en catálogo</small>
+    </div>
+
+    <div class="card">
+      <span>Clientes</span>
+      <b id="customerCount">0</b>
+      <small>registrados</small>
+    </div>
+
+    <div class="card">
+      <span>Stock bajo</span>
+      <b id="lowStock">0</b>
+      <small>requieren atención</small>
+    </div>
+
+    <div class="card">
+      <span>💰 Caja</span>
+      <b id="cashBalance">$0</b>
+      <small>saldo actual</small>
+    </div>
+
+  </div>
+
+  <div class="panel">
+    <h2>Últimas ventas</h2>
+    <div id="recentSales" class="list"></div>
+  </div>
+
+  <div class="panel">
+    <h2>Resumen interno</h2>
+
+    <p class="muted">
+      Las ganancias no aparecen en las pantallas de venta.
+    </p>
+
+    <button class="primary" type="button" onclick="openInternal()">
+      🔒 Ver ganancias y cuentas
+    </button>
+  </div>
+
+  <div class="panel">
+
+    <h2>Datos</h2>
+
+    <div class="data-actions">
+
+      <button type="button" onclick="exportData()">
+        Exportar respaldo
+      </button>
+
+      <button
+        type="button"
+        onclick="document.getElementById('importFile').click()"
+      >
+        Importar respaldo
+      </button>
+
+      <input
+        id="importFile"
+        type="file"
+        accept=".json"
+        hidden
+      >
+
+    </div>
+
+    <p class="muted">
+      El respaldo guarda productos, ventas, clientes,
+      encargos, movimientos y caja.
+    </p>
+
+    <p id="syncStatus" class="muted">
+      ☁️ Preparando sincronización...
+    </p>
+
+  </div>
+
+</section>
+
+
+<!-- =====================================================
+     INVENTARIO
+===================================================== -->
+
+<section id="inventory" class="screen">
+
+  <div class="section-head">
+
+    <h1>Inventario</h1>
+
+    <button
+      class="primary"
+      type="button"
+      onclick="openProduct()"
+    >
+      + Producto
+    </button>
+
+  </div>
+
+  <input
+    id="search"
+    class="search"
+    placeholder="Buscar producto..."
+  >
+
+  <div id="inventoryList" class="list"></div>
+
+</section>
+
+
+<!-- =====================================================
+     VENTAS
+===================================================== -->
+
+<section id="sales" class="screen">
+
+  <div class="section-head">
+
+    <h1>Ventas</h1>
+
+    <button
+      class="primary"
+      type="button"
+      onclick="openSale()"
+    >
+      + Venta
+    </button>
+
+  </div>
+
+  <div id="salesList" class="list"></div>
+
+</section>
+
+
+<!-- =====================================================
+     CAJA
+===================================================== -->
+
+<section id="cash" class="screen">
+
+  <div class="section-head">
+
+    <h1>💰 Caja</h1>
+
+    <button
+      class="primary"
+      type="button"
+      onclick="openCashMovement()"
+    >
+      + Movimiento
+    </button>
+
+  </div>
+
+
+  <div class="panel">
+
+    <h2>Resumen de caja</h2>
+
+    <div id="cashSummary" class="cards"></div>
+
+  </div>
+
+
+  <div class="panel">
+
+    <h2>Periodo</h2>
+
+    <select
+      id="cashPeriod"
+      class="search"
+    >
+
+      <option value="today">
+        📅 Hoy
+      </option>
+
+      <option value="7days">
+        📆 Últimos 7 días
+      </option>
+
+      <option value="month">
+        🗓️ Este mes
+      </option>
+
+      <option value="all">
+        📚 Todo
+      </option>
+
+    </select>
+
+  </div>
+
+
+  <div class="panel">
+
+    <h2>Movimientos de caja</h2>
+
+    <p class="muted">
+      Las ventas cobradas aparecen automáticamente.
+      Los ingresos y gastos que registres manualmente
+      también aparecerán aquí.
+    </p>
+
+    <div id="cashList" class="list"></div>
+
+  </div>
+
+</section>
+
+
+<!-- =====================================================
+     CLIENTES
+===================================================== -->
+
+<section id="customers" class="screen">
+
+  <div class="section-head">
+
+    <h1>Clientes</h1>
+
+    <button
+      class="primary"
+      type="button"
+      onclick="openCustomer()"
+    >
+      + Cliente
+    </button>
+
+  </div>
+
+  <input
+    id="customerSearch"
+    class="search"
+    placeholder="Buscar cliente..."
+  >
+
+  <div id="customersList" class="list"></div>
+
+</section>
+
+
+<!-- =====================================================
+     ENCARGOS
+===================================================== -->
+
+<section id="orders" class="screen">
+
+  <div class="section-head">
+
+    <h1>Encargos</h1>
+
+    <button
+      class="primary"
+      type="button"
+      onclick="openOrder()"
+    >
+      + Encargo
+    </button>
+
+  </div>
+
+  <p class="muted">
+    Anota peces o accesorios que un cliente pidió
+    y que no tienes disponibles.
+  </p>
+
+  <div id="ordersList" class="list"></div>
+
+</section>
+
+
+<!-- =====================================================
+     MOVIMIENTOS
+===================================================== -->
+
+<section id="moves" class="screen">
+
+  <div class="section-head">
+
+    <h1>Movimientos</h1>
+
+    <button
+      class="primary"
+      type="button"
+      onclick="openMove()"
+    >
+      Registrar movimiento
+    </button>
+
+  </div>
+
+  <div id="movesList" class="list"></div>
+
+</section>
+
+</main>
+
+
+<!-- =====================================================
+     NAVEGACIÓN
+===================================================== -->
+
+<nav>
+
+  <button
+    type="button"
+    data-tab="home"
+    class="active"
+  >
+    ⌂
+    <span>Inicio</span>
+  </button>
+
+  <button
+    type="button"
+    data-tab="inventory"
+  >
+    ▣
+    <span>Inventario</span>
+  </button>
+
+  <button
+    type="button"
+    data-tab="sales"
+  >
+    ▤
+    <span>Ventas</span>
+  </button>
+
+  <button
+    type="button"
+    data-tab="cash"
+  >
+    💰
+    <span>Caja</span>
+  </button>
+
+  <button
+    type="button"
+    data-tab="customers"
+  >
+    ♙
+    <span>Clientes</span>
+  </button>
+
+  <button
+    type="button"
+    data-tab="orders"
+  >
+    📝
+    <span>Encargos</span>
+  </button>
+
+  <button
+    type="button"
+    data-tab="moves"
+  >
+    ⇅
+    <span>Movimientos</span>
+  </button>
+
+</nav>
+
+
+<!-- =====================================================
+     MODAL GENERAL
+===================================================== -->
+
+<div id="modal" class="modal hidden">
+
+  <div class="modal-box">
+
+    <div class="modal-head">
+
+      <h2 id="modalTitle"></h2>
+
+      <button
+        type="button"
+        onclick="closeModal()"
+      >
+        ×
+      </button>
+
+    </div>
+
+    <form id="form"></form>
+
+  </div>
+
+</div>
+
+
+<!-- =====================================================
+     MODAL RESUMEN INTERNO
+===================================================== -->
+
+<div id="internalModal" class="modal hidden">
+
+  <div class="modal-box">
+
+    <div class="modal-head">
+
+      <h2>🔒 Resumen interno</h2>
+
+      <button
+        type="button"
+        onclick="closeInternal()"
+      >
+        ×
+      </button>
+
+    </div>
+
+    <div id="internalStats"></div>
+
+    <p class="muted">
+      Esta información está separada de la pantalla de venta
+      para que puedas mostrar los precios al cliente sin
+      enseñarle la ganancia.
+    </p>
+
+    <div class="form-actions">
+
+      <button
+        type="button"
+        class="primary"
+        onclick="closeInternal()"
+      >
+        Cerrar
+      </button>
+
+    </div>
+
+  </div>
+
+</div>
+
+
+<!-- =====================================================
+     SPLASH
+===================================================== -->
+
+<script>
+
+(function(){
+
+  function hideSplash(){
+
+    const splash =
+      document.getElementById("splash");
+
+    if(splash){
+      splash.classList.add("hide");
+    }
+
+  }
+
+  setTimeout(hideSplash,1500);
+  setTimeout(hideSplash,3000);
+
+})();
+
+</script>
+
+
+<!-- =====================================================
+     FIREBASE
+===================================================== -->
+
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+
+<script>
+
+const firebaseConfig = {
+
+  apiKey:
+    "AIzaSyBhmpkynU7Kl87UNge7aWwDhJ2Pm-TpVxk",
+
+  authDomain:
+    "aquarium-fish-218a1.firebaseapp.com",
+
+  projectId:
+    "aquarium-fish-218a1",
+
+  storageBucket:
+    "aquarium-fish-218a1.firebasestorage.app",
+
+  messagingSenderId:
+    "629993722414",
+
+  appId:
+    "1:629993722414:web:fa7d4f8ec7ec1f3d2f05bf"
+
+};
+
+</script>
+
+<script>
+(function(){
+  "use strict";
+
+  document.body.classList.add("auth-locked");
+
+  const gate = document.getElementById("authGate");
+  const form = document.getElementById("loginForm");
+  const email = document.getElementById("loginEmail");
+  const password = document.getElementById("loginPassword");
+  const button = document.getElementById("loginBtn");
+  const error = document.getElementById("loginError");
+  const header = document.getElementById("appHeader");
+
+  function showError(message){
+    if(error) error.textContent = message || "";
+  }
+
+  function translateAuthError(err){
+    const code = err && err.code ? err.code : "";
+    const messages = {
+      "auth/invalid-credential": "Correo o contraseña incorrectos.",
+      "auth/invalid-login-credentials": "Correo o contraseña incorrectos.",
+      "auth/user-not-found": "No existe una cuenta con ese correo.",
+      "auth/wrong-password": "Correo o contraseña incorrectos.",
+      "auth/too-many-requests": "Demasiados intentos. Espera unos minutos e inténtalo de nuevo.",
+      "auth/network-request-failed": "No se pudo conectar con Firebase.",
+      "auth/user-disabled": "Esta cuenta está deshabilitada."
+    };
+    return messages[code] || "No se pudo iniciar sesión. Revisa los datos e inténtalo de nuevo.";
+  }
+
+  if(!firebase.apps.length){
+    firebase.initializeApp(firebaseConfig);
+  }
+
+  const auth = firebase.auth();
+  window.AQ_AUTH_READY = false;
+  window.AQ_AUTH_USER = null;
+
+  if(form){
+    form.addEventListener("submit", async function(event){
+      event.preventDefault();
+      showError("");
+      button.disabled = true;
+      button.textContent = "Verificando...";
+
+      try{
+        await auth.signInWithEmailAndPassword(
+          email.value.trim(),
+          password.value
+        );
+      }catch(err){
+        console.error("Error de autenticación:", err);
+        showError(translateAuthError(err));
+      }finally{
+        button.disabled = false;
+        button.textContent = "Iniciar sesión";
+      }
+    });
+  }
+
+  auth.onAuthStateChanged(function(user){
+    window.AQ_AUTH_USER = user || null;
+    window.AQ_AUTH_READY = true;
+
+    if(user){
+      const userEmail = document.getElementById("authUserEmail");
+      if(userEmail) userEmail.textContent = user.email || "";
+      document.body.classList.remove("auth-locked");
+      gate.classList.add("hidden");
+      if(header) header.classList.remove("hidden");
+      window.dispatchEvent(new CustomEvent("aquarium-auth-ready"));
+    }else{
+      document.body.classList.add("auth-locked");
+      gate.classList.remove("hidden");
+      if(header) header.classList.add("hidden");
+    }
+  });
+
+  window.aquariumLogout = async function(){
+    try{
+      await auth.signOut();
+      window.location.reload();
+    }catch(err){
+      console.error("Error cerrando sesión:", err);
+      alert("No se pudo cerrar la sesión.");
+    }
+  };
+})();
+</script>
+
+<!-- =====================================================
+     APP.JS
+===================================================== -->
+
+<script src="app.js"></script>
+
+<!-- =====================================================
+     SINCRONIZACIÓN FIREBASE
+===================================================== -->
+
+<script>
+
+(function(){
+
+"use strict";
+
+
+let DATA_KEY =
+  "aquarium_fish_data_v5";
+
+
+const COLLECTION =
+  "appData";
+
+
+const DOCUMENT =
+  "aquariumFish";
+
+
+let syncing = false;
+
+let ready = false;
+
+let uploadTimer = null;
+
+let firestoreRef = null;
+
+let lastCloudJSON = null;
+let currentUser = null;
+
+
+const originalSetItem =
+  Storage.prototype.setItem;
+
+
+function setStatus(text){
+
+  const el =
+    document.getElementById(
+      "syncStatus"
+    );
+
+  if(el){
+    el.textContent = text;
+  }
+
+  console.log(text);
+
+}
+
+
+function normalize(data){
+
+  data = data || {};
+
+  return {
+
+    products:
+      Array.isArray(data.products)
+        ? data.products
+        : [],
+
+    sales:
+      Array.isArray(data.sales)
+        ? data.sales
+        : [],
+
+    moves:
+      Array.isArray(data.moves)
+        ? data.moves
+        : [],
+
+    customers:
+      Array.isArray(data.customers)
+        ? data.customers
+        : [],
+
+    orders:
+      Array.isArray(data.orders)
+        ? data.orders
+        : [],
+
+    cash:
+      Array.isArray(data.cash)
+        ? data.cash
+        : []
+
+  };
+
+}
+
+
+function hasRealData(data){
+
+  const d =
+    normalize(data);
+
+  return (
+
+    d.products.length > 0 ||
+
+    d.sales.length > 0 ||
+
+    d.moves.length > 0 ||
+
+    d.customers.length > 0 ||
+
+    d.orders.length > 0 ||
+
+    d.cash.length > 0
+
+  );
+
+}
+
+
+function getLocalData(){
+
+  try{
+
+    if(
+      typeof db !== "undefined" &&
+      db
+    ){
+
+      return normalize(db);
+
+    }
+
+
+    const saved =
+      localStorage.getItem(
+        DATA_KEY
+      );
+
+
+    if(saved){
+
+      return normalize(
+        JSON.parse(saved)
+      );
+
+    }
+
+
+    return normalize(null);
+
+  }catch(error){
+
+    console.error(
+      "Error leyendo datos locales:",
+      error
+    );
+
+    return normalize(null);
+
+  }
+
+}
+
+
+function saveLocalV5(data){
+
+  try{
+
+    const normalized =
+      normalize(data);
+
+    syncing = true;
+
+    originalSetItem.call(
+      localStorage,
+      DATA_KEY,
+      JSON.stringify(
+        normalized
+      )
+    );
+
+    syncing = false;
+
+    return normalized;
+
+  }catch(error){
+
+    syncing = false;
+
+    console.error(
+      "Error guardando datos locales:",
+      error
+    );
+
+    return normalize(null);
+
+  }
+
+}
+
+
+function refreshApp(){
+
+  try{
+
+    if(
+      typeof renderAll ===
+      "function"
+    ){
+
+      renderAll();
+
+    }
+
+  }catch(error){
+
+    console.error(
+      "Error actualizando pantalla:",
+      error
+    );
+
+  }
+
+}
+
+
+function uploadLocalData(){
+
+  if(
+    !ready ||
+    syncing ||
+    !firestoreRef
+  ){
+
+    return;
+
+  }
+
+
+  clearTimeout(
+    uploadTimer
+  );
+
+
+  uploadTimer =
+    setTimeout(
+      async function(){
+
+        try{
+
+          const localData =
+            getLocalData();
+
+          const localJSON =
+            JSON.stringify(
+              localData
+            );
+
+
+          if(
+            localJSON ===
+            lastCloudJSON
+          ){
+
+            return;
+
+          }
+
+
+          setStatus(
+            "☁️ Guardando datos en Firebase..."
+          );
+
+
+          await firestoreRef.set({
+
+            ownerUid:
+              currentUser.uid,
+
+            data:
+              localData,
+
+            updatedAt:
+              firebase.firestore
+                .FieldValue
+                .serverTimestamp()
+
+          });
+
+
+          lastCloudJSON =
+            localJSON;
+
+
+          setStatus(
+            "☁️ Datos sincronizados"
+          );
+
+
+        }catch(error){
+
+          console.error(
+            "Error guardando en Firebase:",
+            error
+          );
+
+
+          setStatus(
+            "⚠️ No se pudo sincronizar"
+          );
+
+        }
+
+      },
+      700
+    );
+
+}
+
+
+Storage.prototype.setItem =
+  function(key,value){
+
+    originalSetItem.call(
+      this,
+      key,
+      value
+    );
+
+
+    if(
+
+      key === DATA_KEY &&
+
+      ready &&
+
+      !syncing
+
+    ){
+
+      uploadLocalData();
+
+    }
+
+  };
+
+
+function applyRemoteData(remoteData){
+
+  if(!remoteData){
+    return;
+  }
+
+
+  try{
+
+    const normalized =
+      normalize(remoteData);
+
+
+    const remoteJSON =
+      JSON.stringify(
+        normalized
+      );
+
+
+    const localData =
+      getLocalData();
+
+
+    const localJSON =
+      JSON.stringify(
+        localData
+      );
+
+
+    if(
+      remoteJSON ===
+      localJSON
+    ){
+
+      lastCloudJSON =
+        remoteJSON;
+
+      return;
+
+    }
+
+
+    if(
+
+      !hasRealData(
+        normalized
+      ) &&
+
+      hasRealData(
+        localData
+      )
+
+    ){
+
+      lastCloudJSON =
+        null;
+
+      setStatus(
+        "☁️ Conservando datos locales..."
+      );
+
+      uploadLocalData();
+
+      return;
+
+    }
+
+
+    syncing = true;
+
+
+    originalSetItem.call(
+      localStorage,
+      DATA_KEY,
+      remoteJSON
+    );
+
+
+    db =
+      normalized;
+
+
+    syncing = false;
+
+
+    refreshApp();
+
+
+    lastCloudJSON =
+      remoteJSON;
+
+
+    setStatus(
+      "☁️ Datos actualizados desde Firebase"
+    );
+
+
+  }catch(error){
+
+    syncing = false;
+
+    console.error(
+      "Error aplicando Firebase:",
+      error
+    );
+
+  }
+
+}
+
+
+function initFirebase(){
+
+  try{
+
+    currentUser = window.AQ_AUTH_USER || firebase.auth().currentUser;
+
+    if(!currentUser){
+      throw new Error("Usuario no autenticado");
+    }
+
+    if(
+      typeof firebase ===
+      "undefined"
+    ){
+
+      throw new Error(
+        "Firebase no pudo cargar"
+      );
+
+    }
+
+
+    if(
+      !firebase.apps.length
+    ){
+
+      firebase.initializeApp(
+        firebaseConfig
+      );
+
+    }
+
+
+    const firestore =
+      firebase.firestore();
+
+
+    firestoreRef =
+      firestore
+        .collection(
+          COLLECTION
+        )
+        .doc(
+          DOCUMENT
+        );
+
+
+    setStatus(
+      "🟢 Firebase conectado"
+    );
+
+
+    return true;
+
+
+  }catch(error){
+
+    console.error(
+      "Error iniciando Firebase:",
+      error
+    );
+
+
+    setStatus(
+      "⚠️ Firebase no disponible. Datos locales activos."
+    );
+
+
+    return false;
+
+  }
+
+}
+
+
+async function startSync(){
+
+  currentUser = window.AQ_AUTH_USER || firebase.auth().currentUser;
+
+  if(!currentUser || !firestoreRef){
+    return;
+  }
+
+
+  try{
+
+    setStatus(
+      "☁️ Comprobando datos..."
+    );
+
+
+    const localData =
+      getLocalData();
+
+
+    if(
+      hasRealData(
+        localData
+      )
+    ){
+
+      saveLocalV5(
+        localData
+      );
+
+    }
+
+
+    const snapshot =
+      await firestoreRef.get();
+
+
+    if(
+      !snapshot.exists
+    ){
+
+      ready = true;
+
+      lastCloudJSON =
+        null;
+
+      setStatus(
+        "☁️ Subiendo tus datos a Firebase..."
+      );
+
+      uploadLocalData();
+
+
+    }else{
+
+      const rawSnapshotData =
+        snapshot.data() || {};
+
+      // Migración única del documento antiguo: mientras las reglas antiguas
+      // siguen activas, asignamos el documento al usuario autenticado.
+      if(
+        !rawSnapshotData.ownerUid &&
+        currentUser
+      ){
+        await firestoreRef.set({
+          ownerUid: currentUser.uid,
+          data: rawSnapshotData.data || normalize(null),
+          updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        }, { merge: true });
+      }else if(
+        rawSnapshotData.ownerUid &&
+        rawSnapshotData.ownerUid !== currentUser.uid
+      ){
+        throw new Error("El documento pertenece a otra cuenta de Aquarium Fish.");
+      }
+
+      const cloudData =
+        rawSnapshotData.data;
+
+
+      if(cloudData){
+
+        const normalizedCloud =
+          normalize(
+            cloudData
+          );
+
+
+        if(
+
+          !hasRealData(
+            normalizedCloud
+          ) &&
+
+          hasRealData(
+            localData
+          )
+
+        ){
+
+          ready = true;
+
+          lastCloudJSON =
+            null;
+
+          setStatus(
+            "☁️ Subiendo datos existentes..."
+          );
+
+          uploadLocalData();
+
+
+        }else{
+
+          ready = true;
+
+          applyRemoteData(
+            normalizedCloud
+          );
+
+          setStatus(
+            "🟢 Sincronización activa"
+          );
+
+        }
+
+
+      }else{
+
+        ready = true;
+
+        lastCloudJSON =
+          null;
+
+        setStatus(
+          "☁️ Guardando datos..."
+        );
+
+        uploadLocalData();
+
+      }
+
+    }
+
+
+    firestoreRef.onSnapshot(
+
+      function(snapshot){
+
+        if(
+          !snapshot.exists
+        ){
+
+          return;
+
+        }
+
+
+        const snapshotData =
+          snapshot.data();
+
+        if(
+          snapshotData &&
+          snapshotData.ownerUid &&
+          currentUser &&
+          snapshotData.ownerUid !== currentUser.uid
+        ){
+          setStatus("⚠️ Los datos de Firebase pertenecen a otra cuenta.");
+          return;
+        }
+
+        if(
+
+          !snapshotData ||
+
+          !snapshotData.data
+
+        ){
+
+          return;
+
+        }
+
+
+        const remote =
+          normalize(
+            snapshotData.data
+          );
+
+
+        const local =
+          getLocalData();
+
+
+        if(
+
+          !hasRealData(
+            remote
+          ) &&
+
+          hasRealData(
+            local
+          )
+
+        ){
+
+          lastCloudJSON =
+            null;
+
+          uploadLocalData();
+
+          return;
+
+        }
+
+
+        const remoteJSON =
+          JSON.stringify(
+            remote
+          );
+
+
+        const localJSON =
+          JSON.stringify(
+            local
+          );
+
+
+        if(
+          remoteJSON ===
+          localJSON
+        ){
+
+          lastCloudJSON =
+            remoteJSON;
+
+          return;
+
+        }
+
+
+        applyRemoteData(
+          remote
+        );
+
+      },
+
+
+      function(error){
+
+        console.error(
+          "Error escuchando Firebase:",
+          error
+        );
+
+
+        setStatus(
+          "⚠️ Firebase desconectado. Datos locales activos."
+        );
+
+      }
+
+    );
+
+
+  }catch(error){
+
+    console.error(
+      "Error de sincronización:",
+      error
+    );
+
+
+    setStatus(
+      "⚠️ Firebase no disponible. Datos locales activos."
+    );
+
+  }
+
+}
+
+
+async function startAuthenticatedFirebase(){
+
+  if(!window.AQ_AUTH_USER){
+    return;
+  }
+
+  const connected = initFirebase();
+
+  if(connected){
+    await startSync();
+  }
+
+}
+
+window.addEventListener(
+  "aquarium-auth-ready",
+  function(){
+    if(window.AQ_AUTH_USER){
+      DATA_KEY =
+        window.AQ_DATA_KEY ||
+        ("aquarium_fish_data_v5_" + window.AQ_AUTH_USER.uid);
+      startAuthenticatedFirebase();
+    }
+  }
+);
+
+if(window.AQ_AUTH_READY && window.AQ_AUTH_USER){
+  DATA_KEY =
+    window.AQ_DATA_KEY ||
+    ("aquarium_fish_data_v5_" + window.AQ_AUTH_USER.uid);
+  startAuthenticatedFirebase();
+}
+
+})();
+
+</script>
+
+
+
+
+</body>
+</html>
