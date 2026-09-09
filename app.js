@@ -3389,6 +3389,7 @@ function renderCotizador(){
       </div>
 
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px;">
+        <button type="button" class="primary" onclick="saveQuote()">💾 Guardar cotización</button>
         <button type="button" onclick="copyQuote()">📋 Copiar</button>
         <button type="button" class="primary" onclick="shareQuoteWhatsApp()">📲 WhatsApp</button>
       </div>
