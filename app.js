@@ -3050,6 +3050,8 @@ let quoteSearch = "";
 let quoteCustomer = "";
 let quotePhone = "";
 let quoteNote = "";
+let quoteDiscount = 0;
+let quoteEditingId = null;
 
 function setupCotizadorUI(){
   const main = document.querySelector("main");
@@ -3087,6 +3089,14 @@ function quoteCategories(){
         .filter(Boolean)
     )
   ];
+}
+
+function nextQuoteNumber(){
+  const nums = db.quotes.map(q =>
+    parseInt(String(q.id || "").replace(/\D/g, ""), 10) || 0
+  );
+  const next = nums.length ? Math.max(...nums) + 1 : 1;
+  return `COT-${String(next).padStart(4, "0")}`;
 }
 
 function quoteSubtotal(){
