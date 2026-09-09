@@ -3089,6 +3089,15 @@ function quoteCategories(){
   ];
 }
 
+function quoteSubtotal(){
+  return quoteItems.reduce((sum,item) => {
+    const qty = Math.max(0, +item.qty || 0);
+    const unitPrice = Math.max(0, +item.unitPrice || 0);
+    return sum + (qty * unitPrice);
+  }, 0);
+}
+
+
 function quoteTotal(){
   return quoteItems.reduce(
     (sum,item) =>
