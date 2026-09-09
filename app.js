@@ -3286,9 +3286,6 @@ function saveQuote(){
     quoteEditingId = quote.id;
     renderCotizador();
 
-    const history = document.getElementById("quoteHistoryList");
-    if(history) renderQuoteHistory();
-
     alert(`${quote.id} guardada correctamente.`);
   }catch(error){
     console.error("Error guardando cotización:", error);
