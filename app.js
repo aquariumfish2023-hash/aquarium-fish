@@ -3282,7 +3282,14 @@ function saveQuote(){
 
     if(!existing) db.quotes.push(quote);
 
-    save();
+    // Guardado directo de la cotización:
+    // evitamos llamar a save(), porque save() redibuja toda la app
+    // y un fallo en otro módulo puede impedir que termine este proceso.
+    localStorage.setItem(
+      KEY,
+      JSON.stringify(db)
+    );
+
     quoteEditingId = quote.id;
     renderCotizador();
 
