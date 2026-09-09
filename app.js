@@ -16,7 +16,8 @@ let db =
     moves: [],
     customers: [],
     orders: [],
-    cash: []
+    cash: [],
+    quotes: []
   };
 
 db.products =
@@ -72,6 +73,16 @@ db.cash =
   Array.isArray(db.cash)
     ? db.cash
     : [];
+
+db.quotes = Array.isArray(db.quotes) ? db.quotes : [];
+
+db.quotes.forEach(quote => {
+  if(!quote || typeof quote !== "object") return;
+  if(!quote.id) quote.id = `COT-${String(db.quotes.indexOf(quote)+1).padStart(4,"0")}`;
+  if(!quote.status) quote.status = "Pendiente";
+  if(!Array.isArray(quote.items)) quote.items = [];
+  if(quote.discount == null) quote.discount = 0;
+});
 
 /* =========================================================
    CLIENTES - CUENTAS PENDIENTES
@@ -3233,6 +3244,56 @@ function shareQuoteWhatsApp(){
     : `https://wa.me/?text=${text}`;
 
   window.open(url, "_blank", "noopener");
+}
+
+function saveQuote(){
+  try{
+    if(!Array.isArray(db.quotes)) db.quotes = [];
+    if(!quoteItems.length){
+      alert("Agrega al menos un producto a la cotización.");
+      return;
+    }
+
+    const subtotal = quoteSubtotal();
+    const discount = Math.min(subtotal, Math.max(0, +quoteDiscount || 0));
+    const existing = quoteEditingId
+      ? db.quotes.find(q => q.id === quoteEditingId)
+      : null;
+
+    const quote = existing || {
+      id: nextQuoteNumber(),
+      createdAt: now(),
+      status: "Pendiente"
+    };
+
+    quote.updatedAt = now();
+    quote.customer = String(quoteCustomer || "").trim();
+    quote.phone = String(quotePhone || "").trim();
+    quote.note = String(quoteNote || "").trim();
+    quote.discount = discount;
+    quote.subtotal = subtotal;
+    quote.total = Math.max(0, subtotal - discount);
+    quote.items = quoteItems.map(item => ({
+      productIndex: +item.productIndex,
+      name: String(item.name || "Producto"),
+      qty: Math.max(1, +item.qty || 1),
+      unitPrice: Math.max(0, +item.unitPrice || 0)
+    }));
+
+    if(!existing) db.quotes.push(quote);
+
+    save();
+    quoteEditingId = quote.id;
+    renderCotizador();
+
+    const history = document.getElementById("quoteHistoryList");
+    if(history) renderQuoteHistory();
+
+    alert(`${quote.id} guardada correctamente.`);
+  }catch(error){
+    console.error("Error guardando cotización:", error);
+    alert("No se pudo guardar la cotización. Revisa la consola para más detalles.");
+  }
 }
 
 function renderCotizador(){
@@ -8145,6 +8206,9 @@ function exposeFunctions() {
   window.shareQuoteWhatsApp =
     shareQuoteWhatsApp;
 
+  window.saveQuote =
+    saveQuote;
+
   window.openReceipt =
     openReceipt;
 
@@ -8245,6 +8309,8 @@ function iniciarApp() {
   applyMobileLayout();
 
   exposeFunctions();
+
+  setupReportsUI();
 
   setupCotizadorUI();
 
