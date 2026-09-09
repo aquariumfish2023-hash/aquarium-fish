@@ -8165,10 +8165,84 @@ function exposeFunctions() {
 
 
 /* =========================================================
+   AJUSTE RESPONSIVO PARA CELULAR
+   ========================================================= */
+
+function applyMobileLayout(){
+
+  if(document.getElementById("aquariumMobileLayout")){
+    return;
+  }
+
+  const style = document.createElement("style");
+  style.id = "aquariumMobileLayout";
+  style.textContent = `
+    @media (max-width: 700px){
+      html, body{
+        width:100%;
+        max-width:100%;
+        overflow-x:hidden;
+      }
+
+      main{
+        width:100%;
+        max-width:100%;
+        box-sizing:border-box;
+      }
+
+      .screen, .panel, .item, .cards{
+        max-width:100%;
+        box-sizing:border-box;
+      }
+
+      .section-head{
+        flex-wrap:wrap;
+      }
+
+      .cards{
+        grid-template-columns:repeat(2,minmax(0,1fr)) !important;
+      }
+
+      [style*="grid-template-columns"]{
+        grid-template-columns:1fr !important;
+      }
+
+      input, select, textarea, button{
+        max-width:100%;
+        box-sizing:border-box;
+      }
+
+      .list{
+        max-width:100%;
+        overflow-x:hidden;
+      }
+
+      .item{
+        min-width:0;
+        flex-wrap:wrap;
+      }
+
+      nav{
+        width:100%;
+        max-width:100%;
+        overflow-x:auto;
+        box-sizing:border-box;
+      }
+    }
+  `;
+
+  document.head.appendChild(style);
+
+}
+
+
+/* =========================================================
    INICIAR APLICACIÓN
    ========================================================= */
 
 function iniciarApp() {
+
+  applyMobileLayout();
 
   exposeFunctions();
 
