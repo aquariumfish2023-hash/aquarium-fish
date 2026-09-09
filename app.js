@@ -1,5 +1,4 @@
-const BASE_KEY = "aquarium_fish_data_v5";
-let KEY = BASE_KEY;
+const KEY = "aquarium_fish_data_v5";
 
 /* =========================================================
    DATOS
@@ -17,8 +16,7 @@ let db =
     moves: [],
     customers: [],
     orders: [],
-    cash: [],
-    quotes: []
+    cash: []
   };
 
 db.products =
@@ -74,19 +72,6 @@ db.cash =
   Array.isArray(db.cash)
     ? db.cash
     : [];
-
-db.quotes =
-  Array.isArray(db.quotes)
-    ? db.quotes
-    : [];
-
-db.quotes.forEach(quote => {
-  if(!quote || typeof quote !== "object") return;
-  if(!quote.id) quote.id = `COT-${String(db.quotes.indexOf(quote)+1).padStart(4,"0")}`;
-  if(!quote.status) quote.status = "Pendiente";
-  if(!Array.isArray(quote.items)) quote.items = [];
-  if(quote.discount == null) quote.discount = 0;
-});
 
 /* =========================================================
    CLIENTES - CUENTAS PENDIENTES
@@ -3045,7 +3030,7 @@ function renderCustomers() {
 
 
 /* =========================================================
-   COTIZADOR AVANZADO
+   COTIZADOR
    ========================================================= */
 
 let quoteItems = [];
@@ -3054,15 +3039,14 @@ let quoteSearch = "";
 let quoteCustomer = "";
 let quotePhone = "";
 let quoteNote = "";
-let quoteDiscount = 0;
-let quoteHistorySearch = "";
-let quoteEditingId = null;
-let quoteSaleDraft = null;
 
 function setupCotizadorUI(){
   const main = document.querySelector("main");
   const nav = document.querySelector("nav");
-  if(!main || !nav) return;
+  if(!main || !nav){
+    return;
+  }
+
   let section = document.getElementById("cotizador");
   if(!section){
     section = document.createElement("section");
@@ -3070,6 +3054,7 @@ function setupCotizadorUI(){
     section.className = "screen";
     main.appendChild(section);
   }
+
   let navButton = nav.querySelector('button[data-tab="cotizador"]');
   if(!navButton){
     navButton = document.createElement("button");
@@ -3078,46 +3063,69 @@ function setupCotizadorUI(){
     navButton.innerHTML = `🧾<span>Cotizador</span>`;
     nav.appendChild(navButton);
   }
+
   renderCotizador();
 }
 
 function quoteCategories(){
-  return ["Todas", ...new Set(db.products.map(p => String(p.category || "").trim()).filter(Boolean))];
-}
-
-function quoteSubtotal(){
-  return quoteItems.reduce((sum,item) => sum + ((+item.qty || 0) * (+item.unitPrice || 0)), 0);
+  return [
+    "Todas",
+    ...new Set(
+      db.products
+        .map(p => String(p.category || "").trim())
+        .filter(Boolean)
+    )
+  ];
 }
 
 function quoteTotal(){
-  return Math.max(0, quoteSubtotal() - Math.max(0, +quoteDiscount || 0));
+  return quoteItems.reduce(
+    (sum,item) =>
+      sum + ((+item.qty || 0) * (+item.unitPrice || 0)),
+    0
+  );
 }
 
-function nextQuoteNumber(){
-  const nums = db.quotes.map(q => parseInt(String(q.id || "").replace(/\D/g,""),10) || 0);
-  return `COT-${String(Math.max(0,...nums)+1).padStart(4,"0")}`;
+function quoteItemKey(index){
+  return `${index}`;
 }
-
-function quoteItemKey(index){ return `${index}`; }
 
 function addQuoteItem(index){
   const product = db.products[index];
-  if(!product) return;
+  if(!product){
+    return;
+  }
+
   const key = quoteItemKey(index);
   const existing = quoteItems.find(item => item.key === key);
+
   if(existing){
     existing.qty = Math.max(1, (+existing.qty || 0) + 1);
   }else{
-    quoteItems.push({key, productIndex:index, name:String(product.name || "Producto"), qty:1, unitPrice:Math.max(0,+product.price || 0)});
+    quoteItems.push({
+      key,
+      productIndex: index,
+      name: String(product.name || "Producto"),
+      qty: 1,
+      unitPrice: Math.max(0, +product.price || 0)
+    });
   }
+
   renderCotizador();
 }
 
 function updateQuoteItem(key, field, value){
   const item = quoteItems.find(i => i.key === String(key));
-  if(!item) return;
-  if(field === "qty") item.qty = Math.max(1, parseInt(value,10) || 1);
-  if(field === "unitPrice") item.unitPrice = Math.max(0,+value || 0);
+  if(!item){
+    return;
+  }
+
+  if(field === "qty"){
+    item.qty = Math.max(1, parseInt(value,10) || 1);
+  }else if(field === "unitPrice"){
+    item.unitPrice = Math.max(0, +value || 0);
+  }
+
   renderCotizador();
 }
 
@@ -3127,221 +3135,306 @@ function removeQuoteItem(key){
 }
 
 function clearQuote(){
-  if(!quoteItems.length && !quoteCustomer && !quotePhone && !quoteNote && !quoteDiscount && !quoteEditingId) return;
+  if(!quoteItems.length && !quoteCustomer && !quotePhone && !quoteNote){
+    return;
+  }
+
   if(confirm("¿Limpiar la cotización actual?")){
-    quoteItems=[]; quoteCustomer=""; quotePhone=""; quoteNote=""; quoteDiscount=0; quoteEditingId=null;
+    quoteItems = [];
+    quoteCustomer = "";
+    quotePhone = "";
+    quoteNote = "";
     renderCotizador();
   }
-}
-
-function saveQuote(){
-  try{
-    if(!Array.isArray(db.quotes)) db.quotes = [];
-    if(!quoteItems.length){
-      alert("Agrega al menos un producto a la cotización.");
-      return;
-    }
-
-    const subtotal = quoteSubtotal();
-    const discount = Math.min(subtotal, Math.max(0,+quoteDiscount || 0));
-    const existing = quoteEditingId
-      ? db.quotes.find(q => q.id === quoteEditingId)
-      : null;
-
-    const quote = existing || {
-      id: nextQuoteNumber(),
-      createdAt: now(),
-      status: "Pendiente"
-    };
-
-    quote.updatedAt = now();
-    quote.customer = String(quoteCustomer || "").trim();
-    quote.phone = String(quotePhone || "").trim();
-    quote.note = String(quoteNote || "").trim();
-    quote.discount = discount;
-    quote.subtotal = subtotal;
-    quote.total = Math.max(0, subtotal - discount);
-    quote.items = quoteItems.map(item => ({
-      productIndex: +item.productIndex,
-      name: String(item.name || "Producto"),
-      qty: Math.max(1, +item.qty || 1),
-      unitPrice: Math.max(0, +item.unitPrice || 0)
-    }));
-
-    if(!existing) db.quotes.push(quote);
-
-    save();
-    quoteEditingId = quote.id;
-    renderCotizador();
-    alert(`${quote.id} guardada correctamente.`);
-  }catch(error){
-    console.error("Error guardando cotización:", error);
-    alert("No se pudo guardar la cotización. Revisa la consola para más detalles.");
-  }
-}
-
-function loadQuote(id){
-  const quote = db.quotes.find(q => q.id === id);
-  if(!quote) return;
-  quoteEditingId = quote.id;
-  quoteCustomer = String(quote.customer || "");
-  quotePhone = String(quote.phone || "");
-  quoteNote = String(quote.note || "");
-  quoteDiscount = +quote.discount || 0;
-  quoteItems = (quote.items || []).map((item,i) => ({key:`${item.productIndex ?? i}-${i}`,productIndex:+item.productIndex, name:String(item.name || "Producto"),qty:+item.qty || 1,unitPrice:+item.unitPrice || 0}));
-  renderCotizador();
-}
-
-function setQuoteStatus(id,status){
-  const quote=db.quotes.find(q=>q.id===id);
-  if(!quote) return;
-  quote.status=status; quote.updatedAt=now(); save();
-}
-
-function convertQuoteToSale(id){
-  const quote=db.quotes.find(q=>q.id===id);
-  if(!quote || !quote.items.length) return;
-  const unavailable = quote.items.find(item => {
-    const p=db.products[+item.productIndex];
-    return !p || (+p.stock || 0) < (+item.qty || 0);
-  });
-  if(unavailable){ alert(`No hay stock suficiente para convertir la cotización. Revisa: ${unavailable.name}.`); return; }
-  if(!confirm(`¿Convertir ${quote.id} en una venta? El stock se descontará al guardar la venta.`)) return;
-  quoteSaleDraft={
-    quoteId:quote.id,
-    customer:quote.customer || "",
-    items:quote.items.map(item=>({productIndex:+item.productIndex,qty:+item.qty || 1,price:+item.unitPrice || 0}))
-  };
-  show("sales");
-  setTimeout(()=>openSale(),80);
 }
 
 function buildQuoteText(){
-  const lines=["🐠 AQUARIUM FISH", "COTIZACIÓN", ""];
-  if(quoteEditingId) lines.push(`Número: ${quoteEditingId}`);
-  if(quoteCustomer.trim()) lines.push(`Cliente: ${quoteCustomer.trim()}`);
-  if(quotePhone.trim()) lines.push(`Teléfono: ${quotePhone.trim()}`);
-  if(quoteCustomer.trim() || quotePhone.trim()) lines.push("");
-  quoteItems.forEach(item=>lines.push(`${item.qty} x ${item.name} — ${money((+item.qty||0)*(+item.unitPrice||0))}`));
-  lines.push("",`Subtotal: ${money(quoteSubtotal())}`);
-  if(+quoteDiscount>0) lines.push(`Descuento: -${money(quoteDiscount)}`);
+  const lines = [
+    "🐠 AQUARIUM FISH",
+    "COTIZACIÓN",
+    ""
+  ];
+
+  if(quoteCustomer.trim()){
+    lines.push(`Cliente: ${quoteCustomer.trim()}`);
+  }
+
+  if(quotePhone.trim()){
+    lines.push(`Teléfono: ${quotePhone.trim()}`);
+  }
+
+  if(quoteCustomer.trim() || quotePhone.trim()){
+    lines.push("");
+  }
+
+  quoteItems.forEach(item => {
+    const subtotal = (+item.qty || 0) * (+item.unitPrice || 0);
+    lines.push(
+      `${item.qty} x ${item.name} — ${money(subtotal)}`
+    );
+  });
+
+  lines.push("");
   lines.push(`TOTAL: ${money(quoteTotal())}`);
-  if(quoteNote.trim()) lines.push("",`Nota: ${quoteNote.trim()}`);
-  lines.push("", "Gracias por elegir Aquarium Fish 🐠");
+
+  if(quoteNote.trim()){
+    lines.push("");
+    lines.push(`Nota: ${quoteNote.trim()}`);
+  }
+
+  lines.push("");
+  lines.push("Gracias por elegir Aquarium Fish 🐠");
+
   return lines.join("\n");
 }
 
 async function copyQuote(){
-  if(!quoteItems.length){alert("Agrega al menos un producto a la cotización.");return;}
-  const text=buildQuoteText();
-  try{await navigator.clipboard.writeText(text);alert("Cotización copiada.");}
-  catch(_){const area=document.createElement("textarea");area.value=text;document.body.appendChild(area);area.select();try{document.execCommand("copy");alert("Cotización copiada.");}catch(__){alert("No se pudo copiar automáticamente.");}area.remove();}
-}
+  if(!quoteItems.length){
+    alert("Agrega al menos un producto a la cotización.");
+    return;
+  }
 
-function shareQuoteWhatsApp(){
-  if(!quoteItems.length){alert("Agrega al menos un producto a la cotización.");return;}
-  let phone=quotePhone.replace(/\D/g,""); if(/^3\d{9}$/.test(phone)) phone="57"+phone;
-  const url=phone?`https://wa.me/${phone}?text=${encodeURIComponent(buildQuoteText())}`:`https://wa.me/?text=${encodeURIComponent(buildQuoteText())}`;
-  window.open(url,"_blank","noopener");
-}
+  const text = buildQuoteText();
 
-function printQuote(id=null){
   try{
-    const quote=id ? db.quotes.find(q=>q.id===id) : null;
-    if(quote) loadQuote(quote.id);
-
-    if(!quoteItems.length){
-      alert("Agrega al menos un producto a la cotización.");
-      return;
+    await navigator.clipboard.writeText(text);
+    alert("Cotización copiada. Puedes pegarla donde quieras.");
+  }catch(_){
+    const area = document.createElement("textarea");
+    area.value = text;
+    area.style.position = "fixed";
+    area.style.opacity = "0";
+    document.body.appendChild(area);
+    area.focus();
+    area.select();
+    try{
+      document.execCommand("copy");
+      alert("Cotización copiada.");
+    }catch(__){
+      alert("No se pudo copiar automáticamente. Puedes usar el botón de WhatsApp.");
     }
-
-    const rows=quoteItems.map(item=>`<tr><td>${esc(item.name)}</td><td>${+item.qty||1}</td><td>${money(item.unitPrice)}</td><td>${money((+item.qty||0)*(+item.unitPrice||0))}</td></tr>`).join("");
-
-    const html=`<!doctype html>
-<html>
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>${esc(quoteEditingId || nextQuoteNumber())}</title>
-<style>
-body{font-family:Arial,sans-serif;padding:30px;color:#222;max-width:900px;margin:auto}
-h1{margin-bottom:4px}
-table{width:100%;border-collapse:collapse;margin-top:20px}
-th,td{padding:9px;border-bottom:1px solid #ddd;text-align:left}
-.total{text-align:right;font-size:20px;font-weight:bold;margin-top:20px}
-@media print{body{padding:0;max-width:none}}
-</style>
-</head>
-<body>
-<h1>🐠 AQUARIUM FISH</h1>
-<h2>Cotización ${esc(quoteEditingId || "")}</h2>
-<p>Cliente: ${esc(quoteCustomer || "Sin cliente")}<br>
-Teléfono: ${esc(quotePhone || "-")}<br>
-Fecha: ${esc(now())}</p>
-<table>
-<thead><tr><th>Producto</th><th>Cant.</th><th>Precio</th><th>Subtotal</th></tr></thead>
-<tbody>${rows}</tbody>
-</table>
-<p>Subtotal: ${money(quoteSubtotal())}<br>
-Descuento: ${money(quoteDiscount)}<br>
-<span class="total">TOTAL: ${money(quoteTotal())}</span></p>
-<p>${esc(quoteNote || "")}</p>
-</body>
-</html>`;
-
-    const blob = new Blob([html], {type:"text/html;charset=utf-8"});
-    const url = URL.createObjectURL(blob);
-    const w = window.open(url, "_blank");
-
-    if(!w){
-      URL.revokeObjectURL(url);
-      alert("El navegador bloqueó la ventana de impresión. Permite ventanas emergentes para Aquarium Fish.");
-      return;
-    }
-
-    const doPrint = () => {
-      try{
-        w.focus();
-        w.print();
-      }catch(error){
-        console.error("Error al imprimir:", error);
-      }
-      setTimeout(()=>URL.revokeObjectURL(url), 5000);
-    };
-
-    w.addEventListener("load", () => setTimeout(doPrint, 300), {once:true});
-    setTimeout(doPrint, 1500);
-  }catch(error){
-    console.error("Error preparando impresión:", error);
-    alert("No se pudo preparar la impresión.");
+    area.remove();
   }
 }
 
-function renderQuoteHistory(){
-  const list=document.getElementById("quoteHistoryList"); if(!list) return;
-  const q=quoteHistorySearch.trim().toLowerCase();
-  const rows=db.quotes.slice().reverse().filter(quote=>`${quote.id} ${quote.customer||""} ${quote.phone||""}`.toLowerCase().includes(q));
-  list.innerHTML=rows.length?rows.map(quote=>`<div class="item" style="align-items:flex-start;gap:10px;"><div style="flex:1;min-width:0;"><b>${esc(quote.id)}</b><div class="muted">${esc(quote.customer||"Sin cliente")} · ${esc(quote.createdAt||"")}</div><div class="muted">${quote.items?.length||0} producto(s) · Total ${money(quote.total||0)}</div></div><div style="display:flex;flex-wrap:wrap;justify-content:flex-end;gap:5px;"><span class="badge">${esc(quote.status||"Pendiente")}</span><button type="button" onclick="loadQuote('${esc(quote.id)}')">✏️ Abrir</button><button type="button" onclick="printQuote('${esc(quote.id)}')">🖨️ PDF/Imprimir</button><button type="button" onclick="setQuoteStatus('${esc(quote.id)}','Aprobada')">✅ Aprobar</button><button type="button" class="primary" onclick="convertQuoteToSale('${esc(quote.id)}')">🛒 Venta</button></div></div>`).join(""):`<div class="empty">No hay cotizaciones guardadas.</div>`;
+function shareQuoteWhatsApp(){
+  if(!quoteItems.length){
+    alert("Agrega al menos un producto a la cotización.");
+    return;
+  }
+
+  const text = encodeURIComponent(buildQuoteText());
+  let phone = quotePhone.replace(/\D/g, "");
+  if(/^3\d{9}$/.test(phone)){
+    phone = "57" + phone;
+  }
+  const url = phone
+    ? `https://wa.me/${phone}?text=${text}`
+    : `https://wa.me/?text=${text}`;
+
+  window.open(url, "_blank", "noopener");
 }
 
 function renderCotizador(){
-  const section=document.getElementById("cotizador"); if(!section)return;
-  const categories=quoteCategories(); const q=quoteSearch.trim().toLowerCase();
-  const products=db.products.map((product,index)=>({product,index})).filter(({product})=>{const category=String(product.category||"").trim();return (quoteCategory==="Todas"||category===quoteCategory)&&(!q||`${product.name||""} ${category}`.toLowerCase().includes(q));}).sort((a,b)=>String(a.product.name||"").localeCompare(String(b.product.name||""),"es"));
-  section.innerHTML=`
-    <div class="section-head"><h1>🧾 Cotizador avanzado</h1><button type="button" onclick="clearQuote()">Limpiar</button></div>
-    <div class="panel"><h2>${quoteEditingId?`✏️ ${esc(quoteEditingId)}`:"Nueva cotización"}</h2><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;"><input id="quoteCustomer" class="search" placeholder="Nombre del cliente" value="${esc(quoteCustomer)}"><input id="quotePhone" class="search" type="tel" placeholder="WhatsApp / teléfono" value="${esc(quotePhone)}"></div></div>
-    <div class="panel"><h2>Agregar productos</h2><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:10px 0;"><input id="quoteSearch" class="search" placeholder="🔎 Buscar producto..." value="${esc(quoteSearch)}"><select id="quoteCategory" class="search">${categories.map(category=>`<option value="${esc(category)}" ${category===quoteCategory?"selected":""}>${esc(category)}</option>`).join("")}</select></div><div class="list" style="max-height:360px;overflow:auto;">${products.length?products.map(({product,index})=>`<div class="item" style="align-items:center;gap:8px;"><div style="flex:1;min-width:0;"><b>${esc(product.name||"Producto")}</b><div class="muted">${esc(product.category||"Sin categoría")} · ${money(product.price)} · Stock ${+product.stock||0}</div></div><button type="button" class="primary" onclick="addQuoteItem(${index})">+ Agregar</button></div>`).join(""):`<div class="empty">No hay productos que coincidan.</div>`}</div></div>
-    <div class="panel"><h2>🛒 Cotización</h2>${quoteItems.length?quoteItems.map(item=>{const subtotal=(+item.qty||0)*(+item.unitPrice||0);return `<div class="item" style="align-items:flex-start;gap:8px;"><div style="flex:1;min-width:0;"><b>${esc(item.name)}</b><div style="display:grid;grid-template-columns:90px 1fr;gap:8px;margin-top:6px;"><input class="search" type="number" min="1" value="${+item.qty||1}" onchange="updateQuoteItem('${esc(item.key)}','qty',this.value)"><input class="search" type="number" min="0" value="${+item.unitPrice||0}" onchange="updateQuoteItem('${esc(item.key)}','unitPrice',this.value)"></div><div class="muted">Subtotal ${money(subtotal)}</div></div><button type="button" onclick="removeQuoteItem('${esc(item.key)}')">🗑️</button></div>`}).join(""):`<div class="empty">Agrega productos para comenzar.</div>`}<div style="margin-top:12px;"><label>Descuento<input id="quoteDiscount" class="search" type="number" min="0" value="${+quoteDiscount||0}"></label></div><div style="margin-top:12px;"><label>Nota para el cliente<textarea id="quoteNote" rows="3" placeholder="Ej. Instalación, domicilio, disponibilidad, etc.">${esc(quoteNote)}</textarea></label></div><div style="margin-top:12px;padding-top:12px;border-top:1px solid rgba(0,0,0,.08);"><div>Subtotal: <b>${money(quoteSubtotal())}</b></div><div>Descuento: <b>-${money(quoteDiscount)}</b></div><div style="font-size:1.35rem;margin-top:6px;"><b>Total: ${money(quoteTotal())}</b></div></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px;"><button type="button" class="primary" onclick="saveQuote()">💾 Guardar cotización</button><button type="button" onclick="copyQuote()">📋 Copiar</button><button type="button" onclick="shareQuoteWhatsApp()">📲 WhatsApp</button></div><button type="button" onclick="printQuote()" style="width:100%;margin-top:8px;font-weight:700;">🖨️ Imprimir / Guardar PDF</button></div>
-    <div class="panel"><h2>📚 Historial</h2><input id="quoteHistorySearch" class="search" placeholder="🔎 Buscar por número o cliente..." value="${esc(quoteHistorySearch)}"><div id="quoteHistoryList" class="list" style="margin-top:10px;"></div></div>`;
-  const customer=document.getElementById("quoteCustomer"); if(customer)customer.oninput=function(){quoteCustomer=this.value;};
-  const phone=document.getElementById("quotePhone"); if(phone)phone.oninput=function(){quotePhone=this.value;};
-  const note=document.getElementById("quoteNote"); if(note)note.oninput=function(){quoteNote=this.value;};
-  const discount=document.getElementById("quoteDiscount"); if(discount)discount.oninput=function(){quoteDiscount=Math.max(0,+this.value||0);renderCotizador();};
-  const search=document.getElementById("quoteSearch"); if(search)search.oninput=function(){quoteSearch=this.value;const cursor=this.value.length;renderCotizador();const next=document.getElementById("quoteSearch");if(next){next.focus();try{next.setSelectionRange(cursor,cursor);}catch(_){}}};
-  const category=document.getElementById("quoteCategory"); if(category)category.onchange=function(){quoteCategory=this.value;renderCotizador();};
-  const historySearch=document.getElementById("quoteHistorySearch"); if(historySearch)historySearch.oninput=function(){quoteHistorySearch=this.value;renderQuoteHistory();};
-  renderQuoteHistory();
+  const section = document.getElementById("cotizador");
+  if(!section){
+    return;
+  }
+
+  const categories = quoteCategories();
+  const q = quoteSearch.trim().toLowerCase();
+
+  const products = db.products
+    .map((product,index) => ({product,index}))
+    .filter(({product}) => {
+      const category = String(product.category || "").trim();
+      if(quoteCategory !== "Todas" && category !== quoteCategory){
+        return false;
+      }
+
+      if(!q){
+        return true;
+      }
+
+      return `${product.name || ""} ${category}`
+        .toLowerCase()
+        .includes(q);
+    })
+    .sort((a,b) =>
+      String(a.product.name || "").localeCompare(
+        String(b.product.name || ""),
+        "es"
+      )
+    );
+
+  section.innerHTML = `
+    <div class="section-head">
+      <h1>🧾 Cotizador</h1>
+      <button type="button" onclick="clearQuote()">Limpiar</button>
+    </div>
+
+    <div class="panel">
+      <h2>Cliente</h2>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+        <input
+          id="quoteCustomer"
+          class="search"
+          placeholder="Nombre del cliente"
+          value="${esc(quoteCustomer)}"
+        >
+        <input
+          id="quotePhone"
+          class="search"
+          type="tel"
+          placeholder="WhatsApp / teléfono"
+          value="${esc(quotePhone)}"
+        >
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>Agregar productos</h2>
+      <p class="muted">
+        Selecciona varios productos. El cotizador usa el precio de venta del inventario y no modifica el stock.
+      </p>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:10px 0;">
+        <input
+          id="quoteSearch"
+          class="search"
+          placeholder="🔎 Buscar producto..."
+          value="${esc(quoteSearch)}"
+        >
+        <select id="quoteCategory" class="search">
+          ${categories.map(category => `
+            <option value="${esc(category)}" ${category === quoteCategory ? "selected" : ""}>
+              ${esc(category)}
+            </option>
+          `).join("")}
+        </select>
+      </div>
+
+      <div class="list" style="max-height:360px;overflow:auto;">
+        ${products.length ? products.map(({product,index}) => `
+          <div class="item" style="align-items:center;gap:8px;">
+            <div style="flex:1;min-width:0;">
+              <b>${esc(product.name || "Producto")}</b>
+              <div class="muted">
+                ${esc(product.category || "Sin categoría")} · ${money(product.price)}
+              </div>
+            </div>
+            <button type="button" class="primary" onclick="addQuoteItem(${index})">
+              + Agregar
+            </button>
+          </div>
+        `).join("") : `
+          <div class="empty">No hay productos que coincidan.</div>
+        `}
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>🛒 Cotización actual</h2>
+      ${quoteItems.length ? quoteItems.map(item => {
+        const subtotal = (+item.qty || 0) * (+item.unitPrice || 0);
+        return `
+          <div class="item" style="align-items:flex-start;gap:8px;">
+            <div style="flex:1;min-width:0;">
+              <b>${esc(item.name)}</b>
+              <div style="display:grid;grid-template-columns:90px 1fr;gap:8px;margin-top:6px;">
+                <input
+                  class="search"
+                  type="number"
+                  min="1"
+                  step="1"
+                  value="${+item.qty || 1}"
+                  aria-label="Cantidad"
+                  onchange="updateQuoteItem('${esc(item.key)}','qty',this.value)"
+                >
+                <input
+                  class="search"
+                  type="number"
+                  min="0"
+                  step="1"
+                  value="${+item.unitPrice || 0}"
+                  aria-label="Precio unitario"
+                  onchange="updateQuoteItem('${esc(item.key)}','unitPrice',this.value)"
+                >
+              </div>
+              <div class="muted" style="margin-top:5px;">
+                ${Number(item.qty) || 1} unidad(es) · Subtotal ${money(subtotal)}
+              </div>
+            </div>
+            <button type="button" onclick="removeQuoteItem('${esc(item.key)}')">🗑️</button>
+          </div>
+        `;
+      }).join("") : `
+        <div class="empty">Agrega productos para comenzar.</div>
+      `}
+
+      <div style="margin-top:12px;padding-top:12px;border-top:1px solid rgba(0,0,0,.08);">
+        <label>
+          Nota para el cliente
+          <textarea
+            id="quoteNote"
+            rows="3"
+            placeholder="Ej. Instalación, domicilio, disponibilidad, etc."
+          >${esc(quoteNote)}</textarea>
+        </label>
+      </div>
+
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:12px;">
+        <span><b>Total</b></span>
+        <strong style="font-size:1.35rem;">${money(quoteTotal())}</strong>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px;">
+        <button type="button" onclick="copyQuote()">📋 Copiar</button>
+        <button type="button" class="primary" onclick="shareQuoteWhatsApp()">📲 WhatsApp</button>
+      </div>
+
+      <p class="muted" style="margin-top:10px;">
+        El cotizador muestra precios de venta. La ganancia nunca se muestra al cliente.
+      </p>
+    </div>
+  `;
+
+  const customer = document.getElementById("quoteCustomer");
+  if(customer){
+    customer.oninput = function(){ quoteCustomer = this.value; };
+  }
+
+  const phone = document.getElementById("quotePhone");
+  if(phone){
+    phone.oninput = function(){ quotePhone = this.value; };
+  }
+
+  const note = document.getElementById("quoteNote");
+  if(note){
+    note.oninput = function(){ quoteNote = this.value; };
+  }
+
+  const search = document.getElementById("quoteSearch");
+  if(search){
+    search.oninput = function(){
+      quoteSearch = this.value;
+      const cursor = this.value.length;
+      renderCotizador();
+      const next = document.getElementById("quoteSearch");
+      if(next){
+        next.focus();
+        try{ next.setSelectionRange(cursor,cursor); }catch(_){ }
+      }
+    };
+  }
+
+  const category = document.getElementById("quoteCategory");
+  if(category){
+    category.onchange = function(){
+      quoteCategory = this.value;
+      renderCotizador();
+    };
+  }
 }
 
 /* =========================================================
@@ -4633,8 +4726,6 @@ function updateSalePreview() {
 
 function openSale() {
 
-  const saleFromQuoteId = quoteSaleDraft ? quoteSaleDraft.quoteId : null;
-
   modal(
 
     "Nueva venta",
@@ -5048,14 +5139,6 @@ function openSale() {
           )
 
       });
-
-      if(saleFromQuoteId){
-        const sourceQuote = db.quotes.find(q => q.id === saleFromQuoteId);
-        if(sourceQuote){
-          sourceQuote.status = "Convertida";
-          sourceQuote.updatedAt = now();
-        }
-      }
 
 
       items.forEach(
@@ -7835,13 +7918,6 @@ function importData(input) {
               imported.cash
             )
               ? imported.cash
-              : [],
-
-          quotes:
-            Array.isArray(
-              imported.quotes
-            )
-              ? imported.quotes
               : []
 
         };
@@ -8068,12 +8144,6 @@ function exposeFunctions() {
   window.shareQuoteWhatsApp =
     shareQuoteWhatsApp;
 
-  window.saveQuote = saveQuote;
-  window.loadQuote = loadQuote;
-  window.setQuoteStatus = setQuoteStatus;
-  window.convertQuoteToSale = convertQuoteToSale;
-  window.printQuote = printQuote;
-
   window.openReceipt =
     openReceipt;
 
@@ -8097,70 +8167,22 @@ function exposeFunctions() {
    INICIAR APLICACIÓN
    ========================================================= */
 
-let appInitialized = false;
-
 function iniciarApp() {
-
-  if(appInitialized){
-    return;
-  }
-
-  // Firebase Authentication controla cuándo puede iniciarse la aplicación.
-  // Esto evita mostrar la interfaz de negocio antes de autenticar al usuario.
-  if(
-    window.AQ_AUTH_READY !== true ||
-    !window.AQ_AUTH_USER
-  ){
-    return;
-  }
-
-  const userKey =
-    BASE_KEY + "_" + window.AQ_AUTH_USER.uid;
-
-  try{
-    const existing =
-      localStorage.getItem(userKey);
-
-    if(existing){
-      db = normalize(JSON.parse(existing));
-    }else{
-      // Primera entrada del usuario: conserva los datos locales existentes
-      // como migración inicial, pero desde ahora cada cuenta usa su propia clave.
-      const legacy =
-        localStorage.getItem(BASE_KEY);
-
-      if(legacy){
-        db = normalize(JSON.parse(legacy));
-        localStorage.setItem(userKey, JSON.stringify(db));
-      }else{
-        db = normalize(db);
-        localStorage.setItem(userKey, JSON.stringify(db));
-      }
-    }
-  }catch(error){
-    console.error("No se pudo preparar el almacenamiento del usuario:", error);
-  }
-
-  KEY = userKey;
-  window.AQ_DATA_KEY = KEY;
-
-  appInitialized = true;
 
   exposeFunctions();
 
   setupCotizadorUI();
 
+  bindNavigation();
+
   bindSearches();
 
   renderAll();
-
-  bindNavigation();
 
   show("home");
 
 }
 
-window.iniciarApp = iniciarApp;
 
 if(
   document.readyState ===
@@ -8177,8 +8199,3 @@ if(
   iniciarApp();
 
 }
-
-window.addEventListener(
-  "aquarium-auth-ready",
-  iniciarApp
-);
