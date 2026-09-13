@@ -277,10 +277,14 @@ function sameDay(a,b){
 
 function save() {
 
-  localStorage.setItem(
-    KEY,
-    JSON.stringify(db)
-  );
+  if (typeof window.aquariumPersistData === "function") {
+    window.aquariumPersistData(db);
+  } else {
+    localStorage.setItem(
+      KEY,
+      JSON.stringify(db)
+    );
+  }
 
   renderAll();
 
