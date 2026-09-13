@@ -902,6 +902,15 @@ function saveLocalV5(data){
 }
 
 
+window.aquariumPersistData = function(data){
+  const normalized = saveLocalV5(data);
+  if(ready && firestoreRef && currentUser){
+    uploadLocalData();
+  }
+  return normalized;
+};
+
+
 function refreshApp(){
 
   try{
