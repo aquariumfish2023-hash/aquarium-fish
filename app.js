@@ -3269,6 +3269,146 @@ function shareQuoteWhatsApp(){
   window.open(url, "_blank", "noopener");
 }
 
+
+/* ===== COTIZACIONES: LISTADO + CONVERSIÓN A VENTA ===== */
+function quoteStatusLabel(q){
+  if(q.convertedSaleId) return 'Convertida en venta';
+  return q.status || 'Pendiente';
+}
+
+function renderQuotesList(){
+  const container =
+    document.getElementById('quotesList') ||
+    document.getElementById('cotizacionesList') ||
+    document.querySelector('[data-quotes-list]');
+  if(!container) return;
+
+  const quotes = Array.isArray(db.quotes) ? db.quotes : [];
+  if(!quotes.length){
+    container.innerHTML = '<div class="empty-state">No hay cotizaciones guardadas.</div>';
+    return;
+  }
+
+  container.innerHTML = quotes.slice().reverse().map(q => {
+    const id = q.id || q.number || q.code || '';
+    const customer = q.customerName || q.clientName || q.customer || q.client || 'Cliente general';
+    const total = Number(q.total || 0);
+    const date = q.date || q.createdAt || '';
+    const status = quoteStatusLabel(q);
+    const converted = !!q.convertedSaleId;
+    return `
+      <div class="quote-row" data-quote-id="${String(id).replace(/"/g,'&quot;')}">
+        <div><strong>${id}</strong><br><small>${customer}</small></div>
+        <div>${date ? new Date(date).toLocaleDateString('es-CO') : ''}</div>
+        <div>$${total.toLocaleString('es-CO')}</div>
+        <div><span class="quote-status ${converted?'converted':'pending'}">${status}</span></div>
+        <div class="quote-actions">
+          <button type="button" onclick="viewQuote('${String(id).replace(/'/g,"\\'")}')">👁️ Ver</button>
+          ${converted
+            ? `<button type="button" onclick="viewSaleFromQuote('${String(q.convertedSaleId).replace(/'/g,"\\'")}')">🧾 Ver venta</button>`
+            : `<button type="button" onclick="convertQuoteToSale('${String(id).replace(/'/g,"\\'")}')">➡️ Convertir en venta</button>`}
+          <button type="button" onclick="deleteQuote('${String(id).replace(/'/g,"\\'")}')">🗑️</button>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+function findQuoteById(id){
+  return (db.quotes || []).find(q =>
+    String(q.id || q.number || q.code) === String(id)
+  );
+}
+
+function convertQuoteToSale(quoteId){
+  const q=findQuoteById(quoteId);
+  if(!q) return alert('No se encontró la cotización.');
+
+  if(q.convertedSaleId){
+    alert('Esta cotización ya fue convertida en la venta ' + q.convertedSaleId + '.');
+    return;
+  }
+
+  const ok=confirm(
+    '¿Convertir la cotización ' + quoteId +
+    ' en una venta?\\n\\nEl inventario y la caja solo se actualizarán al confirmar la venta.'
+  );
+  if(!ok) return;
+
+  // Keep the quote intact and mark it as pending conversion.
+  q.status='Lista para venta';
+  q.fromQuoteId=quoteId;
+
+  // Reuse the app's existing sale form when available.
+  const saleSection =
+    document.getElementById('ventas') ||
+    document.getElementById('sales') ||
+    document.querySelector('[data-section="ventas"]');
+
+  if(saleSection && typeof showSection === 'function'){
+    try { showSection(saleSection.id); } catch(e) {}
+  }
+
+  // Try to populate common sale fields without breaking the existing form.
+  const customer = q.customerName || q.clientName || q.customer || q.client || '';
+  const items = q.items || q.products || q.lines || [];
+  const total = Number(q.total || 0);
+
+  const customerInput =
+    document.querySelector('#saleCustomer, #salesCustomer, [name="saleCustomer"], [name="customer"]');
+  if(customerInput && customer) customerInput.value=customer;
+
+  // Expose the conversion payload so the existing sale UI can consume it.
+  window.pendingQuoteToSale = {
+    quoteId: quoteId,
+    customerName: customer,
+    items: JSON.parse(JSON.stringify(items)),
+    total: total,
+    quote: q
+  };
+
+  if(typeof renderSalesForm === 'function'){
+    try { renderSalesForm(window.pendingQuoteToSale); } catch(e) {}
+  }
+
+  // If there is an app-specific loader, use it.
+  if(typeof loadSaleFromQuote === 'function'){
+    try { loadSaleFromQuote(q); } catch(e) {}
+  }
+
+  alert('Cotización cargada para convertirla en venta. Revisa los datos y confirma la venta.');
+}
+
+function finalizeQuoteConversion(sale){
+  const payload=window.pendingQuoteToSale;
+  if(!payload) return;
+
+  const q=findQuoteById(payload.quoteId);
+  if(!q) return;
+
+  const saleId=sale && (sale.id || sale.number || sale.code);
+  if(!saleId) return;
+
+  q.convertedSaleId=saleId;
+  q.status='Convertida en venta';
+  q.convertedAt=new Date().toISOString();
+  q.fromQuoteId=payload.quoteId;
+
+  try{
+    localStorage.setItem('aquariumFishDB', JSON.stringify(db));
+  }catch(e){}
+
+  window.pendingQuoteToSale=null;
+  renderQuotesList();
+}
+
+function viewSaleFromQuote(saleId){
+  if(typeof viewSale === 'function') return viewSale(saleId);
+  if(typeof openSale === 'function') return openSale(saleId);
+  alert('Venta asociada: ' + saleId);
+}
+
+/* Render after normal data refreshes when the quotes view exists. */
+const _originalRenderQuotesList = renderQuotesList;
 function saveQuote(){
   try{
     if(!Array.isArray(db.quotes)) db.quotes = [];
@@ -3303,7 +3443,9 @@ function saveQuote(){
       unitPrice: Math.max(0, +item.unitPrice || 0)
     }));
 
-    if(!existing) db.quotes.push(quote);
+    if(!existing) quote.status = quote.status || 'Pendiente';
+  quote.convertedSaleId = quote.convertedSaleId || null;
+  db.quotes.push(quote);
 
     // Guardado directo de la cotización:
     // evitamos llamar a save(), porque save() redibuja toda la app
