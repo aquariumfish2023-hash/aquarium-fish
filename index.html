@@ -80,7 +80,13 @@
 
 <section id="portada" class="screen active portada-screen">
   <div class="portada-card">
-    <img src="portada.png" alt="Aquarium Fish">
+    <picture class="portada-picture">
+      <source media="(max-width: 699px)" srcset="aquarium-portada-mobile.png">
+      <img src="aquarium-portada-wide.png" alt="Aquarium Fish - Pasión por la vida acuática">
+    </picture>
+    <button class="portada-enter" type="button" onclick="show('home')" aria-label="Entrar al sistema">
+      <span>Entrar al sistema</span>
+    </button>
   </div>
 </section>
 

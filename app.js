@@ -320,6 +320,20 @@ function show(tab) {
 
   }
 
+  // La portada funciona como presentación para clientes:
+  // mientras está activa no mostramos datos del negocio ni navegación.
+  const isPortada = tab === "portada";
+  document.body.classList.toggle("portada-mode", isPortada);
+
+  const header = document.getElementById("appHeader");
+  if(header && window.AQ_AUTH_USER){
+    header.classList.toggle("hidden", isPortada);
+  }
+
+  const nav = document.querySelector("nav");
+  if(nav){
+    nav.classList.toggle("portada-hidden", isPortada);
+  }
 
   document
     .querySelectorAll(

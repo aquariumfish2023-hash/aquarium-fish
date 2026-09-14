@@ -1,4 +1,4 @@
-const CACHE='aquarium-fish-v13';
+const CACHE='aquarium-fish-v14';
 const ASSETS=[
   './',
   './index.html',
@@ -6,7 +6,9 @@ const ASSETS=[
   './app.js',
   './manifest.json',
   './icon.svg',
-  './splash-v7.png'
+  './splash-v7.png',
+  './aquarium-portada-wide.png',
+  './aquarium-portada-mobile.png'
 ];
 
 self.addEventListener('install',e=>{
