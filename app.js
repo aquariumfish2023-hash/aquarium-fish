@@ -3113,11 +3113,60 @@ function quoteSubtotal(){
 
 
 function quoteTotal(){
-  return quoteItems.reduce(
-    (sum,item) =>
-      sum + ((+item.qty || 0) * (+item.unitPrice || 0)),
-    0
-  );
+  const subtotal = quoteSubtotal();
+  const discount = Math.min(subtotal, Math.max(0, +quoteDiscount || 0));
+  return Math.max(0, subtotal - discount);
+}
+
+function quoteDiscountAmount(){
+  const subtotal = quoteSubtotal();
+  return Math.min(subtotal, Math.max(0, +quoteDiscount || 0));
+}
+
+function duplicateQuote(quoteId){
+  const q=findQuoteById(quoteId);
+  if(!q){ alert("No se encontró la cotización."); return; }
+  quoteEditingId=null;
+  quoteCustomer=String(q.customer||"");
+  quotePhone=String(q.phone||"");
+  quoteNote=String(q.note||"");
+  quoteDiscount=Number(q.discount||0);
+  quoteItems=(Array.isArray(q.items)?q.items:[]).map((item,i)=>({
+    key:`dup-${Date.now()}-${i}`, productIndex:Number(item.productIndex),
+    name:String(item.name||"Producto"), qty:Math.max(1,Number(item.qty)||1),
+    unitPrice:Math.max(0,Number(item.unitPrice)||0)
+  }));
+  renderCotizador();
+  document.getElementById("cotizador")?.scrollIntoView({behavior:"smooth",block:"start"});
+}
+
+function shareSavedQuoteWhatsApp(quoteId){
+  const q=findQuoteById(quoteId);
+  if(!q){ alert("No se encontró la cotización."); return; }
+  const lines=["🐠 AQUARIUM FISH","COTIZACIÓN",`N.º ${q.id}`,""];
+  if(q.customer) lines.push(`Cliente: ${q.customer}`);
+  if(q.phone) lines.push(`Teléfono: ${q.phone}`);
+  if(q.customer||q.phone) lines.push("");
+  (q.items||[]).forEach(item=>{ const qty=Math.max(1,Number(item.qty)||1); const price=Math.max(0,Number(item.unitPrice)||0); lines.push(`${qty} x ${item.name||"Producto"} — ${money(qty*price)}`); });
+  lines.push("",`Subtotal: ${money(Number(q.subtotal||0))}`);
+  if(Number(q.discount||0)>0) lines.push(`Descuento: -${money(Number(q.discount||0))}`);
+  lines.push(`TOTAL: ${money(Number(q.total||0))}`);
+  if(q.note) lines.push("",`Nota: ${q.note}`);
+  lines.push("","Gracias por elegir Aquarium Fish 🐠");
+  let phone=String(q.phone||"").replace(/\D/g,"");
+  if(/^3\d{9}$/.test(phone)) phone="57"+phone;
+  const url=phone?`https://wa.me/${phone}?text=${encodeURIComponent(lines.join("\n"))}`:`https://wa.me/?text=${encodeURIComponent(lines.join("\n"))}`;
+  window.open(url,"_blank","noopener");
+}
+
+function printQuote(quoteId){
+  const q=findQuoteById(quoteId);
+  if(!q){ alert("No se encontró la cotización."); return; }
+  const rows=(q.items||[]).map(item=>{ const qty=Math.max(1,Number(item.qty)||1); const price=Math.max(0,Number(item.unitPrice)||0); return `<tr><td>${esc(item.name||"Producto")}</td><td>${qty}</td><td>${money(price)}</td><td>${money(qty*price)}</td></tr>`; }).join("");
+  const win=window.open("","_blank");
+  if(!win){ alert("El navegador bloqueó la ventana de impresión. Permite ventanas emergentes para esta app."); return; }
+  win.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${esc(q.id)}</title><style>body{font-family:Arial,sans-serif;padding:30px;color:#172024;max-width:800px;margin:auto}h1{margin-bottom:4px}table{width:100%;border-collapse:collapse;margin-top:20px}th,td{padding:9px;border-bottom:1px solid #ddd;text-align:left}th:nth-child(n+2),td:nth-child(n+2){text-align:right}.total{font-size:20px;font-weight:700;text-align:right;margin-top:18px}.muted{color:#68777b}</style></head><body><h1>🐠 AQUARIUM FISH</h1><div>COTIZACIÓN <strong>${esc(q.id)}</strong></div><p class="muted">${q.createdAt?esc(new Date(q.createdAt).toLocaleString("es-CO")):""}</p><p><strong>Cliente:</strong> ${esc(q.customer||"Cliente general")}<br>${q.phone?`<strong>Teléfono:</strong> ${esc(q.phone)}`:""}</p><table><thead><tr><th>Producto</th><th>Cant.</th><th>Precio</th><th>Importe</th></tr></thead><tbody>${rows}</tbody></table><p style="text-align:right">Subtotal: <strong>${money(Number(q.subtotal||0))}</strong><br>${Number(q.discount||0)>0?`Descuento: <strong>-${money(Number(q.discount||0))}</strong><br>`:""}<span class="total">TOTAL: ${money(Number(q.total||0))}</span></p>${q.note?`<p><strong>Nota:</strong><br>${esc(q.note)}</p>`:""}<p style="margin-top:30px;text-align:center" class="muted">Gracias por elegir Aquarium Fish 🐠</p><script>window.onload=()=>window.print()<\/script></body></html>`);
+  win.document.close();
 }
 
 function quoteItemKey(index){
@@ -3211,6 +3260,8 @@ function buildQuoteText(){
   });
 
   lines.push("");
+  lines.push(`Subtotal: ${money(quoteSubtotal())}`);
+  if(quoteDiscountAmount() > 0) lines.push(`Descuento: -${money(quoteDiscountAmount())}`);
   lines.push(`TOTAL: ${money(quoteTotal())}`);
 
   if(quoteNote.trim()){
@@ -3684,7 +3735,17 @@ function renderCotizador(){
         </label>
       </div>
 
-      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:12px;">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px;">
+        <label>Descuento
+          <input id="quoteDiscount" class="search" type="number" min="0" step="1" placeholder="0" value="${quoteDiscount || 0}">
+        </label>
+        <div style="background:#f5f8f9;border-radius:14px;padding:12px;margin-bottom:10px;">
+          <div class="muted">Subtotal</div><strong>${money(quoteSubtotal())}</strong>
+          <div class="muted" style="margin-top:5px;">Descuento</div><strong>-${money(quoteDiscountAmount())}</strong>
+        </div>
+      </div>
+
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:4px;padding-top:12px;border-top:1px solid rgba(0,0,0,.08);">
         <span><b>Total</b></span>
         <strong style="font-size:1.35rem;">${money(quoteTotal())}</strong>
       </div>
@@ -3724,11 +3785,14 @@ function renderCotizador(){
                     <div><b>${money(total)}</b></div>
                     <div style="display:flex;gap:6px;flex-wrap:wrap;">
                       <button type="button" onclick="viewQuote('${esc(id)}')">👁️ Ver</button>
+                      <button type="button" onclick="duplicateQuote('${esc(id)}')">📑 Duplicar</button>
+                      <button type="button" onclick="shareSavedQuoteWhatsApp('${esc(id)}')">📲 WhatsApp</button>
+                      <button type="button" onclick="printQuote('${esc(id)}')">🖨️ Imprimir</button>
                       ${converted
                         ? `<span class="badge">✅ Venta ${esc(q.convertedSaleId)}</span>`
                         : `<button type="button" onclick="editQuote('${esc(id)}')">✏️ Editar</button>
                            <button type="button" class="primary" onclick="convertQuoteToSale('${esc(id)}')">➡️ Convertir en venta</button>`}
-                      <button type="button" onclick="deleteQuote('${esc(id)}')">🗑️</button>
+                      ${!converted ? `<button type="button" onclick="deleteQuote('${esc(id)}')">🗑️</button>` : ""}
                     </div>
                   </div>`;
               }).join("")
@@ -3751,6 +3815,11 @@ function renderCotizador(){
   const note = document.getElementById("quoteNote");
   if(note){
     note.oninput = function(){ quoteNote = this.value; };
+  }
+
+  const discount = document.getElementById("quoteDiscount");
+  if(discount){
+    discount.oninput = function(){ quoteDiscount = Math.max(0, Number(this.value) || 0); renderCotizador(); };
   }
 
   const search = document.getElementById("quoteSearch");
