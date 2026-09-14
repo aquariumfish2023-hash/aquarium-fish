@@ -3521,9 +3521,9 @@ function saveQuote(){
       quote.convertedSaleId = quote.convertedSaleId || null;
     }
 
-    // Usamos el mismo sistema de guardado de toda la aplicación.
-    // Así la cotización se guarda localmente y, cuando Firebase está activo,
-    // también se sincroniza en la nube con los demás dispositivos.
+    // Guardar usando el mismo flujo de Firebase que utiliza el resto
+    // de la aplicación. Esto hace que la cotización quede disponible
+    // en PC, celular y tablet con la misma cuenta.
     save();
 
     quoteEditingId = quote.id;
