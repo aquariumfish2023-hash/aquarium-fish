@@ -3413,7 +3413,7 @@ function deleteQuote(quoteId){
   }
 
   db.quotes.splice(index,1);
-  localStorage.setItem(KEY, JSON.stringify(db));
+  save();
 
   if(typeof renderCotizador === "function"){
     try{ renderCotizador(); }catch(e){ console.error(e); }
@@ -3467,9 +3467,7 @@ function finalizeQuoteConversion(sale){
   q.convertedAt=new Date().toISOString();
   q.fromQuoteId=payload.quoteId;
 
-  try{
-    localStorage.setItem('aquariumFishDB', JSON.stringify(db));
-  }catch(e){}
+  save();
 
   window.pendingQuoteToSale=null;
   renderQuotesList();
@@ -3523,13 +3521,10 @@ function saveQuote(){
       quote.convertedSaleId = quote.convertedSaleId || null;
     }
 
-    // Guardado directo de la cotización:
-    // evitamos llamar a save(), porque save() redibuja toda la app
-    // y un fallo en otro módulo puede impedir que termine este proceso.
-    localStorage.setItem(
-      KEY,
-      JSON.stringify(db)
-    );
+    // Usamos el mismo sistema de guardado de toda la aplicación.
+    // Así la cotización se guarda localmente y, cuando Firebase está activo,
+    // también se sincroniza en la nube con los demás dispositivos.
+    save();
 
     quoteEditingId = quote.id;
     renderCotizador();
