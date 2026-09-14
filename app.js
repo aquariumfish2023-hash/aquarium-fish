@@ -3282,6 +3282,108 @@ function findQuoteById(id){
   );
 }
 
+
+function viewQuote(quoteId){
+  const q=findQuoteById(quoteId);
+  if(!q){
+    alert("No se encontró la cotización.");
+    return;
+  }
+
+  const customer=String(q.customer || "Cliente general");
+  const phone=String(q.phone || "");
+  const date=q.createdAt ? new Date(q.createdAt).toLocaleString("es-CO") : "";
+  const items=Array.isArray(q.items) ? q.items : [];
+  const subtotal=Number(q.subtotal || 0);
+  const discount=Number(q.discount || 0);
+  const total=Number(q.total || 0);
+
+  const rows=items.map(item=>{
+    const qty=Math.max(1, Number(item.qty)||1);
+    const price=Math.max(0, Number(item.unitPrice)||0);
+    return `
+      <tr>
+        <td>${String(item.name || "Producto")}</td>
+        <td style="text-align:center">${qty}</td>
+        <td style="text-align:right">$${price.toLocaleString("es-CO")}</td>
+        <td style="text-align:right">$${(qty*price).toLocaleString("es-CO")}</td>
+      </tr>`;
+  }).join("");
+
+  modal(
+    "Cotización " + q.id,
+    `
+      <div style="line-height:1.5">
+        <p><strong>Cliente:</strong> ${customer}</p>
+        ${phone ? `<p><strong>Teléfono:</strong> ${phone}</p>` : ""}
+        ${date ? `<p><strong>Fecha:</strong> ${date}</p>` : ""}
+        <p><strong>Estado:</strong> ${quoteStatusLabel(q)}</p>
+
+        <div style="overflow:auto;margin:14px 0">
+          <table style="width:100%;border-collapse:collapse">
+            <thead>
+              <tr>
+                <th style="text-align:left;border-bottom:1px solid #ddd;padding:7px">Producto</th>
+                <th style="text-align:center;border-bottom:1px solid #ddd;padding:7px">Cant.</th>
+                <th style="text-align:right;border-bottom:1px solid #ddd;padding:7px">Precio</th>
+                <th style="text-align:right;border-bottom:1px solid #ddd;padding:7px">Importe</th>
+              </tr>
+            </thead>
+            <tbody>${rows}</tbody>
+          </table>
+        </div>
+
+        <div style="text-align:right">
+          <div>Subtotal: <strong>$${subtotal.toLocaleString("es-CO")}</strong></div>
+          ${discount > 0 ? `<div>Descuento: <strong>-$${discount.toLocaleString("es-CO")}</strong></div>` : ""}
+          <div style="font-size:1.15em;margin-top:6px">Total: <strong>$${total.toLocaleString("es-CO")}</strong></div>
+        </div>
+
+        ${q.note ? `<div style="margin-top:14px"><strong>Nota:</strong><br>${String(q.note)}</div>` : ""}
+        ${q.convertedSaleId ? `<p style="margin-top:14px"><strong>Venta asociada:</strong> ${q.convertedSaleId}</p>` : ""}
+      </div>
+
+      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:18px">
+        <button type="button" onclick="closeModal()">Cerrar</button>
+        ${!q.convertedSaleId
+          ? `<button type="button" onclick="closeModal();convertQuoteToSale('${String(q.id).replace(/'/g,"\\'")}')">➡️ Convertir en venta</button>`
+          : ""}
+      </div>
+    `,
+    null
+  );
+}
+
+function deleteQuote(quoteId){
+  const index=(db.quotes || []).findIndex(q =>
+    String(q.id || q.number || q.code) === String(quoteId)
+  );
+
+  if(index < 0){
+    alert("No se encontró la cotización.");
+    return;
+  }
+
+  const q=db.quotes[index];
+
+  if(q.convertedSaleId){
+    alert("Esta cotización ya fue convertida en una venta y no se puede eliminar desde aquí.");
+    return;
+  }
+
+  if(!confirm(`¿Eliminar la cotización ${q.id}?\\n\\nEsta acción no se puede deshacer.`)){
+    return;
+  }
+
+  db.quotes.splice(index,1);
+  localStorage.setItem(KEY, JSON.stringify(db));
+
+  if(typeof renderCotizador === "function"){
+    try{ renderCotizador(); }catch(e){ console.error(e); }
+  }
+  renderQuotesList();
+}
+
 function convertQuoteToSale(quoteId){
   const q = findQuoteById(quoteId);
   if(!q){ alert("No se encontró la cotización."); return; }
@@ -8231,6 +8333,17 @@ function bindSearches() {
    ========================================================= */
 
 function exposeFunctions() {
+
+  window.viewQuote =
+    viewQuote;
+
+  window.deleteQuote =
+    deleteQuote;
+
+  window.convertQuoteToSale =
+    convertQuoteToSale;
+
+
 
   window.show =
     show;
