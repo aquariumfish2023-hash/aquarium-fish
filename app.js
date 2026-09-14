@@ -3178,6 +3178,8 @@ function clearQuote(){
     quoteCustomer = "";
     quotePhone = "";
     quoteNote = "";
+    quoteDiscount = 0;
+    quoteEditingId = null;
     renderCotizador();
   }
 }
@@ -3282,6 +3284,41 @@ function findQuoteById(id){
   );
 }
 
+
+
+function editQuote(quoteId){
+  const q=findQuoteById(quoteId);
+  if(!q){
+    alert("No se encontró la cotización.");
+    return;
+  }
+
+  if(q.convertedSaleId){
+    alert("Esta cotización ya fue convertida en una venta y no se puede editar.");
+    return;
+  }
+
+  quoteEditingId=q.id;
+  quoteCustomer=String(q.customer || "");
+  quotePhone=String(q.phone || "");
+  quoteNote=String(q.note || "");
+  quoteDiscount=Number(q.discount || 0);
+
+  quoteItems=(Array.isArray(q.items) ? q.items : []).map((item, i) => ({
+    key: String(item.productIndex ?? i),
+    productIndex: Number(item.productIndex),
+    name: String(item.name || "Producto"),
+    qty: Math.max(1, Number(item.qty) || 1),
+    unitPrice: Math.max(0, Number(item.unitPrice) || 0)
+  }));
+
+  renderCotizador();
+
+  const section=document.getElementById("cotizador");
+  if(section){
+    section.scrollIntoView({behavior:"smooth", block:"start"});
+  }
+}
 
 function viewQuote(quoteId){
   const q=findQuoteById(quoteId);
@@ -3658,7 +3695,9 @@ function renderCotizador(){
       </div>
 
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px;">
-        <button type="button" class="primary" onclick="saveQuote()">💾 Guardar cotización</button>
+        <button type="button" class="primary" onclick="saveQuote()">
+          ${quoteEditingId ? "💾 Guardar cambios" : "💾 Guardar cotización"}
+        </button>
         <button type="button" onclick="copyQuote()">📋 Copiar</button>
         <button type="button" class="primary" onclick="shareQuoteWhatsApp()">📲 WhatsApp</button>
       </div>
@@ -3692,7 +3731,8 @@ function renderCotizador(){
                       <button type="button" onclick="viewQuote('${esc(id)}')">👁️ Ver</button>
                       ${converted
                         ? `<span class="badge">✅ Venta ${esc(q.convertedSaleId)}</span>`
-                        : `<button type="button" class="primary" onclick="convertQuoteToSale('${esc(id)}')">➡️ Convertir en venta</button>`}
+                        : `<button type="button" onclick="editQuote('${esc(id)}')">✏️ Editar</button>
+                           <button type="button" class="primary" onclick="convertQuoteToSale('${esc(id)}')">➡️ Convertir en venta</button>`}
                       <button type="button" onclick="deleteQuote('${esc(id)}')">🗑️</button>
                     </div>
                   </div>`;
@@ -8333,6 +8373,9 @@ function bindSearches() {
    ========================================================= */
 
 function exposeFunctions() {
+
+  window.editQuote =
+    editQuote;
 
   window.viewQuote =
     viewQuote;
