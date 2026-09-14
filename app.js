@@ -8705,7 +8705,7 @@ function iniciarApp() {
 
   renderAll();
 
-  show("home");
+  show("portada");
 
 }
 
