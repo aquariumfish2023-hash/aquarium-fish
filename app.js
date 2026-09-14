@@ -3276,43 +3276,6 @@ function quoteStatusLabel(q){
   return q.status || 'Pendiente';
 }
 
-function renderQuotesList(){
-  const container =
-    document.getElementById('quotesList') ||
-    document.getElementById('cotizacionesList') ||
-    document.querySelector('[data-quotes-list]');
-  if(!container) return;
-
-  const quotes = Array.isArray(db.quotes) ? db.quotes : [];
-  if(!quotes.length){
-    container.innerHTML = '<div class="empty-state">No hay cotizaciones guardadas.</div>';
-    return;
-  }
-
-  container.innerHTML = quotes.slice().reverse().map(q => {
-    const id = q.id || q.number || q.code || '';
-    const customer = q.customerName || q.clientName || q.customer || q.client || 'Cliente general';
-    const total = Number(q.total || 0);
-    const date = q.date || q.createdAt || '';
-    const status = quoteStatusLabel(q);
-    const converted = !!q.convertedSaleId;
-    return `
-      <div class="quote-row" data-quote-id="${String(id).replace(/"/g,'&quot;')}">
-        <div><strong>${id}</strong><br><small>${customer}</small></div>
-        <div>${date ? new Date(date).toLocaleDateString('es-CO') : ''}</div>
-        <div>$${total.toLocaleString('es-CO')}</div>
-        <div><span class="quote-status ${converted?'converted':'pending'}">${status}</span></div>
-        <div class="quote-actions">
-          <button type="button" onclick="viewQuote('${String(id).replace(/'/g,"\\'")}')">👁️ Ver</button>
-          ${converted
-            ? `<button type="button" onclick="viewSaleFromQuote('${String(q.convertedSaleId).replace(/'/g,"\\'")}')">🧾 Ver venta</button>`
-            : `<button type="button" onclick="convertQuoteToSale('${String(id).replace(/'/g,"\\'")}')">➡️ Convertir en venta</button>`}
-          <button type="button" onclick="deleteQuote('${String(id).replace(/'/g,"\\'")}')">🗑️</button>
-        </div>
-      </div>`;
-  }).join('');
-}
-
 function findQuoteById(id){
   return (db.quotes || []).find(q =>
     String(q.id || q.number || q.code) === String(id)
@@ -3320,62 +3283,34 @@ function findQuoteById(id){
 }
 
 function convertQuoteToSale(quoteId){
-  const q=findQuoteById(quoteId);
-  if(!q) return alert('No se encontró la cotización.');
-
+  const q = findQuoteById(quoteId);
+  if(!q){ alert("No se encontró la cotización."); return; }
   if(q.convertedSaleId){
-    alert('Esta cotización ya fue convertida en la venta ' + q.convertedSaleId + '.');
+    alert(`Esta cotización ya fue convertida en la venta ${q.convertedSaleId}.`);
     return;
   }
-
-  const ok=confirm(
-    '¿Convertir la cotización ' + quoteId +
-    ' en una venta?\\n\\nEl inventario y la caja solo se actualizarán al confirmar la venta.'
-  );
-  if(!ok) return;
-
-  // Keep the quote intact and mark it as pending conversion.
-  q.status='Lista para venta';
-  q.fromQuoteId=quoteId;
-
-  // Reuse the app's existing sale form when available.
-  const saleSection =
-    document.getElementById('ventas') ||
-    document.getElementById('sales') ||
-    document.querySelector('[data-section="ventas"]');
-
-  if(saleSection && typeof showSection === 'function'){
-    try { showSection(saleSection.id); } catch(e) {}
+  if(!Array.isArray(q.items) || !q.items.length){
+    alert("La cotización no tiene productos.");
+    return;
   }
-
-  // Try to populate common sale fields without breaking the existing form.
-  const customer = q.customerName || q.clientName || q.customer || q.client || '';
-  const items = q.items || q.products || q.lines || [];
-  const total = Number(q.total || 0);
-
-  const customerInput =
-    document.querySelector('#saleCustomer, #salesCustomer, [name="saleCustomer"], [name="customer"]');
-  if(customerInput && customer) customerInput.value=customer;
-
-  // Expose the conversion payload so the existing sale UI can consume it.
+  if(!confirm(`¿Convertir ${quoteId} en una venta?\n\nEl inventario y la caja solo se actualizarán cuando confirmes la venta.`)){
+    return;
+  }
   window.pendingQuoteToSale = {
-    quoteId: quoteId,
-    customerName: customer,
-    items: JSON.parse(JSON.stringify(items)),
-    total: total,
-    quote: q
+    quoteId:q.id,
+    customer:String(q.customer || "").trim(),
+    phone:String(q.phone || "").trim(),
+    items:q.items.map(item => ({
+      productIndex:+item.productIndex,
+      qty:Math.max(1,+item.qty || 1),
+      unitPrice:Math.max(0,+item.unitPrice || 0),
+      name:String(item.name || "Producto")
+    })),
+    total:+q.total || 0
   };
-
-  if(typeof renderSalesForm === 'function'){
-    try { renderSalesForm(window.pendingQuoteToSale); } catch(e) {}
-  }
-
-  // If there is an app-specific loader, use it.
-  if(typeof loadSaleFromQuote === 'function'){
-    try { loadSaleFromQuote(q); } catch(e) {}
-  }
-
-  alert('Cotización cargada para convertirla en venta. Revisa los datos y confirma la venta.');
+  q.status="Lista para venta";
+  save();
+  openSale(window.pendingQuoteToSale);
 }
 
 function finalizeQuoteConversion(sale){
@@ -3407,8 +3342,6 @@ function viewSaleFromQuote(saleId){
   alert('Venta asociada: ' + saleId);
 }
 
-/* Render after normal data refreshes when the quotes view exists. */
-const _originalRenderQuotesList = renderQuotesList;
 function saveQuote(){
   try{
     if(!Array.isArray(db.quotes)) db.quotes = [];
@@ -3443,9 +3376,13 @@ function saveQuote(){
       unitPrice: Math.max(0, +item.unitPrice || 0)
     }));
 
-    if(!existing) quote.status = quote.status || 'Pendiente';
-  quote.convertedSaleId = quote.convertedSaleId || null;
-  db.quotes.push(quote);
+    if(!existing){
+      quote.status = quote.status || "Pendiente";
+      quote.convertedSaleId = null;
+      db.quotes.push(quote);
+    }else{
+      quote.convertedSaleId = quote.convertedSaleId || null;
+    }
 
     // Guardado directo de la cotización:
     // evitamos llamar a save(), porque save() redibuja toda la app
@@ -3627,6 +3564,40 @@ function renderCotizador(){
       <p class="muted" style="margin-top:10px;">
         El cotizador muestra precios de venta. La ganancia nunca se muestra al cliente.
       </p>
+    </div>
+
+    <div class="panel" style="margin-top:12px;">
+      <div class="section-head" style="margin-bottom:8px;">
+        <h2>📋 Cotizaciones guardadas</h2>
+        <span class="muted">${Array.isArray(db.quotes) ? db.quotes.length : 0} guardadas</span>
+      </div>
+      <div id="quotesList">
+        ${
+          Array.isArray(db.quotes) && db.quotes.length
+            ? db.quotes.slice().reverse().map(q => {
+                const id = q.id || "";
+                const customer = q.customer || "Cliente general";
+                const dateObj = parseLocalDate(q.createdAt || q.date);
+                const dateText = dateObj ? dateObj.toLocaleDateString("es-CO") : "";
+                const total = Number(q.total || 0);
+                const converted = !!q.convertedSaleId;
+                return `
+                  <div class="quote-row" style="display:grid;grid-template-columns:1.2fr 1fr .9fr 1.1fr;gap:8px;align-items:center;padding:10px 0;border-bottom:1px solid rgba(0,0,0,.08);">
+                    <div><b>${esc(id)}</b><div class="muted">${esc(customer)}</div></div>
+                    <div class="muted">${esc(dateText)}</div>
+                    <div><b>${money(total)}</b></div>
+                    <div style="display:flex;gap:6px;flex-wrap:wrap;">
+                      <button type="button" onclick="viewQuote('${esc(id)}')">👁️ Ver</button>
+                      ${converted
+                        ? `<span class="badge">✅ Venta ${esc(q.convertedSaleId)}</span>`
+                        : `<button type="button" class="primary" onclick="convertQuoteToSale('${esc(id)}')">➡️ Convertir en venta</button>`}
+                      <button type="button" onclick="deleteQuote('${esc(id)}')">🗑️</button>
+                    </div>
+                  </div>`;
+              }).join("")
+            : `<div class="empty">No hay cotizaciones guardadas todavía.</div>`
+        }
+      </div>
     </div>
   `;
 
@@ -4955,7 +4926,7 @@ function updateSalePreview() {
 }
 
 
-function openSale() {
+function openSale(quotePayload = null) {
 
   modal(
 
@@ -5338,38 +5309,22 @@ function openSale() {
       );
 
 
-      db.sales.push({
-
-        date:
-          now(),
-
-        client:
-          form.client.value,
-
+      const newSale = {
+        id:`V-${String(db.sales.length + 1).padStart(4,"0")}`,
+        date:now(),
+        client:form.client.value,
         items,
-
         total,
-
         paid,
-
-        pay:
-          form.pay.value,
-
+        pay:form.pay.value,
         status,
+        profit:items.reduce(
+          (sum,item) => sum + ((item.price-item.cost)*item.qty), 0
+        ),
+        fromQuoteId:window.pendingQuoteToSale?.quoteId || null
+      };
 
-        profit:
-          items.reduce(
-            (sum,item) =>
-              sum +
-              (
-                item.price -
-                item.cost
-              ) *
-              item.qty,
-            0
-          )
-
-      });
+      db.sales.push(newSale);
 
 
       items.forEach(
@@ -5394,6 +5349,19 @@ function openSale() {
 
       save();
 
+      if(window.pendingQuoteToSale?.quoteId){
+        const payload=window.pendingQuoteToSale;
+        const q=findQuoteById(payload.quoteId);
+        if(q){
+          q.convertedSaleId=newSale.id;
+          q.status="Convertida en venta";
+          q.convertedAt=now();
+        }
+        window.pendingQuoteToSale=null;
+        save();
+        renderCotizador();
+      }
+
       closeModal();
 
     }
@@ -5402,6 +5370,34 @@ function openSale() {
 
 
   addSaleRow();
+
+  if(quotePayload && quotePayload.items){
+    const clientSelect=document.querySelector('#modal select[name="client"]');
+    if(clientSelect && quotePayload.customer){
+      let option=[...clientSelect.options].find(opt =>
+        String(opt.value).trim().toLowerCase()===String(quotePayload.customer).trim().toLowerCase()
+      );
+      if(!option){
+        option=document.createElement("option");
+        option.value=quotePayload.customer;
+        option.textContent=quotePayload.customer;
+        clientSelect.appendChild(option);
+      }
+      clientSelect.value=quotePayload.customer;
+    }
+
+    quotePayload.items.forEach((item,itemIndex)=>{
+      if(itemIndex>0) addSaleRow();
+      const rows=[...document.querySelectorAll(".sale-row")];
+      const row=rows[rows.length-1];
+      if(!row) return;
+      const select=row.querySelector(".sale-product");
+      const qty=row.querySelector(".sale-qty");
+      if(select) select.value=String(item.productIndex);
+      if(qty) qty.value=Math.max(1,+item.qty||1);
+    });
+    updateSalePreview();
+  }
 
 }
 
