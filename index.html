@@ -96,10 +96,16 @@
 
   <div class="cards">
 
+    <div class="card card-today">
+      <span>💰 Ventas de hoy</span>
+      <b id="todaySalesTotal">$0</b>
+      <small id="todaySalesCount">0 ventas hoy</small>
+    </div>
+
     <div class="card">
-      <span>Ventas</span>
+      <span>📊 Ventas acumuladas</span>
       <b id="salesTotal">$0</b>
-      <small id="salesCount">0 transacciones</small>
+      <small id="salesCount">0 transacciones en total</small>
     </div>
 
     <div class="card">
@@ -126,6 +132,23 @@
       <small>saldo actual</small>
     </div>
 
+    <div class="card">
+      <span>🧾 Cotizaciones pendientes</span>
+      <b id="pendingQuotesCount">0</b>
+      <small>por atender</small>
+    </div>
+
+  </div>
+
+  <div class="panel quick-actions">
+    <div class="section-head">
+      <h2>⚡ Acciones rápidas</h2>
+    </div>
+    <div class="quick-actions-grid">
+      <button type="button" class="primary" onclick="openSale()">🛒 Nueva venta</button>
+      <button type="button" onclick="show('cotizador')">🧾 Nueva cotización</button>
+      <button type="button" onclick="openCustomer()">👤 Nuevo cliente</button>
+    </div>
   </div>
 
   <div class="panel">
@@ -172,7 +195,7 @@
     </div>
 
     <p class="muted">
-      El respaldo guarda productos, ventas, clientes,
+      El respaldo guarda productos, ventas, clientes, cotizaciones,
       encargos, movimientos y caja.
     </p>
 
