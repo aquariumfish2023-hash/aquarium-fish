@@ -709,6 +709,19 @@ function renderHome() {
       0
     );
 
+  const today = new Date();
+  const todaySales = db.sales.filter(sale => {
+    const d = parseLocalDate(sale.date || sale.createdAt);
+    return d ? sameDay(d, today) : false;
+  });
+
+  const todayTotal = todaySales.reduce(
+    (sum, sale) => sum + (+sale.total || 0),
+    0
+  );
+
+  const pendingQuotes = (db.quotes || []).filter(q => !q.convertedSaleId);
+
 
   const salesTotal =
     document.getElementById(
@@ -720,6 +733,10 @@ function renderHome() {
     document.getElementById(
       "salesCount"
     );
+
+  const todaySalesTotal = document.getElementById("todaySalesTotal");
+  const todaySalesCount = document.getElementById("todaySalesCount");
+  const pendingQuotesCount = document.getElementById("pendingQuotesCount");
 
 
   const productCount =
@@ -763,8 +780,20 @@ function renderHome() {
   if(salesCount){
 
     salesCount.textContent =
-      `${db.sales.length} transacciones`;
+      `${db.sales.length} transacciones en total`;
 
+  }
+
+  if(todaySalesTotal){
+    todaySalesTotal.textContent = money(todayTotal);
+  }
+
+  if(todaySalesCount){
+    todaySalesCount.textContent = `${todaySales.length} venta${todaySales.length === 1 ? "" : "s"} hoy`;
+  }
+
+  if(pendingQuotesCount){
+    pendingQuotesCount.textContent = pendingQuotes.length;
   }
 
 
@@ -8351,6 +8380,13 @@ function importData(input) {
               imported.customers
             )
               ? imported.customers
+              : [],
+
+          quotes:
+            Array.isArray(
+              imported.quotes
+            )
+              ? imported.quotes
               : [],
 
           orders:

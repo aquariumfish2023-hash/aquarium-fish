@@ -102,3 +102,10 @@ nav.portada-hidden{
 @media(min-width:700px) and (max-height:760px){
   .portada-enter{top:75%}
 }
+
+
+/* =====================================================
+   INICIO PROFESIONAL
+   ===================================================== */
+.quick-actions-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}.quick-actions-grid button{min-height:52px;border:1px solid #d7dfe1;background:#fff;border-radius:14px;padding:11px 10px;font-weight:700;font-size:14px}.quick-actions-grid .primary{border-color:#087f8c}.card-today{background:linear-gradient(135deg,#e9fbfc,#fff)}
+@media(max-width:699px){.quick-actions-grid{grid-template-columns:1fr}.quick-actions-grid button{min-height:50px}}
