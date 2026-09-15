@@ -1643,6 +1643,11 @@ function renderSales() {
       "salesList"
     );
 
+  const search =
+    document.getElementById(
+      "salesSearch"
+    );
+
 
   if(!list){
 
@@ -1666,10 +1671,58 @@ function renderSales() {
   }
 
 
+  const normalizeSearch = value =>
+    String(value || "")
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "");
+
+  const q =
+    normalizeSearch(
+      search ? search.value : ""
+    ).trim();
+
+  const filteredSales =
+    db.sales.filter(sale => {
+
+      if(!q) return true;
+
+      const itemNames =
+        Array.isArray(sale.items)
+          ? sale.items.map(item => item.product || "").join(" ")
+          : (sale.product || "");
+
+      const haystack =
+        normalizeSearch([
+          sale.id,
+          sale.client,
+          sale.phone,
+          sale.date,
+          sale.pay,
+          sale.status,
+          itemNames
+        ].join(" "));
+
+      return haystack.includes(q);
+    });
+
+  if(!filteredSales.length){
+
+    list.innerHTML = `
+      <div class="empty">
+        No encontramos ventas que coincidan con “${esc(search ? search.value : "") }”.
+      </div>
+    `;
+
+    return;
+
+  }
+
+
   const groups = {};
 
 
-  db.sales.forEach(
+  filteredSales.forEach(
     sale => {
 
       const key =
@@ -8455,6 +8508,24 @@ function bindSearches() {
       function(){
 
         renderInventory();
+
+      };
+
+  }
+
+
+  const salesSearch =
+    document.getElementById(
+      "salesSearch"
+    );
+
+
+  if(salesSearch){
+
+    salesSearch.oninput =
+      function(){
+
+        renderSales();
 
       };
 
