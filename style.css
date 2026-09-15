@@ -109,3 +109,79 @@ nav.portada-hidden{
    ===================================================== */
 .quick-actions-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}.quick-actions-grid button{min-height:52px;border:1px solid #d7dfe1;background:#fff;border-radius:14px;padding:11px 10px;font-weight:700;font-size:14px}.quick-actions-grid .primary{border-color:#087f8c}.card-today{background:linear-gradient(135deg,#e9fbfc,#fff)}
 @media(max-width:699px){.quick-actions-grid{grid-template-columns:1fr}.quick-actions-grid button{min-height:50px}}
+
+/* =====================================================
+   V7 — EXPERIENCIA MOVIL Y TABLET
+   Mejoras visuales sin cambiar datos ni lógica.
+   ===================================================== */
+button,
+input,
+select,
+textarea{touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+button{cursor:pointer}
+
+@media(max-width:699px){
+  body{padding-bottom:122px;overflow-x:hidden}
+  header{height:60px;padding:0 10px}
+  .brand{gap:8px;min-width:0}
+  .brand img{width:36px;height:36px}
+  .brand strong{font-size:16px}
+  .brand small{font-size:11px}
+  #authUserEmail{display:none}
+  #logoutBtn,#installBtn{min-height:42px;padding:9px 11px}
+
+  main{width:100%;min-width:0}
+  .screen{padding:12px}
+  h1{font-size:23px;margin:5px 0 14px}
+  h2{font-size:17px}
+
+  .cards{grid-template-columns:1fr;gap:10px}
+  .card:first-child{grid-column:auto}
+  .card,.panel,.item{border-radius:14px;padding:14px}
+  .card b{font-size:22px}
+
+  .section-head{gap:8px;align-items:flex-start}
+  .section-head>button{min-height:42px}
+  .data-actions{gap:7px}
+  .data-actions button,.form-actions button{min-height:44px;padding:10px 12px}
+
+  .grid2{grid-template-columns:1fr;gap:0}
+  .search,input,select{min-height:44px;font-size:16px}
+  textarea{font-size:16px}
+
+  .item{align-items:flex-start}
+  .item>div:first-child{min-width:0;overflow-wrap:anywhere}
+  .right{min-width:92px}
+
+  .sale-row{grid-template-columns:minmax(0,1fr) 72px 44px;gap:6px}
+  .remove-row{min-height:44px}
+
+  .quick-actions-grid{grid-template-columns:1fr}
+  .quick-actions-grid button{min-height:52px;font-size:14px}
+
+  .modal{align-items:flex-end}
+  .modal-box{width:100%;max-height:92dvh;border-radius:20px 20px 0 0;padding:16px 14px}
+  .modal-head{position:sticky;top:-16px;background:#fff;padding:2px 0 10px;z-index:2}
+  .modal-head button{min-width:42px;min-height:42px}
+  .form-actions{gap:8px;flex-wrap:wrap}
+  .form-actions button{min-width:130px}
+
+  /* Navegación móvil: todos los módulos visibles en 2 filas, sin desplazamiento horizontal. */
+  nav{left:0;right:0;bottom:0;width:100%;max-width:none;min-height:112px;height:112px;
+      transform:none;display:grid;grid-template-columns:repeat(4,1fr);grid-template-rows:repeat(2,1fr);
+      overflow:hidden;border-radius:16px 16px 0 0;padding:4px 4px calc(4px + env(safe-area-inset-bottom));
+      box-shadow:0 -4px 18px #00000012}
+  nav button{min-width:0;width:100%;min-height:50px;font-size:20px;padding:5px 2px;border-radius:12px}
+  nav button span{font-size:10px;margin-top:2px;white-space:nowrap}
+  nav button.active{background:#eef8f8}
+
+  /* Evita que los controles queden demasiado pequeños al tocar. */
+  .quote-row button{min-height:44px}
+  .date-group-head{min-height:52px}
+}
+
+@media(min-width:700px) and (max-width:999px){
+  main{padding-left:8px;padding-right:8px}
+  .screen{padding:16px}
+  nav{max-width:760px}
+}
