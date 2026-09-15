@@ -2312,65 +2312,93 @@ function shareSaleReceiptWhatsApp(index) {
 
 function printSaleReceipt(index) {
 
-  const sale =
-    db.sales[index];
+  const sale = db.sales[index];
+  if(!sale){ return; }
 
-  if(!sale){
-    return;
-  }
+  const customer = getSaleCustomer(sale);
+  const items = Array.isArray(sale.items) && sale.items.length
+    ? sale.items
+    : [{ product: sale.product || "Producto", qty: sale.qty || 0, price: +sale.price || 0 }];
 
-  const text =
-    buildSaleReceiptText(
-      sale,
-      index
-    );
+  const rows = items.map(item => {
+    const qty = Math.max(0, Number(item.qty) || 0);
+    const price = Math.max(0, Number(item.price) || 0);
+    return `<tr>
+      <td>${esc(item.product || "Producto")}</td>
+      <td class="num">${qty}</td>
+      <td class="num">${money(price)}</td>
+      <td class="num strong">${money(qty * price)}</td>
+    </tr>`;
+  }).join("");
 
-  const printWindow =
-    window.open(
-      "",
-      "_blank",
-      "width=430,height=720"
-    );
+  const subtotal = items.reduce((sum,item) => {
+    return sum + Math.max(0, Number(item.qty)||0) * Math.max(0, Number(item.price)||0);
+  }, 0);
+  const total = Math.max(0, Number(sale.total) || subtotal);
+  const paid = salePaid(sale);
+  const balance = saleBalance(sale);
 
+  const printWindow = window.open("", "_blank", "width=760,height=900");
   if(!printWindow){
     alert("El navegador bloqueó la ventana de impresión. Permite ventanas emergentes para Aquarium Fish.");
     return;
   }
 
-  printWindow.document.write(`
-    <!doctype html>
-    <html lang="es">
-    <head>
-      <meta charset="utf-8">
-      <title>Comprobante #${receiptNumber(index)} - Aquarium Fish</title>
-      <style>
-        body{
-          font-family:Arial,Helvetica,sans-serif;
-          padding:24px;
-          color:#111;
-        }
-        pre{
-          white-space:pre-wrap;
-          font:15px/1.5 Arial,Helvetica,sans-serif;
-        }
-      </style>
-    </head>
-    <body>
-      <pre>${esc(text)}</pre>
-    </body>
-    </html>
-  `);
+  printWindow.document.write(`<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Comprobante ${esc(receiptNumber(index))} - Aquarium Fish</title>
+<style>
+  @page{size:A4;margin:14mm}
+  *{box-sizing:border-box}
+  body{margin:0;background:#fff;color:#172024;font-family:Arial,Helvetica,sans-serif;font-size:13px}
+  .sheet{max-width:760px;margin:0 auto}
+  .header{display:flex;justify-content:space-between;align-items:flex-start;gap:20px;border-bottom:3px solid #087f8c;padding-bottom:16px}
+  .brand{font-size:25px;font-weight:800;letter-spacing:.2px}.brand span{font-size:28px}
+  .subtitle{margin-top:5px;color:#647276;font-size:12px}
+  .doc{text-align:right}.doc-title{font-size:18px;font-weight:800}.doc-no{margin-top:5px;color:#647276}
+  .info{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:18px 0}
+  .box{border:1px solid #d9e1e3;border-radius:10px;padding:11px}.label{font-size:10px;text-transform:uppercase;color:#718084;font-weight:700;margin-bottom:4px}
+  .value{font-size:13px;font-weight:700}.muted{color:#68777b;font-weight:400}
+  table{width:100%;border-collapse:collapse;margin-top:8px}thead{background:#f1f7f8}th{font-size:11px;text-transform:uppercase;color:#536469;text-align:left;padding:10px;border-bottom:1px solid #cfd9db}td{padding:10px;border-bottom:1px solid #e3e8e9}th.num,td.num{text-align:right}.strong{font-weight:700}
+  .summary{margin:18px 0 0 auto;width:320px}.line{display:flex;justify-content:space-between;padding:5px 0}.total{display:flex;justify-content:space-between;border-top:2px solid #172024;margin-top:5px;padding-top:9px;font-size:19px;font-weight:800}.balance{color:#9a5a00}
+  .notes{margin-top:18px;border-left:4px solid #087f8c;background:#f5fafb;padding:11px 13px;border-radius:6px}.notes b{display:block;margin-bottom:4px}
+  .footer{margin-top:32px;padding-top:13px;border-top:1px solid #d9e1e3;text-align:center;color:#68777b;font-size:11px;line-height:1.5}
+  @media print{body{print-color-adjust:exact;-webkit-print-color-adjust:exact}.sheet{max-width:none}}
+</style>
+</head>
+<body>
+<div class="sheet">
+  <header class="header">
+    <div><div class="brand"><span>🐠</span> AQUARIUM FISH</div><div class="subtitle">Comprobante de venta</div></div>
+    <div class="doc"><div class="doc-title">VENTA</div><div class="doc-no">N.º ${esc(receiptNumber(index))}</div></div>
+  </header>
 
+  <section class="info">
+    <div class="box"><div class="label">Cliente</div><div class="value">${esc(sale.client || "Venta mostrador")}</div>${customer?.phone ? `<div class="muted">${esc(customer.phone)}</div>` : ""}</div>
+    <div class="box"><div class="label">Fecha</div><div class="value">${esc(formatReceiptDate(sale.date))}</div><div class="muted">Forma de pago: ${esc(sale.pay || "")}</div></div>
+  </section>
+
+  <table><thead><tr><th>Producto</th><th class="num">Cant.</th><th class="num">Precio</th><th class="num">Importe</th></tr></thead><tbody>${rows}</tbody></table>
+
+  <div class="summary">
+    <div class="line"><span>Subtotal</span><strong>${money(subtotal)}</strong></div>
+    <div class="line"><span>Estado</span><strong>${esc(sale.status || "Pagada")}</strong></div>
+    <div class="line"><span>Pagado</span><strong>${money(paid)}</strong></div>
+    <div class="total"><span>TOTAL</span><span>${money(total)}</span></div>
+    ${balance > 0 ? `<div class="line balance"><span>Saldo pendiente</span><strong>${money(balance)}</strong></div>` : ""}
+  </div>
+
+  ${sale.note ? `<div class="notes"><b>Nota</b>${esc(sale.note)}</div>` : ""}
+  <footer class="footer">Gracias por elegir Aquarium Fish 🐠<br>Conserve este comprobante como soporte de su compra.</footer>
+</div>
+<script>window.onload=()=>{setTimeout(()=>window.print(),250)}<\/script>
+</body></html>`);
   printWindow.document.close();
-  printWindow.focus();
-  printWindow.print();
-
 }
 
-
-/* =========================================================
-   CLIENTES
-   ========================================================= */
 
 function customerPaymentTotal(customer) {
 
