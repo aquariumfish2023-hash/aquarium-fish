@@ -79,6 +79,12 @@ db.cashClosings =
     ? db.cashClosings
     : [];
 
+// Seguridad adicional: renderCash() siempre debe recibir un arreglo.
+// Esto evita que datos antiguos o incompletos provoquen "not iterable".
+if(!Array.isArray(db.cashClosings)){
+  db.cashClosings = [];
+}
+
 db.quotes = Array.isArray(db.quotes) ? db.quotes : [];
 
 db.quotes.forEach(quote => {
