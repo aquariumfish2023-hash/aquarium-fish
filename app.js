@@ -3970,6 +3970,107 @@ function quoteAutomationData(){
   return {overdue,today,soon,scheduled,noFollowup,pending};
 }
 
+
+/* ===== ETAPA 4.7: RECUPERACION Y REACTIVACION DE COTIZACIONES ===== */
+function quoteAgeDays(q){
+  const raw=q?.createdAt || q?.date || q?.updatedAt;
+  if(!raw) return 0;
+  const d=parseLocalDate(raw) || new Date(raw);
+  if(!d || Number.isNaN(d.getTime())) return 0;
+  const base=new Date(d); base.setHours(0,0,0,0);
+  const today=new Date(); today.setHours(0,0,0,0);
+  return Math.max(0, Math.floor((today-base)/86400000));
+}
+
+function quoteOpportunityState(q){
+  if(!q || q.convertedSaleId) return {key:'converted',label:'Convertida',icon:'✅'};
+  const fs=quoteFollowupState(q);
+  if(q.followupCompleted) return {key:'contacted',label:'Contactada',icon:'📞'};
+  if(fs.key==='late') return {key:'overdue',label:'Vencida',icon:'🔴'};
+  if(fs.key==='today') return {key:'today',label:'Seguimiento hoy',icon:'🟠'};
+  if(!q.followupDate) return {key:'no_followup',label:'Sin seguimiento',icon:'⚪'};
+  if(quoteAgeDays(q)>=7) return {key:'old',label:'Pendiente antigua',icon:'🟡'};
+  return {key:'active',label:'En seguimiento',icon:'🟢'};
+}
+
+function quoteOpportunityData(){
+  const quotes=Array.isArray(db.quotes)?db.quotes:[];
+  const opportunities=quotes.filter(q=>q && !q.convertedSaleId && !q.followupCompleted);
+  let total=0,overdue=0,today=0,noFollowup=0,old=0;
+  opportunities.forEach(q=>{
+    total += Number(q.total||0);
+    const st=quoteOpportunityState(q);
+    if(st.key==='overdue') overdue++;
+    if(st.key==='today') today++;
+    if(st.key==='no_followup') noFollowup++;
+    if(st.key==='old') old++;
+  });
+  const sorted=opportunities.slice().sort((a,b)=>{
+    const priority={overdue:0,today:1,no_followup:2,old:3,active:4};
+    const pa=priority[quoteOpportunityState(a).key]??9;
+    const pb=priority[quoteOpportunityState(b).key]??9;
+    if(pa!==pb) return pa-pb;
+    return Number(b.total||0)-Number(a.total||0);
+  });
+  return {count:opportunities.length,total,overdue,today,noFollowup,old,opportunities:sorted};
+}
+
+function reactivationMessage(q){
+  const customer=String(q?.customer||'cliente').trim() || 'cliente';
+  const total=money(q?.total||0);
+  return `Hola ${customer}, te contactamos para dar seguimiento a la cotización ${q?.id||''} por ${total}. Queríamos saber si deseas continuar con el pedido o si necesitas algún cambio. Quedamos atentos. 🐠`;
+}
+
+function reactivateQuoteWhatsApp(quoteId){
+  const q=findQuoteById(quoteId);
+  if(!q){alert('No se encontró la cotización.');return;}
+  const text=encodeURIComponent(reactivationMessage(q));
+  let phone=String(q.phone||'').replace(/\D/g,'');
+  if(/^3\d{9}$/.test(phone)) phone='57'+phone;
+  const url=phone?`https://wa.me/${phone}?text=${text}`:`https://wa.me/?text=${text}`;
+  window.open(url,'_blank','noopener');
+}
+
+function markQuoteReactivationContacted(quoteId){
+  const q=findQuoteById(quoteId);
+  if(!q){alert('No se encontró la cotización.');return;}
+  q.followupCompleted=true;
+  q.followupLastContactAt=now();
+  q.followupCompletedAt=now();
+  q.followupHistory=Array.isArray(q.followupHistory)?q.followupHistory:[];
+  q.followupHistory.push({date:now(),note:String(q.followupNote||'Contacto de reactivación').trim()});
+  save();
+  renderCotizador();
+}
+
+function scheduleQuoteReactivation(quoteId,days){
+  const q=findQuoteById(quoteId);
+  if(!q)return;
+  const d=new Date(); d.setHours(0,0,0,0); d.setDate(d.getDate()+Number(days||0));
+  const iso=d.toISOString().slice(0,10);
+  q.followupDate=iso;
+  q.followupCompleted=false;
+  q.followupNote=String(q.followupNote||'Seguimiento de reactivación').trim() || 'Seguimiento de reactivación';
+  q.followupUpdatedAt=now();
+  save();
+  renderCotizador();
+}
+
+function renderQuoteOpportunities(){
+  const el=document.getElementById('quoteOpportunities');
+  if(!el)return;
+  const d=quoteOpportunityData();
+  const card=(icon,label,value,sub='')=>`<div style="background:#f5f8f9;border:1px solid rgba(0,0,0,.07);border-radius:14px;padding:12px"><div class="muted">${icon} ${label}</div><strong style="display:block;font-size:1.2rem;margin-top:3px">${value}</strong>${sub?`<small class="muted">${sub}</small>`:''}</div>`;
+  const cards=`<div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-bottom:12px">${card('🎯','Oportunidades',d.count)}${card('💰','Valor pendiente',money(d.total))}${card('🔴','Vencidas',d.overdue)}${card('⚪','Sin seguimiento',d.noFollowup)}</div>`;
+  const rows=d.opportunities.slice(0,10).map(q=>{
+    const st=quoteOpportunityState(q);
+    const age=quoteAgeDays(q);
+    return `<div class="item" style="align-items:center;gap:8px;margin-bottom:6px"><div style="flex:1;min-width:0"><b>${esc(q.id||'')}</b> · ${esc(q.customer||'Cliente general')}<div class="muted">${st.icon} ${esc(st.label)} · ${age} día(s) · ${q.followupDate?esc(formatFollowupDate(q.followupDate)):'sin fecha'}</div></div><div class="right"><b>${money(q.total||0)}</b><div style="display:flex;gap:5px;flex-wrap:wrap;justify-content:flex-end;margin-top:5px"><button type="button" onclick="viewQuote('${esc(String(q.id))}')">👁️</button><button type="button" onclick="reactivateQuoteWhatsApp('${esc(String(q.id))}')">📲 Reactivar</button><button type="button" onclick="scheduleQuoteReactivation('${esc(String(q.id))}',1)">📅 Mañana</button><button type="button" onclick="markQuoteReactivationContacted('${esc(String(q.id))}')">☑️ Contactado</button></div></div></div>`;
+  }).join('');
+  const more=d.opportunities.length>10?`<div class="muted" style="margin-top:8px">Mostrando 10 de ${d.opportunities.length} oportunidades.</div>`:'';
+  el.innerHTML=cards+(rows||`<div class="empty">🎉 No hay oportunidades pendientes de reactivación.</div>`)+more;
+}
+
 function renderQuoteAutomationAlerts(){
   const el=document.getElementById('quoteAutomationAlerts');
   if(!el) return;
@@ -4292,6 +4393,14 @@ function renderCotizador(){
 
     <div class="panel" style="margin-top:12px;">
       <div class="section-head" style="margin-bottom:8px;">
+        <h2>🎯 Oportunidades de reactivación</h2>
+        <span class="muted">Recupera cotizaciones pendientes</span>
+      </div>
+      <div id="quoteOpportunities"></div>
+    </div>
+
+    <div class="panel" style="margin-top:12px;">
+      <div class="section-head" style="margin-bottom:8px;">
         <h2>📋 Cotizaciones guardadas</h2>
         <span class="muted">${Array.isArray(db.quotes) ? db.quotes.length : 0} guardadas</span>
       </div>
@@ -4303,6 +4412,7 @@ function renderCotizador(){
   renderQuoteReports();
   renderQuoteFollowupPanel();
   renderQuoteAutomationAlerts();
+  renderQuoteOpportunities();
 
   const customerSelect = document.getElementById("quoteCustomerSelect");
   const customer = document.getElementById("quoteCustomer");
