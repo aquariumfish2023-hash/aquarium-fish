@@ -3748,6 +3748,15 @@ function viewQuote(quoteId){
   );
 }
 
+function renderQuotesList(){
+  // La lista de cotizaciones se renderiza dentro del cotizador.
+  // Esta función evita errores cuando eliminar/convertir una cotización
+  // intenta actualizar una función que no existía en versiones anteriores.
+  if(typeof renderCotizador === "function"){
+    try{ renderCotizador(); }catch(e){ console.error(e); }
+  }
+}
+
 function deleteQuote(quoteId){
   const index=(db.quotes || []).findIndex(q =>
     String(q.id || q.number || q.code) === String(quoteId)
@@ -7531,13 +7540,6 @@ function setCashPeriod(
 */
 
 function renderCash(){
-
-  // Firebase puede devolver datos antiguos donde cashClosings no existe
-  // o no es un arreglo. Normalizamos aquí porque esta función también se
-  // ejecuta inmediatamente después de sincronizar datos remotos.
-  if(!Array.isArray(db.cashClosings)){
-    db.cashClosings = [];
-  }
 
   const summary =
     document.getElementById(
