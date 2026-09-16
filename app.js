@@ -3188,7 +3188,6 @@ let quotePhone = "";
 let quoteNote = "";
 let quoteDiscount = 0;
 let quoteEditingId = null;
-let quoteCustomerIndex = null;
 
 function setupCotizadorUI(){
   const main = document.querySelector("main");
@@ -3262,8 +3261,6 @@ function duplicateQuote(quoteId){
   quoteEditingId=null;
   quoteCustomer=String(q.customer||"");
   quotePhone=String(q.phone||"");
-  quoteCustomerIndex = Number.isInteger(q.customerIndex) ? q.customerIndex : db.customers.findIndex(c => String(c?.name || "").trim().toLowerCase() === quoteCustomer.trim().toLowerCase());
-  if(quoteCustomerIndex < 0) quoteCustomerIndex = null;
   quoteNote=String(q.note||"");
   quoteDiscount=Number(q.discount||0);
   quoteItems=(Array.isArray(q.items)?q.items:[]).map((item,i)=>({
@@ -3364,7 +3361,6 @@ function clearQuote(){
     quoteNote = "";
     quoteDiscount = 0;
     quoteEditingId = null;
-    quoteCustomerIndex = null;
     renderCotizador();
   }
 }
@@ -3461,14 +3457,118 @@ function shareQuoteWhatsApp(){
 
 /* ===== COTIZACIONES: LISTADO + CONVERSIÓN A VENTA ===== */
 function quoteStatusLabel(q){
-  if(q.convertedSaleId) return 'Convertida en venta';
-  return q.status || 'Pendiente';
+  return normalizeQuoteStatus(q);
 }
 
 function findQuoteById(id){
   return (db.quotes || []).find(q =>
     String(q.id || q.number || q.code) === String(id)
   );
+}
+
+let quoteHistoryFilter = "Todos";
+let quoteHistorySearch = "";
+
+function normalizeQuoteStatus(q){
+  if(!q || typeof q !== "object") return "Pendiente";
+  if(q.convertedSaleId) return "Convertida en venta";
+  return String(q.status || "Pendiente") === "Rechazada" ? "Rechazada" : "Pendiente";
+}
+
+function quoteStatusClass(status){
+  const value=String(status || "Pendiente");
+  if(value === "Convertida en venta") return "done";
+  if(value === "Rechazada") return "low";
+  return "";
+}
+
+function markQuoteRejected(quoteId){
+  const q=findQuoteById(quoteId);
+  if(!q){ alert("No se encontró la cotización."); return; }
+  if(q.convertedSaleId){
+    alert("Esta cotización ya fue convertida en una venta.");
+    return;
+  }
+  if(String(q.status || "Pendiente") === "Rechazada") return;
+  if(!confirm(`¿Marcar la cotización ${q.id} como rechazada?\n\nLa cotización seguirá guardada en el historial.`)) return;
+  q.status="Rechazada";
+  q.updatedAt=now();
+  save();
+  try{ renderCotizador(); }catch(e){ console.error(e); }
+}
+
+function reopenQuote(quoteId){
+  const q=findQuoteById(quoteId);
+  if(!q){ alert("No se encontró la cotización."); return; }
+  if(q.convertedSaleId){
+    alert("Esta cotización ya fue convertida en una venta.");
+    return;
+  }
+  q.status="Pendiente";
+  q.updatedAt=now();
+  save();
+  try{ renderCotizador(); }catch(e){ console.error(e); }
+}
+
+function renderQuotesList(){
+  const list=document.getElementById("quotesList");
+  const count=document.getElementById("quotesCount");
+  if(!list) return;
+
+  const all=Array.isArray(db.quotes) ? db.quotes.filter(q=>q && typeof q === "object") : [];
+  const search=String(quoteHistorySearch || "").trim().toLowerCase();
+
+  const rows=all
+    .map((q,index)=>({q,index,status:normalizeQuoteStatus(q)}))
+    .filter(({q,status})=>{
+      if(quoteHistoryFilter !== "Todos" && status !== quoteHistoryFilter) return false;
+      if(!search) return true;
+      return `${q.id||""} ${q.customer||""} ${q.phone||""} ${q.note||""}`.toLowerCase().includes(search);
+    })
+    .sort((a,b)=>{
+      const da=parseLocalDate(a.q.updatedAt || a.q.createdAt || a.q.date);
+      const dbb=parseLocalDate(b.q.updatedAt || b.q.createdAt || b.q.date);
+      return (dbb?.getTime() || 0) - (da?.getTime() || 0);
+    });
+
+  if(count){
+    count.textContent=`${rows.length} de ${all.length}`;
+  }
+
+  list.innerHTML=rows.length ? rows.map(({q,status})=>{
+    const id=String(q.id || "");
+    const customer=String(q.customer || "Cliente general");
+    const dateObj=parseLocalDate(q.updatedAt || q.createdAt || q.date);
+    const dateText=dateObj ? dateObj.toLocaleDateString("es-CO") : "";
+    const total=Number(q.total || 0);
+    const converted=!!q.convertedSaleId;
+    const rejected=status === "Rechazada";
+    return `
+      <div class="quote-row" style="display:grid;grid-template-columns:1.15fr .9fr .9fr 1.35fr;gap:8px;align-items:center;padding:12px 0;border-bottom:1px solid rgba(0,0,0,.08);">
+        <div>
+          <b>${esc(id)}</b>
+          <div class="muted">${esc(customer)}</div>
+          ${q.phone ? `<div class="muted">📱 ${esc(q.phone)}</div>` : ""}
+        </div>
+        <div class="muted">${esc(dateText)}</div>
+        <div>
+          <b>${money(total)}</b>
+          <div><span class="badge ${quoteStatusClass(status)}">${status === "Pendiente" ? "🕐" : status === "Rechazada" ? "❌" : "✅"} ${esc(status)}</span></div>
+        </div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;">
+          <button type="button" onclick="viewQuote('${esc(id)}')">👁️ Ver</button>
+          <button type="button" onclick="duplicateQuote('${esc(id)}')">📑 Duplicar</button>
+          <button type="button" onclick="shareSavedQuoteWhatsApp('${esc(id)}')">📲 WhatsApp</button>
+          <button type="button" onclick="printQuote('${esc(id)}')">🖨️ Imprimir</button>
+          ${converted ? `<button type="button" onclick="viewSaleFromQuote('${esc(q.convertedSaleId)}')">🛒 Ver venta</button>` : `
+            ${rejected ? `<button type="button" onclick="reopenQuote('${esc(id)}')">↩️ Reabrir</button>` : `<button type="button" onclick="editQuote('${esc(id)}')">✏️ Editar</button>
+            <button type="button" class="primary" onclick="convertQuoteToSale('${esc(id)}')">➡️ Convertir en venta</button>
+            <button type="button" onclick="markQuoteRejected('${esc(id)}')">❌ Rechazar</button>`}
+          `}
+          ${!converted ? `<button type="button" onclick="deleteQuote('${esc(id)}')">🗑️</button>` : ""}
+        </div>
+      </div>`;
+  }).join("") : `<div class="empty">No hay cotizaciones que coincidan con el filtro.</div>`;
 }
 
 
@@ -3488,8 +3588,6 @@ function editQuote(quoteId){
   quoteEditingId=q.id;
   quoteCustomer=String(q.customer || "");
   quotePhone=String(q.phone || "");
-  quoteCustomerIndex = Number.isInteger(q.customerIndex) ? q.customerIndex : db.customers.findIndex(c => String(c?.name || "").trim().toLowerCase() === quoteCustomer.trim().toLowerCase());
-  if(quoteCustomerIndex < 0) quoteCustomerIndex = null;
   quoteNote=String(q.note || "");
   quoteDiscount=Number(q.discount || 0);
 
@@ -3617,6 +3715,10 @@ function convertQuoteToSale(quoteId){
     alert(`Esta cotización ya fue convertida en la venta ${q.convertedSaleId}.`);
     return;
   }
+  if(String(q.status || "Pendiente") === "Rechazada"){
+    alert("Esta cotización está rechazada. Primero debes reabrirla para convertirla en venta.");
+    return;
+  }
   if(!Array.isArray(q.items) || !q.items.length){
     alert("La cotización no tiene productos.");
     return;
@@ -3691,7 +3793,6 @@ function saveQuote(){
     quote.updatedAt = now();
     quote.customer = String(quoteCustomer || "").trim();
     quote.phone = String(quotePhone || "").trim();
-    quote.customerIndex = Number.isInteger(quoteCustomerIndex) ? quoteCustomerIndex : null;
     quote.note = String(quoteNote || "").trim();
     quote.discount = discount;
     quote.subtotal = subtotal;
@@ -3785,12 +3886,12 @@ function renderCotizador(){
             .map(({customer,index}) => `
               <option
                 value="${index}"
-                ${index === quoteCustomerIndex || (quoteCustomerIndex === null && String(customer.name || "").trim() === String(quoteCustomer || "").trim()) ? "selected" : ""}
+                ${String(customer.name || "").trim() === String(quoteCustomer || "").trim() ? "selected" : ""}
               >
-                ${esc(customer.name)}${customer.phone ? ` — ${esc(customer.phone)}` : ""}
+                ${esc(customer.name)}
               </option>
             `).join("")}
-          <option value="__manual__" ${quoteCustomerIndex === null && quoteCustomer && !db.customers.some(c => String(c?.name || "").trim() === String(quoteCustomer || "").trim()) ? "selected" : ""}>
+          <option value="__manual__" ${quoteCustomer && !db.customers.some(c => String(c?.name || "").trim() === String(quoteCustomer || "").trim()) ? "selected" : ""}>
             ✏️ Escribir otro cliente
           </option>
         </select>
@@ -3942,42 +4043,48 @@ function renderCotizador(){
 
     <div class="panel" style="margin-top:12px;">
       <div class="section-head" style="margin-bottom:8px;">
-        <h2>📋 Cotizaciones guardadas</h2>
-        <span class="muted">${Array.isArray(db.quotes) ? db.quotes.length : 0} guardadas</span>
+        <h2>📋 Historial de cotizaciones</h2>
+        <span id="quotesCount" class="muted">${Array.isArray(db.quotes) ? db.quotes.length : 0} guardadas</span>
       </div>
-      <div id="quotesList">
-        ${
-          Array.isArray(db.quotes) && db.quotes.length
-            ? db.quotes.slice().reverse().map(q => {
-                const id = q.id || "";
-                const customer = q.customer || "Cliente general";
-                const dateObj = parseLocalDate(q.createdAt || q.date);
-                const dateText = dateObj ? dateObj.toLocaleDateString("es-CO") : "";
-                const total = Number(q.total || 0);
-                const converted = !!q.convertedSaleId;
-                return `
-                  <div class="quote-row" style="display:grid;grid-template-columns:1.2fr 1fr .9fr 1.1fr;gap:8px;align-items:center;padding:10px 0;border-bottom:1px solid rgba(0,0,0,.08);">
-                    <div><b>${esc(id)}</b><div class="muted">${esc(customer)}</div></div>
-                    <div class="muted">${esc(dateText)}</div>
-                    <div><b>${money(total)}</b></div>
-                    <div style="display:flex;gap:6px;flex-wrap:wrap;">
-                      <button type="button" onclick="viewQuote('${esc(id)}')">👁️ Ver</button>
-                      <button type="button" onclick="duplicateQuote('${esc(id)}')">📑 Duplicar</button>
-                      <button type="button" onclick="shareSavedQuoteWhatsApp('${esc(id)}')">📲 WhatsApp</button>
-                      <button type="button" onclick="printQuote('${esc(id)}')">🖨️ Imprimir</button>
-                      ${converted
-                        ? `<span class="badge">✅ Venta ${esc(q.convertedSaleId)}</span>`
-                        : `<button type="button" onclick="editQuote('${esc(id)}')">✏️ Editar</button>
-                           <button type="button" class="primary" onclick="convertQuoteToSale('${esc(id)}')">➡️ Convertir en venta</button>`}
-                      ${!converted ? `<button type="button" onclick="deleteQuote('${esc(id)}')">🗑️</button>` : ""}
-                    </div>
-                  </div>`;
-              }).join("")
-            : `<div class="empty">No hay cotizaciones guardadas todavía.</div>`
-        }
+
+      <div class="cards" style="margin:10px 0;">
+        <div class="card"><span>🕐 Pendientes</span><b>${db.quotes.filter(q=>normalizeQuoteStatus(q)==="Pendiente").length}</b><small>por seguir</small></div>
+        <div class="card"><span>✅ Convertidas</span><b>${db.quotes.filter(q=>normalizeQuoteStatus(q)==="Convertida en venta").length}</b><small>ventas</small></div>
+        <div class="card"><span>❌ Rechazadas</span><b>${db.quotes.filter(q=>normalizeQuoteStatus(q)==="Rechazada").length}</b><small>cerradas</small></div>
+        <div class="card"><span>💰 Total cotizado</span><b>${money(db.quotes.reduce((sum,q)=>sum + Number(q.total||0),0))}</b><small>todas las cotizaciones</small></div>
       </div>
+
+      <div style="display:grid;grid-template-columns:1.4fr 1fr;gap:8px;margin:10px 0;">
+        <input id="quoteHistorySearch" class="search" placeholder="🔎 Buscar por número, cliente, teléfono o nota" value="${esc(quoteHistorySearch)}">
+        <select id="quoteHistoryFilter" class="search">
+          <option value="Todos" ${quoteHistoryFilter==="Todos"?"selected":""}>📚 Todas</option>
+          <option value="Pendiente" ${quoteHistoryFilter==="Pendiente"?"selected":""}>🕐 Pendientes</option>
+          <option value="Convertida en venta" ${quoteHistoryFilter==="Convertida en venta"?"selected":""}>✅ Convertidas</option>
+          <option value="Rechazada" ${quoteHistoryFilter==="Rechazada"?"selected":""}>❌ Rechazadas</option>
+        </select>
+      </div>
+
+      <div id="quotesList"></div>
     </div>
   `;
+
+  const historySearch=document.getElementById("quoteHistorySearch");
+  const historyFilter=document.getElementById("quoteHistoryFilter");
+  if(historySearch){
+    historySearch.oninput=function(){
+      quoteHistorySearch=this.value;
+      renderQuotesList();
+      const input=document.getElementById("quoteHistorySearch");
+      if(input){ input.focus(); try{input.setSelectionRange(input.value.length,input.value.length);}catch(_){} }
+    };
+  }
+  if(historyFilter){
+    historyFilter.onchange=function(){
+      quoteHistoryFilter=this.value;
+      renderQuotesList();
+    };
+  }
+  renderQuotesList();
 
   const customerSelect = document.getElementById("quoteCustomerSelect");
   const customer = document.getElementById("quoteCustomer");
@@ -3989,7 +4096,6 @@ function renderCotizador(){
 
       if(value === "__manual__"){
         quoteCustomer = "";
-        quoteCustomerIndex = null;
         if(customer){
           customer.style.display = "";
           customer.focus();
@@ -4003,7 +4109,6 @@ function renderCotizador(){
 
       if(value === ""){
         quoteCustomer = "";
-        quoteCustomerIndex = null;
         quotePhone = "";
         if(customer){
           customer.value = "";
@@ -4015,11 +4120,9 @@ function renderCotizador(){
         return;
       }
 
-      const selectedIndex = Number(value);
-      const selectedCustomer = db.customers[selectedIndex];
+      const selectedCustomer = db.customers[Number(value)];
 
       if(selectedCustomer){
-        quoteCustomerIndex = selectedIndex;
         quoteCustomer = String(selectedCustomer.name || "").trim();
         quotePhone = String(selectedCustomer.phone || "").trim();
 
@@ -4038,7 +4141,6 @@ function renderCotizador(){
   if(customer){
     customer.oninput = function(){
       quoteCustomer = this.value;
-      quoteCustomerIndex = null;
     };
   }
 
