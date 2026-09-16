@@ -95,25 +95,31 @@
     <div>
       <span class="dashboard-kicker">🐠 AQUARIUM FISH</span>
       <h1>Panel de control</h1>
-      <p>Una vista rápida de cómo está funcionando tu negocio.</p>
+      <p>Tu negocio, resumido en una sola vista.</p>
     </div>
     <div class="dashboard-date" id="dashboardDate">Hoy</div>
   </div>
 
   <div class="dashboard-kpis">
-    <div class="card dash-main-card"><span>💰 Ventas de hoy</span><b id="todaySalesTotal">$0</b><small id="todaySalesCount">0 ventas hoy</small></div>
+    <div class="card dash-main-card"><span>💰 Ventas de hoy</span><b id="todaySalesTotal">$0</b><small id="todaySalesCount">0 ventas hoy</small><em id="todaySalesChange" class="dashboard-change neutral">—</em></div>
     <div class="card"><span>💵 Recibido hoy</span><b id="todayReceived">$0</b><small>ingresos registrados</small></div>
     <div class="card"><span>🧾 Por cobrar</span><b id="dashboardReceivable">$0</b><small>saldo pendiente</small></div>
     <div class="card"><span>💸 Gastos hoy</span><b id="todayExpenses">$0</b><small>registrados en caja</small></div>
-    <div class="card"><span>📦 Inventario</span><b id="dashboardInventoryValue">$0</b><small>valor a costo</small></div>
+    <div class="card"><span>💹 Neto de hoy</span><b id="dashboardNetToday">$0</b><small>recibido menos gastos</small></div>
+    <div class="card"><span>📦 Inventario a costo</span><b id="dashboardInventoryValue">$0</b><small><span id="dashboardUnits">0</span> unidades</small></div>
     <div class="card"><span>⚠️ Stock bajo</span><b id="lowStock">0</b><small>requieren atención</small></div>
     <div class="card"><span>👥 Clientes</span><b id="customerCount">0</b><small>registrados</small></div>
-    <div class="card"><span>🧾 Cotizaciones</span><b id="pendingQuotesCount">0</b><small>pendientes</small></div>
+    <div class="card"><span>📝 Cotizaciones</span><b id="pendingQuotesCount">0</b><small>pendientes</small></div>
+  </div>
+
+  <div class="dashboard-period-grid">
+    <div class="panel dashboard-period-card"><div><span>📅 Últimos 7 días</span><b id="dashboardWeekTotal">$0</b><small id="dashboardWeekCount">0 ventas</small></div><strong id="weekSalesChange" class="dashboard-change neutral">—</strong><p>vs. los 7 días anteriores</p></div>
+    <div class="panel dashboard-period-card"><div><span>🗓️ Este mes</span><b id="dashboardMonthTotal">$0</b><small id="dashboardMonthCount">0 ventas</small></div><strong id="monthSalesChange" class="dashboard-change neutral">—</strong><p>vs. el mes anterior</p></div>
   </div>
 
   <div class="dashboard-grid">
     <div class="panel dashboard-chart-panel">
-      <div class="dashboard-panel-head"><div><h2>📈 Ventas recientes</h2><p class="muted">Últimos 7 días</p></div><strong id="dashboardWeekTotal">$0</strong></div>
+      <div class="dashboard-panel-head"><div><h2>📈 Evolución de ventas</h2><p class="muted">Últimos 7 días</p></div><strong id="dashboardWeekTotalCopy"> </strong></div>
       <div id="dashboardSalesChart" class="dashboard-bars"></div>
     </div>
     <div class="panel dashboard-chart-panel">
@@ -122,27 +128,34 @@
     </div>
   </div>
 
-  <div class="dashboard-grid dashboard-lower-grid">
-    <div class="panel">
-      <div class="dashboard-panel-head"><div><h2>🛒 Actividad reciente</h2><p class="muted">Últimas operaciones</p></div></div>
-      <div id="recentSales" class="list"></div>
-    </div>
-    <div class="panel">
-      <h2>⚡ Acciones rápidas</h2>
-      <div class="dashboard-actions">
-        <button type="button" class="primary" onclick="openSale()">🛒 Nueva venta</button>
-        <button type="button" onclick="show('cotizador')">🧾 Nueva cotización</button>
-        <button type="button" onclick="openCustomer()">👤 Nuevo cliente</button>
-        <button type="button" onclick="show('cash')">💰 Abrir caja</button>
-        <button type="button" onclick="show('inventory')">📦 Ver inventario</button>
-        <button type="button" onclick="show('reports')">📊 Ver reportes</button>
-      </div>
-    </div>
+  <div class="dashboard-grid dashboard-inside-grid">
+    <div class="panel"><div class="dashboard-panel-head"><div><h2>💳 Cobros de hoy</h2><p class="muted">Distribución por medio de pago</p></div></div><div id="dashboardPayments" class="dashboard-payment-list"></div></div>
+    <div class="panel"><div class="dashboard-panel-head"><div><h2>👥 Clientes</h2><p class="muted">Mayor facturación acumulada</p></div></div><div id="dashboardCustomers" class="dashboard-mini-list"></div></div>
+  </div>
+
+  <div class="dashboard-grid dashboard-inside-grid">
+    <div class="panel"><div class="dashboard-panel-head"><div><h2>📦 Inventario en alerta</h2><p class="muted">Productos con stock bajo o agotado</p></div></div><div id="dashboardInventoryAlerts" class="dashboard-mini-list"></div><div class="dashboard-stock-footer"><span>Agotados: <b id="dashboardZeroStock">0</b></span><span>Valor de venta: <b id="dashboardInventorySaleValue">$0</b></span></div></div>
+    <div class="panel"><div class="dashboard-panel-head"><div><h2>🛒 Actividad reciente</h2><p class="muted">Últimas operaciones</p></div></div><div id="recentSales" class="list"></div></div>
   </div>
 
   <div class="panel dashboard-status-panel">
-    <div class="dashboard-panel-head"><div><h2>🧭 Estado del negocio</h2><p class="muted">Indicadores que merecen atención</p></div></div>
+    <div class="dashboard-panel-head"><div><h2>🧭 Lectura rápida</h2><p class="muted">Indicadores que merecen atención</p></div></div>
     <div id="dashboardInsights" class="dashboard-insights"></div>
+  </div>
+
+  <div class="panel">
+    <h2>⚡ Acciones rápidas</h2>
+    <div class="quick-actions-grid dashboard-actions-v2">
+      <button type="button" class="primary" onclick="openSale()">🛒 Nueva venta</button>
+      <button type="button" onclick="show('cotizador')">🧾 Nueva cotización</button>
+      <button type="button" onclick="openCustomer()">👤 Nuevo cliente</button>
+      <button type="button" onclick="show('cash')">💰 Caja</button>
+      <button type="button" onclick="show('inventory')">📦 Inventario</button>
+      <button type="button" onclick="show('customers')">👥 Clientes</button>
+      <button type="button" onclick="show('reports')">📊 Reportes</button>
+      <button type="button" onclick="show('moves')">🔄 Movimientos</button>
+      <button type="button" onclick="show('home')">🏠 Actualizar panel</button>
+    </div>
   </div>
 
   <div class="panel">
@@ -156,7 +169,6 @@
     <p id="syncStatus" class="muted">☁️ Preparando sincronización...</p>
   </div>
 </section>
-
 
 <!-- =====================================================
      INVENTARIO
