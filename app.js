@@ -7507,6 +7507,12 @@ function setCashPeriod(
 
 function renderCash(){
 
+  // Protección: Firebase/localStorage puede devolver cashClosings ausente
+  // o con un formato antiguo. Siempre trabajamos con un arreglo.
+  if(!Array.isArray(db.cashClosings)){
+    db.cashClosings = [];
+  }
+
   const summary =
     document.getElementById(
       "cashSummary"
