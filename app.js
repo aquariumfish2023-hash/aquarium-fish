@@ -3188,6 +3188,8 @@ let quotePhone = "";
 let quoteNote = "";
 let quoteDiscount = 0;
 let quoteEditingId = null;
+let quoteFollowupDate = "";
+let quoteFollowupNote = "";
 
 function setupCotizadorUI(){
   const main = document.querySelector("main");
@@ -3263,6 +3265,8 @@ function duplicateQuote(quoteId){
   quotePhone=String(q.phone||"");
   quoteNote=String(q.note||"");
   quoteDiscount=Number(q.discount||0);
+  quoteFollowupDate="";
+  quoteFollowupNote="";
   quoteItems=(Array.isArray(q.items)?q.items:[]).map((item,i)=>({
     key:`dup-${Date.now()}-${i}`, productIndex:Number(item.productIndex),
     name:String(item.name||"Producto"), qty:Math.max(1,Number(item.qty)||1),
@@ -3360,6 +3364,8 @@ function clearQuote(){
     quotePhone = "";
     quoteNote = "";
     quoteDiscount = 0;
+    quoteFollowupDate = "";
+    quoteFollowupNote = "";
     quoteEditingId = null;
     renderCotizador();
   }
@@ -3469,6 +3475,133 @@ function findQuoteById(id){
 
 
 
+function quoteFollowupState(q){
+  if(!q || q.convertedSaleId) return {key:"done",label:"Convertida",icon:"✅"};
+  const raw=String(q.followupDate || "").trim();
+  if(!raw) return {key:"none",label:"Sin seguimiento",icon:"⚪"};
+  const d=new Date(raw+"T23:59:59");
+  if(Number.isNaN(d.getTime())) return {key:"none",label:"Sin seguimiento",icon:"⚪"};
+  const today=new Date(); today.setHours(0,0,0,0);
+  const target=new Date(d); target.setHours(0,0,0,0);
+  const diff=Math.round((target-today)/86400000);
+  if(diff<0) return {key:"late",label:"Atrasado",icon:"🔴"};
+  if(diff===0) return {key:"today",label:"Hoy",icon:"🟠"};
+  if(diff<=3) return {key:"soon",label:"Próximo",icon:"🟡"};
+  return {key:"scheduled",label:"Programado",icon:"🟢"};
+}
+
+function formatFollowupDate(value){
+  if(!value) return "";
+  const d=new Date(String(value)+"T00:00:00");
+  return Number.isNaN(d.getTime()) ? String(value) : d.toLocaleDateString("es-CO",{day:"2-digit",month:"2-digit",year:"numeric"});
+}
+
+function openQuoteFollowup(quoteId){
+  const q=findQuoteById(quoteId);
+  if(!q){ alert("No se encontró la cotización."); return; }
+  if(q.convertedSaleId){ alert("Esta cotización ya fue convertida en una venta."); return; }
+  const date=String(q.followupDate || "");
+  const note=String(q.followupNote || "");
+  modal("📌 Seguimiento — "+q.id, `
+    <div style="line-height:1.5">
+      <p><strong>Cliente:</strong> ${esc(q.customer || "Cliente general")}</p>
+      <p><strong>Valor:</strong> ${money(q.total || 0)}</p>
+      <label style="display:block;margin-top:12px"><strong>Fecha de seguimiento</strong>
+        <input id="followupDateInput" class="search" type="date" value="${esc(date)}" style="margin-top:6px;width:100%;box-sizing:border-box">
+      </label>
+      <label style="display:block;margin-top:12px"><strong>Nota interna</strong>
+        <textarea id="followupNoteInput" rows="4" placeholder="Ej. Llamar para confirmar disponibilidad..." style="width:100%;box-sizing:border-box">${esc(note)}</textarea>
+      </label>
+      <p class="muted" style="margin-top:8px">Esta nota es interna y no se incluye en la cotización enviada al cliente.</p>
+    </div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;margin-top:16px">
+      <button type="button" onclick="clearQuoteFollowup('${esc(String(q.id))}')">🧹 Limpiar</button>
+      <button type="button" onclick="closeModal()">Cancelar</button>
+      <button type="button" class="primary" onclick="saveQuoteFollowup('${esc(String(q.id))}')">💾 Guardar seguimiento</button>
+    </div>
+  `,null);
+}
+
+function saveQuoteFollowup(quoteId){
+  const q=findQuoteById(quoteId);
+  if(!q){ alert("No se encontró la cotización."); return; }
+  const date=String(document.getElementById("followupDateInput")?.value || "").trim();
+  const note=String(document.getElementById("followupNoteInput")?.value || "").trim();
+  q.followupDate=date;
+  q.followupNote=note;
+  q.followupUpdatedAt=now();
+  q.followupCompleted=false;
+  save();
+  closeModal();
+  renderCotizador();
+  alert(date ? `Seguimiento programado para ${formatFollowupDate(date)}.` : "Seguimiento limpiado.");
+}
+
+function clearQuoteFollowup(quoteId){
+  const q=findQuoteById(quoteId);
+  if(!q) return;
+  q.followupDate="";
+  q.followupNote="";
+  q.followupCompleted=false;
+  q.followupUpdatedAt=now();
+  save();
+  closeModal();
+  renderCotizador();
+}
+
+function markQuoteFollowupDone(quoteId){
+  const q=findQuoteById(quoteId);
+  if(!q) return;
+  q.followupCompleted=true;
+  q.followupCompletedAt=now();
+  save();
+  renderCotizador();
+}
+
+function quoteFollowupStats(){
+  const quotes=Array.isArray(db.quotes)?db.quotes:[];
+  let pending=0, today=0, late=0, scheduled=0;
+  quotes.forEach(q=>{
+    if(q.convertedSaleId || q.followupCompleted) return;
+    const st=quoteFollowupState(q);
+    if(st.key==="late") late++;
+    else if(st.key==="today") today++;
+    else if(st.key==="soon" || st.key==="scheduled") scheduled++;
+    if(q.followupDate) pending++;
+  });
+  return {pending,today,late,scheduled};
+}
+
+function renderQuotesList(){
+  const el=document.getElementById("quotesList");
+  if(!el) return;
+  const quotes=Array.isArray(db.quotes)?db.quotes:[];
+  el.innerHTML=quotes.length ? quotes.slice().sort((a,b)=>String(b.updatedAt||b.createdAt||"").localeCompare(String(a.updatedAt||a.createdAt||""))).map(q=>{
+    const id=q.id||"";
+    const customer=q.customer||"Cliente general";
+    const dateObj=parseLocalDate(q.createdAt||q.date);
+    const dateText=dateObj?dateObj.toLocaleDateString("es-CO"):"";
+    const total=Number(q.total||0);
+    const converted=!!q.convertedSaleId;
+    const fs=quoteFollowupState(q);
+    const followText=q.followupDate ? `${fs.icon} ${fs.label} · ${formatFollowupDate(q.followupDate)}` : `${fs.icon} ${fs.label}`;
+    return `<div class="quote-row" style="display:grid;grid-template-columns:1.1fr .8fr .9fr 1.25fr;gap:8px;align-items:center;padding:10px 0;border-bottom:1px solid rgba(0,0,0,.08);">
+      <div><b>${esc(id)}</b><div class="muted">${esc(customer)}</div></div>
+      <div class="muted">${esc(dateText)}</div>
+      <div><b>${money(total)}</b><div class="muted">${esc(quoteStatusLabel(q))}</div></div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+        <span class="badge">${esc(followText)}</span>
+        <button type="button" onclick="viewQuote('${esc(id)}')">👁️ Ver</button>
+        <button type="button" onclick="openQuoteFollowup('${esc(id)}')">📌 Seguimiento</button>
+        <button type="button" onclick="duplicateQuote('${esc(id)}')">📑 Duplicar</button>
+        <button type="button" onclick="shareSavedQuoteWhatsApp('${esc(id)}')">📲 WhatsApp</button>
+        <button type="button" onclick="printQuote('${esc(id)}')">🖨️</button>
+        ${converted ? `<span class="badge">✅ Venta ${esc(q.convertedSaleId)}</span>` : `<button type="button" onclick="editQuote('${esc(id)}')">✏️ Editar</button><button type="button" class="primary" onclick="convertQuoteToSale('${esc(id)}')">➡️ Convertir</button>${q.followupDate&&!q.followupCompleted?`<button type="button" onclick="markQuoteFollowupDone('${esc(id)}')">☑️ Listo</button>`:""}`}
+        ${!converted ? `<button type="button" onclick="deleteQuote('${esc(id)}')">🗑️</button>` : ""}
+      </div></div>`;
+  }).join("") : `<div class="empty">No hay cotizaciones guardadas todavía.</div>`;
+}
+
 function editQuote(quoteId){
   const q=findQuoteById(quoteId);
   if(!q){
@@ -3486,6 +3619,8 @@ function editQuote(quoteId){
   quotePhone=String(q.phone || "");
   quoteNote=String(q.note || "");
   quoteDiscount=Number(q.discount || 0);
+  quoteFollowupDate=String(q.followupDate || "");
+  quoteFollowupNote=String(q.followupNote || "");
 
   quoteItems=(Array.isArray(q.items) ? q.items : []).map((item, i) => ({
     key: String(item.productIndex ?? i),
@@ -3538,6 +3673,8 @@ function viewQuote(quoteId){
         ${phone ? `<p><strong>Teléfono:</strong> ${phone}</p>` : ""}
         ${date ? `<p><strong>Fecha:</strong> ${date}</p>` : ""}
         <p><strong>Estado:</strong> ${quoteStatusLabel(q)}</p>
+        ${q.followupDate ? `<p><strong>Seguimiento:</strong> ${formatFollowupDate(q.followupDate)}${q.followupCompleted ? " · Completado" : ""}</p>` : ""}
+        ${q.followupNote ? `<p><strong>Nota interna:</strong> ${esc(q.followupNote)}</p>` : ""}
 
         <div style="overflow:auto;margin:14px 0">
           <table style="width:100%;border-collapse:collapse">
@@ -3688,6 +3825,9 @@ function saveQuote(){
     quote.customer = String(quoteCustomer || "").trim();
     quote.phone = String(quotePhone || "").trim();
     quote.note = String(quoteNote || "").trim();
+    quote.followupDate = String(quoteFollowupDate || "").trim();
+    quote.followupNote = String(quoteFollowupNote || "").trim();
+    quote.followupUpdatedAt = quote.followupUpdatedAt || now();
     quote.discount = discount;
     quote.subtotal = subtotal;
     quote.total = Math.max(0, subtotal - discount);
@@ -3788,6 +3928,20 @@ function printQuoteReport(){
   const w=window.open('','_blank','noopener');
   if(!w){ alert('El navegador bloqueó la ventana de impresión. Permite ventanas emergentes e inténtalo de nuevo.'); return; }
   w.document.write(html); w.document.close();
+}
+
+function renderQuoteFollowupPanel(){
+  const summary=document.getElementById("quoteFollowupSummary");
+  const list=document.getElementById("quoteFollowupList");
+  if(!summary || !list) return;
+  const st=quoteFollowupStats();
+  const card=(value,label)=>`<div class="item"><div><b>${value}</b><div class="muted">${label}</div></div></div>`;
+  summary.innerHTML=card(st.pending,"Con seguimiento")+card(st.today,"Para hoy")+card(st.late,"Atrasados")+card(st.scheduled,"Próximos");
+  const quotes=(Array.isArray(db.quotes)?db.quotes:[]).filter(q=>!q.convertedSaleId&&!q.followupCompleted&&q.followupDate).sort((a,b)=>String(a.followupDate).localeCompare(String(b.followupDate)));
+  list.innerHTML=quotes.length ? quotes.map(q=>{
+    const st=quoteFollowupState(q);
+    return `<div class="item" style="align-items:center;gap:8px;margin-bottom:6px"><div style="flex:1"><b>${esc(q.id)} · ${esc(q.customer||"Cliente general")}</b><div class="muted">${st.icon} ${esc(st.label)} · ${esc(formatFollowupDate(q.followupDate))}${q.followupNote?` · ${esc(q.followupNote)}`:""}</div></div><div class="right"><b>${money(q.total||0)}</b><div style="display:flex;gap:6px;margin-top:5px"><button type="button" onclick="openQuoteFollowup('${esc(q.id)}')">✏️</button><button type="button" onclick="markQuoteFollowupDone('${esc(q.id)}')">☑️ Listo</button></div></div></div>`;
+  }).join("") : `<div class="empty">No hay seguimientos pendientes.</div>`;
 }
 
 function renderCotizador(){
@@ -3966,6 +4120,16 @@ function renderCotizador(){
       `}
 
       <div style="margin-top:12px;padding-top:12px;border-top:1px solid rgba(0,0,0,.08);">
+        <h3 style="margin:0 0 8px;">📌 Seguimiento comercial</h3>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+          <label>Fecha de seguimiento
+            <input id="quoteFollowupDate" class="search" type="date" value="${esc(quoteFollowupDate)}">
+          </label>
+          <label>Nota interna
+            <input id="quoteFollowupNote" class="search" placeholder="Ej. llamar, confirmar pedido..." value="${esc(quoteFollowupNote)}">
+          </label>
+        </div>
+        <p class="muted" style="margin:6px 0 10px;">La nota interna no se muestra al cliente.</p>
         <label>
           Nota para el cliente
           <textarea
@@ -4014,44 +4178,25 @@ function renderCotizador(){
 
     <div class="panel" style="margin-top:12px;">
       <div class="section-head" style="margin-bottom:8px;">
+        <h2>📌 Seguimiento comercial</h2>
+        <span class="muted">Control de próximas llamadas y contactos</span>
+      </div>
+      <div id="quoteFollowupSummary" style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-bottom:12px;"></div>
+      <div id="quoteFollowupList"></div>
+    </div>
+
+    <div class="panel" style="margin-top:12px;">
+      <div class="section-head" style="margin-bottom:8px;">
         <h2>📋 Cotizaciones guardadas</h2>
         <span class="muted">${Array.isArray(db.quotes) ? db.quotes.length : 0} guardadas</span>
       </div>
-      <div id="quotesList">
-        ${
-          Array.isArray(db.quotes) && db.quotes.length
-            ? db.quotes.slice().reverse().map(q => {
-                const id = q.id || "";
-                const customer = q.customer || "Cliente general";
-                const dateObj = parseLocalDate(q.createdAt || q.date);
-                const dateText = dateObj ? dateObj.toLocaleDateString("es-CO") : "";
-                const total = Number(q.total || 0);
-                const converted = !!q.convertedSaleId;
-                return `
-                  <div class="quote-row" style="display:grid;grid-template-columns:1.2fr 1fr .9fr 1.1fr;gap:8px;align-items:center;padding:10px 0;border-bottom:1px solid rgba(0,0,0,.08);">
-                    <div><b>${esc(id)}</b><div class="muted">${esc(customer)}</div></div>
-                    <div class="muted">${esc(dateText)}</div>
-                    <div><b>${money(total)}</b></div>
-                    <div style="display:flex;gap:6px;flex-wrap:wrap;">
-                      <button type="button" onclick="viewQuote('${esc(id)}')">👁️ Ver</button>
-                      <button type="button" onclick="duplicateQuote('${esc(id)}')">📑 Duplicar</button>
-                      <button type="button" onclick="shareSavedQuoteWhatsApp('${esc(id)}')">📲 WhatsApp</button>
-                      <button type="button" onclick="printQuote('${esc(id)}')">🖨️ Imprimir</button>
-                      ${converted
-                        ? `<span class="badge">✅ Venta ${esc(q.convertedSaleId)}</span>`
-                        : `<button type="button" onclick="editQuote('${esc(id)}')">✏️ Editar</button>
-                           <button type="button" class="primary" onclick="convertQuoteToSale('${esc(id)}')">➡️ Convertir en venta</button>`}
-                      ${!converted ? `<button type="button" onclick="deleteQuote('${esc(id)}')">🗑️</button>` : ""}
-                    </div>
-                  </div>`;
-              }).join("")
-            : `<div class="empty">No hay cotizaciones guardadas todavía.</div>`
-        }
-      </div>
+      <div id="quotesList"></div>
     </div>
   `;
 
+  renderQuotesList();
   renderQuoteReports();
+  renderQuoteFollowupPanel();
 
   const customerSelect = document.getElementById("quoteCustomerSelect");
   const customer = document.getElementById("quoteCustomer");
@@ -4121,6 +4266,11 @@ function renderCotizador(){
   if(note){
     note.oninput = function(){ quoteNote = this.value; };
   }
+
+  const followupDate = document.getElementById("quoteFollowupDate");
+  if(followupDate){ followupDate.oninput = function(){ quoteFollowupDate=this.value; }; }
+  const followupNote = document.getElementById("quoteFollowupNote");
+  if(followupNote){ followupNote.oninput = function(){ quoteFollowupNote=this.value; }; }
 
   const discount = document.getElementById("quoteDiscount");
   if(discount){
