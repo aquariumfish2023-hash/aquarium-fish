@@ -2448,6 +2448,10 @@ function openReceipt(index) {
           🖨️ Imprimir
         </button>
 
+        <button type="button" onclick="printCustomerAccount(${index})">🖨️ Imprimir estado</button>
+
+        ${customer.phone ? `<button type="button" class="customer-wa" onclick="customerWhatsApp(${index})">💬 WhatsApp</button>` : ""}
+
         <button
           type="button"
           onclick="closeModal()"
@@ -3186,220 +3190,48 @@ function openCustomerPayment(index){
 }
 
 
-function renderCustomers() {
+function customerAdvancedStats(customer){
+  const stats=customerStats(customer.name);
+  const sales=stats.sales.slice().sort((a,b)=>String(b.date||'').localeCompare(String(a.date||'')));
+  const productMap={};
+  sales.forEach(sale=>{
+    const items=Array.isArray(sale.items)?sale.items:[];
+    if(items.length){items.forEach(item=>{const name=String(item.product||item.name||'Producto').trim()||'Producto'; const qty=Math.max(0,+item.qty||+item.quantity||0); productMap[name]=(productMap[name]||0)+qty;});}
+    else if(sale.product){const name=String(sale.product).trim(); productMap[name]=(productMap[name]||0)+Math.max(0,+sale.qty||1);}
+  });
+  const topProduct=Object.entries(productMap).sort((a,b)=>b[1]-a[1])[0]||null;
+  return {...stats,lastSale:sales[0]||null,topProduct};
+}
 
-  const search =
-    document.getElementById(
-      "customerSearch"
-    );
+function renderCustomersSummary(){
+  const box=document.getElementById('customersSummary'); if(!box)return;
+  const total=db.customers.length;
+  const active=db.customers.filter(c=>customerStats(c.name).sales.length>0).length;
+  const debtors=db.customers.filter(c=>customerStats(c.name).balance>0).length;
+  const receivable=db.customers.reduce((sum,c)=>sum+customerStats(c.name).balance,0);
+  box.innerHTML=`<div class="card"><span>👥 Clientes</span><b>${total}</b></div><div class="card"><span>🛒 Con compras</span><b>${active}</b></div><div class="card"><span>💳 Con saldo</span><b>${debtors}</b></div><div class="card"><span>💰 Por cobrar</span><b>${money(receivable)}</b></div>`;
+}
 
+function customerWhatsApp(index){
+  const customer=db.customers[index]; if(!customer||!customer.phone){alert('Este cliente no tiene teléfono registrado.');return;}
+  const digits=String(customer.phone).replace(/\D/g,''); const number=digits.startsWith('57')?digits:`57${digits}`;
+  const text=encodeURIComponent(`Hola ${customer.name}, te escribimos de Aquarium Fish.`);
+  window.open(`https://wa.me/${number}?text=${text}`,'_blank','noopener');
+}
 
-  const list =
-    document.getElementById(
-      "customersList"
-    );
+function printCustomerAccount(index){
+  const customer=db.customers[index]; if(!customer)return; const stats=customerAdvancedStats(customer);
+  const rows=stats.sales.map(sale=>{const items=Array.isArray(sale.items)?sale.items.map(i=>`${esc(i.product||i.name||'Producto')} × ${+i.qty||+i.quantity||1}`).join(', '):esc(sale.product||'Venta'); return `<tr><td>${esc(dateKey(sale.date))}</td><td>${items}</td><td>${money(sale.total)}</td><td>${money(salePaid(sale))}</td><td>${money(Math.max(0,(+sale.total||0)-salePaid(sale)))}</td></tr>`;}).join('');
+  const w=window.open('','_blank','width=900,height=700'); if(!w){alert('El navegador bloqueó la ventana de impresión.');return;}
+  w.document.write(`<!doctype html><html lang="es"><head><meta charset="utf-8"><title>Estado de cuenta - ${esc(customer.name)}</title><style>body{font-family:Arial,sans-serif;color:#172024;margin:0;padding:28px}h1{margin:0 0 4px}.muted{color:#68777b}.summary{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:20px 0}.box{border:1px solid #dce4e6;border-radius:10px;padding:12px}.box span{display:block;color:#68777b;font-size:12px}.box b{display:block;font-size:18px;margin-top:4px}table{width:100%;border-collapse:collapse;font-size:12px}th,td{border-bottom:1px solid #e1e7e9;padding:8px;text-align:left}th{background:#f3f6f7}.footer{margin-top:25px;text-align:center;color:#68777b;font-size:12px}@media print{body{padding:15px}}</style></head><body><h1>🐠 AQUARIUM FISH</h1><div>ESTADO DE CUENTA</div><p class="muted">Cliente: ${esc(customer.name)}${customer.phone?' · '+esc(customer.phone):''}<br>Generado: ${esc(new Date().toLocaleString('es-CO'))}</p><div class="summary"><div class="box"><span>Comprado</span><b>${money(stats.bought)}</b></div><div class="box"><span>Pagado</span><b>${money(stats.paid)}</b></div><div class="box"><span>Saldo pendiente</span><b>${money(stats.balance)}</b></div><div class="box"><span>Ventas</span><b>${stats.sales.length}</b></div></div><table><thead><tr><th>Fecha</th><th>Productos</th><th>Total</th><th>Pagado</th><th>Pendiente</th></tr></thead><tbody>${rows||'<tr><td colspan="5">No hay ventas registradas.</td></tr>'}</tbody></table><p class="footer">Aquarium Fish · Estado de cuenta del cliente</p><script>window.onload=()=>setTimeout(()=>window.print(),250)<\/script></body></html>`); w.document.close();
+}
 
-
-  if(
-    !search ||
-    !list
-  ){
-
-    return;
-
-  }
-
-
-  const q =
-    String(
-      search.value || ""
-    )
-      .toLowerCase()
-      .trim();
-
-
-  const rows =
-    db.customers
-      .filter(
-        customer =>
-          `${customer.name || ""} ${
-            customer.phone || ""
-          }`
-            .toLowerCase()
-            .includes(q)
-      )
-      .sort(
-        (a,b) =>
-          String(
-            a.name || ""
-          ).localeCompare(
-            String(
-              b.name || ""
-            ),
-            "es"
-          )
-      );
-
-
-  list.innerHTML =
-    rows.length
-
-      ? rows
-          .map(
-            customer => {
-
-              const index =
-                db.customers.indexOf(
-                  customer
-                );
-
-
-              const stats =
-                customerStats(
-                  customer.name
-                );
-
-
-              return `
-
-                <div
-                  class="item clickable"
-                  onclick="editCustomer(
-                    ${index}
-                  )"
-                >
-
-                  <div>
-
-                    <b>
-                      ${esc(
-                        customer.name
-                      )}
-                    </b>
-
-                    <div class="muted">
-
-                      ${esc(
-                        customer.phone ||
-                        "Sin teléfono"
-                      )}
-
-                    </div>
-
-                    <div class="muted">
-
-                      Comprado
-                      ${money(
-                        stats.bought
-                      )}
-
-                      ·
-
-                      Pagado
-                      ${money(
-                        stats.paid
-                      )}
-
-                      ·
-
-                      Saldo
-                      ${money(
-                        stats.balance
-                      )}
-
-                    </div>
-
-                    ${
-                      customer.note
-                        ? `
-
-                          <div class="muted">
-
-                            Nota:
-                            ${esc(
-                              customer.note
-                            )}
-
-                          </div>
-
-                        `
-                        : ""
-                    }
-
-                  </div>
-
-
-                  <div
-                    style="
-                      display:flex;
-                      flex-direction:column;
-                      align-items:flex-end;
-                      gap:6px;
-                    "
-                  >
-
-                    <span
-                      class="badge ${
-                        stats.balance > 0
-                          ? "low"
-                          : ""
-                      }"
-                    >
-
-                      ${
-                        stats.sales.length
-                      }
-
-                      ${
-                        stats.sales.length === 1
-                          ? "venta"
-                          : "ventas"
-                      }
-
-                    </span>
-
-                    <button
-                      type="button"
-                      onclick="event.stopPropagation();openCustomerAccount(${index})"
-                    >
-                      💳 Ver cuenta
-                    </button>
-
-                    ${
-                      stats.balance > 0
-                        ? `
-                          <button
-                            type="button"
-                            class="primary"
-                            onclick="event.stopPropagation();openCustomerPayment(${index})"
-                          >
-                            💰 Abonar
-                          </button>
-                        `
-                        : ""
-                    }
-
-                  </div>
-
-                </div>
-
-              `;
-
-            }
-          )
-          .join("")
-
-      : `
-
-        <div class="empty">
-
-          No hay clientes.
-          Agrega el primero.
-
-        </div>
-
-      `;
-
+function renderCustomers(){
+  const search=document.getElementById('customerSearch'), list=document.getElementById('customersList'), filter=document.getElementById('customerFilter'); if(!search||!list)return;
+  const q=String(search.value||'').toLowerCase().trim(), mode=filter?filter.value:'all';
+  const rows=db.customers.filter(customer=>{const stats=customerStats(customer.name); const matches=`${customer.name||''} ${customer.phone||''}`.toLowerCase().includes(q); const modeOk=mode==='debt'?stats.balance>0:mode==='active'?stats.sales.length>0:mode==='inactive'?stats.sales.length===0:true; return matches&&modeOk;}).sort((a,b)=>String(a.name||'').localeCompare(String(b.name||''),'es'));
+  renderCustomersSummary();
+  list.innerHTML=rows.length?rows.map(customer=>{const index=db.customers.indexOf(customer), stats=customerAdvancedStats(customer); const last=stats.lastSale?dateKey(stats.lastSale.date):'Sin compras todavía'; const top=stats.topProduct?`Producto más comprado: ${esc(stats.topProduct[0])} · ${stats.topProduct[1]} ud.`:''; return `<div class="item clickable" onclick="editCustomer(${index})"><div><b>${esc(customer.name)}</b><div class="muted">${esc(customer.phone||'Sin teléfono')}</div><div class="customer-v2-meta"><span class="badge">${stats.sales.length} ${stats.sales.length===1?'venta':'ventas'}</span>${stats.balance>0?'<span class="badge low">Saldo pendiente</span>':'<span class="badge">Cuenta al día</span>'}</div><div class="muted">Comprado ${money(stats.bought)} · Pagado ${money(stats.paid)} · Saldo ${money(stats.balance)}</div><div class="customer-last">📅 Última compra: ${esc(last)}</div>${top?`<div class="customer-product">🐠 ${top}</div>`:''}${customer.note?`<div class="muted">Nota: ${esc(customer.note)}</div>`:''}</div><div class="customer-v2-actions"><button type="button" onclick="event.stopPropagation();openCustomerAccount(${index})">💳 Ver cuenta</button>${customer.phone?`<button type="button" class="customer-wa" onclick="event.stopPropagation();customerWhatsApp(${index})">💬 WhatsApp</button>`:''}${stats.balance>0?`<button type="button" class="primary" onclick="event.stopPropagation();openCustomerPayment(${index})">💰 Abonar</button>`:''}</div></div>`;}).join(''):`<div class="empty">No hay clientes que coincidan con el filtro.</div>`;
 }
 
 
@@ -8842,16 +8674,10 @@ function bindSearches() {
     );
 
 
-  if(customerSearch){
+  if(customerSearch){ customerSearch.oninput = renderCustomers; }
 
-    customerSearch.oninput =
-      function(){
-
-        renderCustomers();
-
-      };
-
-  }
+  const customerFilter = document.getElementById("customerFilter");
+  if(customerFilter){ customerFilter.onchange = renderCustomers; }
 
 }
 

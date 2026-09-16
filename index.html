@@ -380,11 +380,21 @@
 
   </div>
 
-  <input
-    id="customerSearch"
-    class="search"
-    placeholder="Buscar cliente..."
-  >
+  <div id="customersSummary" class="customer-summary"></div>
+
+  <div class="customer-toolbar">
+    <input
+      id="customerSearch"
+      class="search"
+      placeholder="Buscar por nombre o teléfono..."
+    >
+    <select id="customerFilter" class="search">
+      <option value="all">Todos los clientes</option>
+      <option value="debt">Con saldo pendiente</option>
+      <option value="active">Con compras</option>
+      <option value="inactive">Sin compras</option>
+    </select>
+  </div>
 
   <div id="customersList" class="list"></div>
 
