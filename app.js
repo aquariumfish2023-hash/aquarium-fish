@@ -973,17 +973,79 @@ function dashboardProductRanking(){
   return [...map.entries()].sort((a,b)=>b[1]-a[1]).slice(0,5);
 }
 
+function dashboardSalesInRange(start,end){
+  return (db.sales||[]).filter(s=>{
+    const d=parseLocalDate(s.date||s.createdAt);
+    return d && d>=start && d<end;
+  });
+}
+
+function dashboardPeriodStats(daysBack, daysLength){
+  const end=new Date(); end.setHours(0,0,0,0); end.setDate(end.getDate()-daysBack);
+  const start=new Date(end); start.setDate(start.getDate()-daysLength);
+  const rows=dashboardSalesInRange(start,end);
+  return {rows,total:rows.reduce((sum,s)=>sum+(+s.total||0),0)};
+}
+
+function dashboardMonthStats(offset){
+  const now=new Date();
+  const end=new Date(now.getFullYear(),now.getMonth()-offset+1,1);
+  const start=new Date(now.getFullYear(),now.getMonth()-offset,1);
+  const rows=dashboardSalesInRange(start,end);
+  return {rows,total:rows.reduce((sum,s)=>sum+(+s.total||0),0)};
+}
+
+function dashboardComparison(current,previous){
+  if(!previous) return {text:"—",cls:"neutral"};
+  if(previous===0) return current>0?{text:"Nuevo",cls:"up"}:{text:"0%",cls:"neutral"};
+  const pct=((current-previous)/previous)*100;
+  const rounded=Math.round(Math.abs(pct));
+  return pct>0?{text:`↑ ${rounded}%`,cls:"up"}:pct<0?{text:`↓ ${rounded}%`,cls:"down"}:{text:"0%",cls:"neutral"};
+}
+
+function dashboardPaymentRanking(entries){
+  const methods={};
+  (entries||[]).forEach(e=>{
+    if(e.type==="Gasto") return;
+    const method=normalizePaymentMethod(e.method)||"Otro";
+    methods[method]=(methods[method]||0)+Math.abs(+e.amount||0);
+  });
+  return Object.entries(methods).filter(x=>x[1]>0).sort((a,b)=>b[1]-a[1]);
+}
+
+function dashboardCustomerRanking(){
+  const map=new Map();
+  (db.sales||[]).forEach(s=>{
+    const name=String(s.client||"Sin cliente").trim()||"Sin cliente";
+    map.set(name,(map.get(name)||0)+Math.max(0,+s.total||0));
+  });
+  return [...map.entries()].sort((a,b)=>b[1]-a[1]).slice(0,5);
+}
+
+function dashboardRenderComparison(id,current,previous){
+  const el=document.getElementById(id); if(!el) return;
+  const c=dashboardComparison(current,previous);
+  el.textContent=c.text; el.className=`dashboard-change ${c.cls}`;
+}
+
 function renderHome(){
   const sales=Array.isArray(db.sales)?db.sales:[];
   const products=Array.isArray(db.products)?db.products:[];
   const customers=Array.isArray(db.customers)?db.customers:[];
   const today=new Date();
-  const todaySales=sales.filter(s=>{const d=parseLocalDate(s.date||s.createdAt);return d?sameDay(d,today):false;});
+  const todayStart=new Date(today); todayStart.setHours(0,0,0,0);
+  const tomorrow=new Date(todayStart); tomorrow.setDate(tomorrow.getDate()+1);
+  const yesterdayStart=new Date(todayStart); yesterdayStart.setDate(yesterdayStart.getDate()-1);
+  const todaySales=dashboardSalesInRange(todayStart,tomorrow);
+  const yesterdaySales=dashboardSalesInRange(yesterdayStart,todayStart);
   const todayTotal=todaySales.reduce((sum,s)=>sum+(+s.total||0),0);
+  const yesterdayTotal=yesterdaySales.reduce((sum,s)=>sum+(+s.total||0),0);
   const cashToday=calculateCashTotals("today");
   const receivable=calculateReceivable();
   const inventory=inventoryStats();
   const pendingQuotes=(db.quotes||[]).filter(q=>!q.convertedSaleId);
+  const week=dashboardPeriodStats(0,7), prevWeek=dashboardPeriodStats(7,7);
+  const month=dashboardMonthStats(0), prevMonth=dashboardMonthStats(1);
 
   const set=(id,value)=>{const el=document.getElementById(id);if(el)el.textContent=value;};
   set("todaySalesTotal",money(todayTotal));
@@ -992,10 +1054,23 @@ function renderHome(){
   set("dashboardReceivable",money(receivable));
   set("todayExpenses",money(cashToday.expenses));
   set("dashboardInventoryValue",money(inventory.costValue));
+  set("dashboardInventorySaleValue",money(inventory.saleValue));
+  set("dashboardUnits",inventory.units);
   set("lowStock",inventory.lowStock);
+  set("dashboardZeroStock",inventory.zeroStock);
   set("customerCount",customers.length);
   set("pendingQuotesCount",pendingQuotes.length);
   set("dashboardDate",today.toLocaleDateString("es-CO",{weekday:"long",day:"numeric",month:"long"}));
+  set("dashboardWeekTotal",money(week.total));
+  set("dashboardWeekTotalCopy",money(week.total));
+  set("dashboardMonthTotal",money(month.total));
+  set("dashboardWeekCount",`${week.rows.length} venta${week.rows.length===1?"":"s"}`);
+  set("dashboardMonthCount",`${month.rows.length} venta${month.rows.length===1?"":"s"}`);
+  set("dashboardNetToday",money(cashToday.received-cashToday.expenses));
+
+  dashboardRenderComparison("todaySalesChange",todayTotal,yesterdayTotal);
+  dashboardRenderComparison("weekSalesChange",week.total,prevWeek.total);
+  dashboardRenderComparison("monthSalesChange",month.total,prevMonth.total);
 
   const days=dashboardRecentDays();
   const dayRows=days.map(day=>{
@@ -1004,32 +1079,42 @@ function renderHome(){
     return {date:day,total:rows.reduce((sum,s)=>sum+(+s.total||0),0),count:rows.length};
   });
   const maxDay=Math.max(1,...dayRows.map(r=>r.total));
-  const weekTotal=dayRows.reduce((sum,r)=>sum+r.total,0);
-  set("dashboardWeekTotal",money(weekTotal));
   const chart=document.getElementById("dashboardSalesChart");
-  if(chart){
-    chart.innerHTML=dayRows.map(r=>`<div class="dashboard-bar-item"><span class="dashboard-bar-value">${r.total?money(r.total):"$0"}</span><div class="dashboard-bar-track"><i style="height:${Math.max(3,Math.round((r.total/maxDay)*100))}%"></i></div><small>${esc(dashboardDayLabel(r.date))}</small></div>`).join("");
+  if(chart) chart.innerHTML=dayRows.map(r=>`<div class="dashboard-bar-item"><span class="dashboard-bar-value">${r.total?money(r.total):"$0"}</span><div class="dashboard-bar-track"><i style="height:${Math.max(3,Math.round((r.total/maxDay)*100))}%"></i></div><small>${esc(dashboardDayLabel(r.date))}</small></div>`).join("");
+
+  const ranking=dashboardProductRanking(), maxProduct=Math.max(1,...ranking.map(r=>r[1]));
+  const pchart=document.getElementById("dashboardProductChart");
+  if(pchart) pchart.innerHTML=ranking.length?ranking.map((r,i)=>`<div class="dashboard-hbar-item"><div class="dashboard-hbar-head"><span>${i+1}. ${esc(r[0])}</span><strong>${r[1]} und.</strong></div><div class="dashboard-hbar-track"><i style="width:${Math.max(3,Math.round((r[1]/maxProduct)*100))}%"></i></div></div>`).join(""):"<div class=\"empty\">Aún no hay ventas para analizar.</div>";
+
+  const pay=document.getElementById("dashboardPayments");
+  if(pay){
+    const rows=dashboardPaymentRanking(cashToday.entries), max=Math.max(1,...rows.map(r=>r[1]));
+    pay.innerHTML=rows.length?rows.slice(0,5).map(r=>`<div class="dashboard-pay-row"><div><span>${esc(r[0])}</span><strong>${money(r[1])}</strong></div><div class="dashboard-hbar-track"><i style="width:${Math.max(3,Math.round(r[1]/max*100))}%"></i></div></div>`).join(""):"<div class=\"empty\">Sin ingresos registrados hoy.</div>";
   }
 
-  const ranking=dashboardProductRanking();
-  const maxProduct=Math.max(1,...ranking.map(r=>r[1]));
-  const pchart=document.getElementById("dashboardProductChart");
-  if(pchart){
-    pchart.innerHTML=ranking.length?ranking.map((r,i)=>`<div class="dashboard-hbar-item"><div class="dashboard-hbar-head"><span>${i+1}. ${esc(r[0])}</span><strong>${r[1]} und.</strong></div><div class="dashboard-hbar-track"><i style="width:${Math.max(3,Math.round((r[1]/maxProduct)*100))}%"></i></div></div>`).join(""):"<div class=\"empty\">Aún no hay ventas para analizar.</div>";
+  const customersBox=document.getElementById("dashboardCustomers");
+  if(customersBox){
+    const rows=dashboardCustomerRanking();
+    customersBox.innerHTML=rows.length?rows.map((r,i)=>`<div class="dashboard-mini-row"><span><b>${i+1}.</b> ${esc(r[0])}</span><strong>${money(r[1])}</strong></div>`).join(""):"<div class=\"empty\">Aún no hay compras registradas.</div>";
+  }
+
+  const inventoryBox=document.getElementById("dashboardInventoryAlerts");
+  if(inventoryBox){
+    const low=products.filter(p=>Math.max(0,+p.stock||0)<=Math.max(0,+p.min||0)).sort((a,b)=>(+a.stock||0)-(+b.stock||0)).slice(0,5);
+    inventoryBox.innerHTML=low.length?low.map(p=>`<div class="dashboard-mini-row"><span>🐠 ${esc(p.name||p.product||"Producto")}</span><strong>${Math.max(0,+p.stock||0)} und.</strong></div>`).join(""):"<div class=\"empty\">No hay productos en alerta.</div>";
   }
 
   const recent=document.getElementById("recentSales");
-  if(recent){
-    recent.innerHTML=sales.length?sales.slice(-6).reverse().map(sale=>`<div class="item"><div><b>${esc(saleLabel(sale))}</b><div class="muted">${esc(sale.client||"Sin cliente")} · ${saleQty(sale)} und. · ${esc(sale.pay||"")}</div></div><div class="right"><strong>${money(sale.total)}</strong><small>${sale.status==="Pendiente"?"Pendiente de pago":sale.status==="Abono"?"Abono: "+money(salePaid(sale)):"Pagada"}</small></div></div>`).join(""):"<div class=\"empty\">Todavía no hay ventas.</div>";
-  }
+  if(recent) recent.innerHTML=sales.length?sales.slice(-6).reverse().map(sale=>`<div class="item"><div><b>${esc(saleLabel(sale))}</b><div class="muted">${esc(sale.client||"Sin cliente")} · ${saleQty(sale)} und. · ${esc(sale.pay||"")}</div></div><div class="right"><strong>${money(sale.total)}</strong><small>${sale.status==="Pendiente"?"Pendiente de pago":sale.status==="Abono"?"Abono: "+money(salePaid(sale)):"Pagada"}</small></div></div>`).join(""):"<div class=\"empty\">Todavía no hay ventas.</div>";
 
   const insights=document.getElementById("dashboardInsights");
   if(insights){
     const alerts=[];
-    if(inventory.zeroStock>0) alerts.push(`<div class="dashboard-insight alert"><span>🚨</span><div><b>${inventory.zeroStock} producto${inventory.zeroStock===1?"":"s"} sin stock</b><p>Revisa el inventario para evitar ventas sin existencias.</p></div></div>`);
+    if(inventory.zeroStock>0) alerts.push(`<div class="dashboard-insight alert"><span>🚨</span><div><b>${inventory.zeroStock} producto${inventory.zeroStock===1?"":"s"} sin stock</b><p>Revisa Inventario para programar reposición.</p></div></div>`);
     else if(inventory.lowStock>0) alerts.push(`<div class="dashboard-insight warn"><span>⚠️</span><div><b>${inventory.lowStock} producto${inventory.lowStock===1?"":"s"} con stock bajo</b><p>Conviene revisar las existencias próximamente.</p></div></div>`);
-    if(receivable>0) alerts.push(`<div class="dashboard-insight"><span>🧾</span><div><b>${money(receivable)} pendientes por cobrar</b><p>Consulta Clientes para revisar los estados de cuenta.</p></div></div>`);
-    if(pendingQuotes.length>0) alerts.push(`<div class="dashboard-insight"><span>📝</span><div><b>${pendingQuotes.length} cotización${pendingQuotes.length===1?"":"es"} pendiente${pendingQuotes.length===1?"":"s"}</b><p>Hay oportunidades que todavía pueden convertirse en ventas.</p></div></div>`);
+    if(receivable>0) alerts.push(`<div class="dashboard-insight"><span>🧾</span><div><b>${money(receivable)} pendientes por cobrar</b><p>Hay saldos abiertos en clientes o ventas.</p></div></div>`);
+    if(pendingQuotes.length>0) alerts.push(`<div class="dashboard-insight"><span>📝</span><div><b>${pendingQuotes.length} cotización${pendingQuotes.length===1?"":"es"} pendiente${pendingQuotes.length===1?"":"s"}</b><p>Revisa si alguna puede convertirse en venta.</p></div></div>`);
+    if(todayTotal>yesterdayTotal && yesterdayTotal>0) alerts.push(`<div class="dashboard-insight good"><span>📈</span><div><b>Las ventas de hoy superan las de ayer</b><p>${money(todayTotal-yesterdayTotal)} más acumulados hasta ahora.</p></div></div>`);
     if(!alerts.length) alerts.push(`<div class="dashboard-insight good"><span>✅</span><div><b>Todo en orden</b><p>No hay alertas importantes en los indicadores actuales.</p></div></div>`);
     insights.innerHTML=alerts.join("");
   }
@@ -3383,158 +3468,11 @@ function shareSavedQuoteWhatsApp(quoteId){
 function printQuote(quoteId){
   const q=findQuoteById(quoteId);
   if(!q){ alert("No se encontró la cotización."); return; }
-
-  const rows=(q.items||[]).map((item,index)=>{
-    const qty=Math.max(1,Number(item.qty)||1);
-    const price=Math.max(0,Number(item.unitPrice)||0);
-    return `<tr>
-      <td class="num">${index+1}</td>
-      <td><strong>${esc(item.name||"Producto")}</strong></td>
-      <td class="right">${qty}</td>
-      <td class="right">${money(price)}</td>
-      <td class="right"><strong>${money(qty*price)}</strong></td>
-    </tr>`;
-  }).join("");
-
-  const created = q.createdAt ? new Date(q.createdAt) : null;
-  const dateText = created && !Number.isNaN(created.getTime())
-    ? created.toLocaleString("es-CO", {dateStyle:"long", timeStyle:"short"})
-    : "";
-  const subtotal = Number(q.subtotal || 0);
-  const discount = Number(q.discount || 0);
-  const total = Number(q.total || 0);
-
+  const rows=(q.items||[]).map(item=>{ const qty=Math.max(1,Number(item.qty)||1); const price=Math.max(0,Number(item.unitPrice)||0); return `<tr><td>${esc(item.name||"Producto")}</td><td>${qty}</td><td>${money(price)}</td><td>${money(qty*price)}</td></tr>`; }).join("");
   const win=window.open("","_blank");
-  if(!win){
-    alert("El navegador bloqueó la ventana de impresión. Permite ventanas emergentes para esta app.");
-    return;
-  }
-
-  win.document.write(`<!doctype html>
-<html lang="es">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Cotización ${esc(q.id)}</title>
-<style>
-  @page{size:A4;margin:14mm}
-  *{box-sizing:border-box}
-  body{font-family:Arial,Helvetica,sans-serif;color:#172024;background:#fff;margin:0;font-size:12px;line-height:1.45}
-  .page{max-width:790px;margin:0 auto}
-  .top{display:flex;justify-content:space-between;align-items:flex-start;gap:24px;padding-bottom:18px;border-bottom:3px solid #172024}
-  .brand{font-size:25px;font-weight:800;letter-spacing:.4px}
-  .subtitle{font-size:12px;color:#66757a;margin-top:3px}
-  .doc{text-align:right}
-  .doc-title{font-size:18px;font-weight:800;letter-spacing:.8px}
-  .doc-id{font-size:14px;font-weight:700;margin-top:2px}
-  .date{color:#66757a;margin-top:4px}
-  .client{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:18px 0}
-  .box{border:1px solid #dce3e5;border-radius:10px;padding:11px 13px;background:#fafcfc}
-  .label{text-transform:uppercase;font-size:9px;font-weight:700;color:#6b7b80;letter-spacing:.7px;margin-bottom:3px}
-  .value{font-size:12px;font-weight:700}
-  table{width:100%;border-collapse:collapse;margin-top:8px}
-  thead th{background:#172024;color:#fff;padding:9px 8px;font-size:10px;text-transform:uppercase;letter-spacing:.4px}
-  tbody td{padding:9px 8px;border-bottom:1px solid #e4e9ea;vertical-align:top}
-  .num{width:32px;text-align:center;color:#718086}
-  .right{text-align:right}
-  .summary{width:330px;margin:18px 0 0 auto;border-top:1px solid #dce3e5}
-  .sumrow{display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid #edf0f1}
-  .sumrow.total{font-size:17px;font-weight:800;border-bottom:3px solid #172024;padding:11px 0}
-  .note{margin-top:18px;border-left:4px solid #172024;padding:10px 12px;background:#f6f8f8}
-  .footer{margin-top:34px;padding-top:13px;border-top:1px solid #dce3e5;text-align:center;color:#68777b;font-size:10px}
-  .thanks{font-weight:700;color:#172024;margin-bottom:3px}
-  .signature{display:grid;grid-template-columns:1fr 1fr;gap:60px;margin-top:48px}
-  .line{border-top:1px solid #9aa7ab;padding-top:6px;color:#68777b;font-size:10px}
-  @media print{body{print-color-adjust:exact;-webkit-print-color-adjust:exact}.page{max-width:none}}
-</style>
-</head>
-<body>
-<div class="page">
-  <header class="top">
-    <div>
-      <div class="brand">🐠 AQUARIUM FISH</div>
-      <div class="subtitle">Catálogo, ventas y atención al cliente</div>
-    </div>
-    <div class="doc">
-      <div class="doc-title">COTIZACIÓN</div>
-      <div class="doc-id">N.º ${esc(q.id)}</div>
-      ${dateText ? `<div class="date">${esc(dateText)}</div>` : ""}
-    </div>
-  </header>
-
-  <section class="client">
-    <div class="box">
-      <div class="label">Cliente</div>
-      <div class="value">${esc(q.customer||"Cliente general")}</div>
-    </div>
-    <div class="box">
-      <div class="label">Teléfono / WhatsApp</div>
-      <div class="value">${esc(q.phone||"No registrado")}</div>
-    </div>
-  </section>
-
-  <table>
-    <thead><tr><th>#</th><th>Producto</th><th class="right">Cant.</th><th class="right">Precio unit.</th><th class="right">Importe</th></tr></thead>
-    <tbody>${rows || `<tr><td colspan="5" style="text-align:center;padding:20px">Sin productos</td></tr>`}</tbody>
-  </table>
-
-  <div class="summary">
-    <div class="sumrow"><span>Subtotal</span><strong>${money(subtotal)}</strong></div>
-    ${discount>0 ? `<div class="sumrow"><span>Descuento</span><strong>-${money(discount)}</strong></div>` : ""}
-    <div class="sumrow total"><span>TOTAL</span><span>${money(total)}</span></div>
-  </div>
-
-  ${q.note ? `<div class="note"><strong>Nota / condiciones</strong><br>${esc(q.note)}</div>` : ""}
-
-  <div class="signature">
-    <div class="line">Elaboró / Aquarium Fish</div>
-    <div class="line">Cliente</div>
-  </div>
-
-  <footer class="footer">
-    <div class="thanks">Gracias por elegir Aquarium Fish 🐠</div>
-    Cotización informativa. Precios y disponibilidad sujetos a confirmación al momento de la compra.
-  </footer>
-</div>
-<script>window.onload=()=>setTimeout(()=>window.print(),250)<\/script>
-</body></html>`);
+  if(!win){ alert("El navegador bloqueó la ventana de impresión. Permite ventanas emergentes para esta app."); return; }
+  win.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${esc(q.id)}</title><style>body{font-family:Arial,sans-serif;padding:30px;color:#172024;max-width:800px;margin:auto}h1{margin-bottom:4px}table{width:100%;border-collapse:collapse;margin-top:20px}th,td{padding:9px;border-bottom:1px solid #ddd;text-align:left}th:nth-child(n+2),td:nth-child(n+2){text-align:right}.total{font-size:20px;font-weight:700;text-align:right;margin-top:18px}.muted{color:#68777b}</style></head><body><h1>🐠 AQUARIUM FISH</h1><div>COTIZACIÓN <strong>${esc(q.id)}</strong></div><p class="muted">${q.createdAt?esc(new Date(q.createdAt).toLocaleString("es-CO")):""}</p><p><strong>Cliente:</strong> ${esc(q.customer||"Cliente general")}<br>${q.phone?`<strong>Teléfono:</strong> ${esc(q.phone)}`:""}</p><table><thead><tr><th>Producto</th><th>Cant.</th><th>Precio</th><th>Importe</th></tr></thead><tbody>${rows}</tbody></table><p style="text-align:right">Subtotal: <strong>${money(Number(q.subtotal||0))}</strong><br>${Number(q.discount||0)>0?`Descuento: <strong>-${money(Number(q.discount||0))}</strong><br>`:""}<span class="total">TOTAL: ${money(Number(q.total||0))}</span></p>${q.note?`<p><strong>Nota:</strong><br>${esc(q.note)}</p>`:""}<p style="margin-top:30px;text-align:center" class="muted">Gracias por elegir Aquarium Fish 🐠</p><script>window.onload=()=>window.print()<\/script></body></html>`);
   win.document.close();
-}
-
-function printCurrentQuote(){
-  if(!quoteItems.length){
-    alert("Agrega al menos un producto a la cotización.");
-    return;
-  }
-
-  const temp = {
-    id: quoteEditingId || "BORRADOR",
-    customer: quoteCustomer.trim() || "Cliente general",
-    phone: quotePhone.trim(),
-    createdAt: new Date().toISOString(),
-    items: quoteItems.map(item => ({
-      name: item.name,
-      qty: Math.max(1, Number(item.qty)||1),
-      unitPrice: Math.max(0, Number(item.unitPrice)||0)
-    })),
-    subtotal: quoteSubtotal(),
-    discount: quoteDiscountAmount(),
-    total: quoteTotal(),
-    note: quoteNote.trim()
-  };
-
-  const original = findQuoteById;
-  // Reutilizamos el mismo diseño de impresión sin guardar un borrador en Firebase.
-  const index = db.quotes.findIndex(q => q && q.id === temp.id);
-  if(index >= 0){
-    printQuote(temp.id);
-    return;
-  }
-
-  const previous = db.quotes;
-  db.quotes = previous.concat(temp);
-  printQuote(temp.id);
-  db.quotes = previous;
 }
 
 function quoteItemKey(index){
@@ -4124,7 +4062,6 @@ function renderCotizador(){
         </button>
         <button type="button" onclick="copyQuote()">📋 Copiar</button>
         <button type="button" class="primary" onclick="shareQuoteWhatsApp()">📲 WhatsApp</button>
-        <button type="button" onclick="printCurrentQuote()">🖨️ Imprimir</button>
       </div>
 
       <p class="muted" style="margin-top:10px;">
@@ -7595,6 +7532,13 @@ function setCashPeriod(
 
 function renderCash(){
 
+  // Firebase puede devolver datos antiguos donde cashClosings no existe
+  // o no es un arreglo. Normalizamos aquí porque esta función también se
+  // ejecuta inmediatamente después de sincronizar datos remotos.
+  if(!Array.isArray(db.cashClosings)){
+    db.cashClosings = [];
+  }
+
   const summary =
     document.getElementById(
       "cashSummary"
@@ -9171,5 +9115,3 @@ if(
   iniciarApp();
 
 }
-
-window.printCurrentQuote = printCurrentQuote;
