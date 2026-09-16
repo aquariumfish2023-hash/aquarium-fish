@@ -388,6 +388,9 @@ let inventoryCategory =
 let inventorySort =
   "name-asc";
 
+let inventoryStockFilter =
+  "Todos";
+
 
 function inventoryCategories() {
 
@@ -458,6 +461,11 @@ function setInventorySort(
 
   renderInventory();
 
+}
+
+function setInventoryStockFilter(value){
+  inventoryStockFilter = value;
+  renderInventory();
 }
 
 
@@ -1382,6 +1390,18 @@ function renderInventory() {
 
   }
 
+  if(inventoryStockFilter === "Bajo") {
+    rows = rows.filter(p => (+p.stock || 0) > 0 && (+p.stock || 0) <= (+p.min || 0));
+  }
+
+  if(inventoryStockFilter === "Sin stock") {
+    rows = rows.filter(p => (+p.stock || 0) <= 0);
+  }
+
+  if(inventoryStockFilter === "Disponible") {
+    rows = rows.filter(p => (+p.stock || 0) > (+p.min || 0));
+  }
+
 
   if(
     inventorySort ===
@@ -1579,8 +1599,20 @@ function renderInventory() {
 
       </select>
 
+      <select id="inventoryStockFilter" class="search">
+        <option value="Todos" ${inventoryStockFilter === "Todos" ? "selected" : ""}>📦 Todo el stock</option>
+        <option value="Bajo" ${inventoryStockFilter === "Bajo" ? "selected" : ""}>⚠️ Stock bajo</option>
+        <option value="Sin stock" ${inventoryStockFilter === "Sin stock" ? "selected" : ""}>🚫 Sin stock</option>
+        <option value="Disponible" ${inventoryStockFilter === "Disponible" ? "selected" : ""}>✅ Disponible</option>
+      </select>
+
     </div>
 
+    <div class="inventory-v2-actions">
+      <button type="button" onclick="openMove('Entrada','Compra')">➕ Entrada</button>
+      <button type="button" onclick="openMove('Salida','Ajuste')">↕️ Ajustar</button>
+      <button type="button" onclick="printInventory()">🖨️ Imprimir</button>
+    </div>
 
     <div
       class="muted"
@@ -1638,6 +1670,12 @@ function renderInventory() {
 
   }
 
+  const stockFilter = document.getElementById("inventoryStockFilter");
+  if(stockFilter){
+    stockFilter.onchange = function(){
+      setInventoryStockFilter(this.value);
+    };
+  }
 
   list.innerHTML =
     rows.length
@@ -1727,6 +1765,23 @@ function renderInventory() {
 
       `;
 
+}
+
+
+function printInventory(){
+  const rows = db.products.slice().sort((a,b)=>String(a.name||"").localeCompare(String(b.name||""),"es"));
+  const stats = inventoryStats();
+  const html = `
+    <html><head><title>Inventario Aquarium Fish</title>
+    <style>body{font-family:Arial,sans-serif;padding:24px;color:#172024}h1{margin-bottom:4px}.muted{color:#66777b}.summary{display:flex;gap:18px;margin:18px 0}.box{border:1px solid #ddd;border-radius:10px;padding:10px}.box b{display:block;font-size:18px}table{width:100%;border-collapse:collapse;margin-top:18px}th,td{border:1px solid #ddd;padding:8px;text-align:left}th{background:#f3f6f7}.low{color:#a43d16;font-weight:700}@media print{button{display:none}}</style></head>
+    <body><h1>📦 Inventario — Aquarium Fish</h1><div class="muted">${now()}</div>
+    <div class="summary"><div class="box"><b>${rows.length}</b>Productos</div><div class="box"><b>${stats.units}</b>Unidades</div><div class="box"><b>${money(stats.costValue)}</b>Valor costo</div><div class="box"><b>${money(stats.saleValue)}</b>Valor venta</div></div>
+    <table><thead><tr><th>Producto</th><th>Categoría</th><th>Stock</th><th>Mínimo</th><th>Costo</th><th>Venta</th><th>Margen/u</th></tr></thead><tbody>
+    ${rows.map(p=>`<tr><td>${esc(p.name)}</td><td>${esc(p.category||"Sin categoría")}</td><td class="${(+p.stock||0)<= (+p.min||0)?"low":""}">${+p.stock||0}</td><td>${+p.min||0}</td><td>${money(p.cost)}</td><td>${money(p.price)}</td><td>${money((+p.price||0)- (+p.cost||0))}</td></tr>`).join("")}
+    </tbody></table><script>window.onload=()=>window.print()<\/script></body></html>`;
+  const w=window.open("","_blank");
+  if(!w){ alert("El navegador bloqueó la ventana de impresión."); return; }
+  w.document.write(html); w.document.close();
 }
 
 
@@ -8717,6 +8772,12 @@ function exposeFunctions() {
 
   window.deleteProduct =
     deleteProduct;
+
+  window.setInventoryStockFilter =
+    setInventoryStockFilter;
+
+  window.printInventory =
+    printInventory;
 
 
   window.openSale =
