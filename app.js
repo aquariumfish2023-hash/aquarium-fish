@@ -3721,6 +3721,75 @@ function saveQuote(){
   }
 }
 
+function quoteReportData(){
+  const quotes = Array.isArray(db.quotes) ? db.quotes : [];
+  let pending=0, converted=0, rejected=0, totalQuoted=0, totalConverted=0;
+  quotes.forEach(q=>{
+    const total=Math.max(0, Number(q.total)||0);
+    totalQuoted += total;
+    if(q.convertedSaleId || String(q.status||'').toLowerCase()==='convertida en venta'){
+      converted++;
+      totalConverted += total;
+    }else if(String(q.status||'').toLowerCase()==='rechazada'){
+      rejected++;
+    }else{
+      pending++;
+    }
+  });
+  return {total:quotes.length,pending,converted,rejected,totalQuoted,totalConverted,
+    conversionRate:quotes.length ? (converted/quotes.length)*100 : 0};
+}
+
+function renderQuoteReports(){
+  const el=document.getElementById('quoteReports');
+  if(!el) return;
+  const r=quoteReportData();
+  const card=(label,value,sub='')=>`<div style="background:#f5f8f9;border-radius:14px;padding:13px;border:1px solid rgba(0,0,0,.06);"><div class="muted" style="font-size:.86rem;">${label}</div><strong style="display:block;font-size:1.18rem;margin-top:4px;">${value}</strong>${sub?`<div class="muted" style="font-size:.78rem;margin-top:3px;">${sub}</div>`:''}</div>`;
+  el.innerHTML=`
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:9px;">
+      ${card('📋 Cotizaciones',r.total)}
+      ${card('⏳ Pendientes',r.pending)}
+      ${card('✅ Convertidas',r.converted)}
+      ${card('❌ Rechazadas',r.rejected)}
+      ${card('💰 Total cotizado',money(r.totalQuoted))}
+      ${card('💵 Total convertido',money(r.totalConverted))}
+      ${card('📈 Conversión',`${r.conversionRate.toFixed(1)}%`,'sobre el total de cotizaciones')}
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;">
+      <button type="button" onclick="printQuoteReport()">🖨️ Imprimir reporte</button>
+      <button type="button" class="primary" onclick="shareQuoteReportWhatsApp()">📲 WhatsApp</button>
+    </div>`;
+}
+
+function buildQuoteReportText(){
+  const r=quoteReportData();
+  return [
+    '📊 REPORTE DE COTIZACIONES',
+    '',
+    `Cotizaciones: ${r.total}`,
+    `Pendientes: ${r.pending}`,
+    `Convertidas en venta: ${r.converted}`,
+    `Rechazadas: ${r.rejected}`,
+    `Total cotizado: ${money(r.totalQuoted)}`,
+    `Total convertido: ${money(r.totalConverted)}`,
+    `Porcentaje de conversión: ${r.conversionRate.toFixed(1)}%`,
+    '',
+    'Aquarium Fish 🐠'
+  ].join('\n');
+}
+
+function shareQuoteReportWhatsApp(){
+  window.open('https://wa.me/?text='+encodeURIComponent(buildQuoteReportText()),'_blank','noopener');
+}
+
+function printQuoteReport(){
+  const r=quoteReportData();
+  const html=`<!doctype html><html><head><meta charset="utf-8"><title>Reporte de cotizaciones</title><style>body{font-family:Arial,sans-serif;padding:28px;color:#17212b}h1{margin:0 0 6px;font-size:24px}.muted{color:#667781}.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-top:24px}.card{border:1px solid #d9e0e4;border-radius:12px;padding:16px}.value{font-size:22px;font-weight:700;margin-top:6px}@media print{button{display:none}}</style></head><body><h1>AQUARIUM FISH</h1><div class="muted">Reporte de cotizaciones</div><div class="muted">Generado: ${new Date().toLocaleString('es-CO')}</div><div class="grid"><div class="card">Cotizaciones<div class="value">${r.total}</div></div><div class="card">Pendientes<div class="value">${r.pending}</div></div><div class="card">Convertidas<div class="value">${r.converted}</div></div><div class="card">Rechazadas<div class="value">${r.rejected}</div></div><div class="card">Total cotizado<div class="value">${money(r.totalQuoted)}</div></div><div class="card">Total convertido<div class="value">${money(r.totalConverted)}</div></div><div class="card">Porcentaje de conversión<div class="value">${r.conversionRate.toFixed(1)}%</div></div></div><p style="margin-top:28px">Este reporte es informativo y no modifica inventario, caja ni cotizaciones.</p><button onclick="window.print()">Imprimir</button><script>window.onload=()=>setTimeout(()=>window.print(),250)</script></body></html>`;
+  const w=window.open('','_blank','noopener');
+  if(!w){ alert('El navegador bloqueó la ventana de impresión. Permite ventanas emergentes e inténtalo de nuevo.'); return; }
+  w.document.write(html); w.document.close();
+}
+
 function renderCotizador(){
   const section = document.getElementById("cotizador");
   if(!section){
@@ -3937,6 +4006,14 @@ function renderCotizador(){
 
     <div class="panel" style="margin-top:12px;">
       <div class="section-head" style="margin-bottom:8px;">
+        <h2>📊 Resumen de cotizaciones</h2>
+        <span class="muted">Actualizado automáticamente</span>
+      </div>
+      <div id="quoteReports"></div>
+    </div>
+
+    <div class="panel" style="margin-top:12px;">
+      <div class="section-head" style="margin-bottom:8px;">
         <h2>📋 Cotizaciones guardadas</h2>
         <span class="muted">${Array.isArray(db.quotes) ? db.quotes.length : 0} guardadas</span>
       </div>
@@ -3973,6 +4050,8 @@ function renderCotizador(){
       </div>
     </div>
   `;
+
+  renderQuoteReports();
 
   const customerSelect = document.getElementById("quoteCustomerSelect");
   const customer = document.getElementById("quoteCustomer");
