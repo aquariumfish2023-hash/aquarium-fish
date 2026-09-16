@@ -3751,13 +3751,35 @@ function renderCotizador(){
 
     <div class="panel">
       <h2>Cliente</h2>
+
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
-        <input
-          id="quoteCustomer"
-          class="search"
-          placeholder="Nombre del cliente"
-          value="${esc(quoteCustomer)}"
-        >
+        <select id="quoteCustomerSelect" class="search">
+          <option value="">Cliente general</option>
+          ${db.customers
+            .map((customer, index) => ({
+              customer,
+              index
+            }))
+            .filter(({customer}) => customer && String(customer.name || "").trim())
+            .sort((a,b) =>
+              String(a.customer.name || "").localeCompare(
+                String(b.customer.name || ""),
+                "es"
+              )
+            )
+            .map(({customer,index}) => `
+              <option
+                value="${index}"
+                ${String(customer.name || "").trim() === String(quoteCustomer || "").trim() ? "selected" : ""}
+              >
+                ${esc(customer.name)}
+              </option>
+            `).join("")}
+          <option value="__manual__" ${quoteCustomer && !db.customers.some(c => String(c?.name || "").trim() === String(quoteCustomer || "").trim()) ? "selected" : ""}>
+            ✏️ Escribir otro cliente
+          </option>
+        </select>
+
         <input
           id="quotePhone"
           class="search"
@@ -3766,6 +3788,22 @@ function renderCotizador(){
           value="${esc(quotePhone)}"
         >
       </div>
+
+      <div style="margin-top:8px;">
+        <input
+          id="quoteCustomer"
+          class="search"
+          placeholder="Nombre del cliente"
+          value="${esc(quoteCustomer)}"
+          ${quoteCustomer && db.customers.some(c => String(c?.name || "").trim() === String(quoteCustomer || "").trim()) ? 'style="display:none;"' : ""}
+        >
+      </div>
+
+      <p class="muted" style="margin:8px 0 0;">
+        ${db.customers.length
+          ? "Selecciona un cliente registrado y sus datos se cargarán automáticamente."
+          : "No hay clientes registrados todavía. Puedes escribir el nombre manualmente."}
+      </p>
     </div>
 
     <div class="panel">
@@ -3926,14 +3964,68 @@ function renderCotizador(){
     </div>
   `;
 
+  const customerSelect = document.getElementById("quoteCustomerSelect");
   const customer = document.getElementById("quoteCustomer");
-  if(customer){
-    customer.oninput = function(){ quoteCustomer = this.value; };
+  const phone = document.getElementById("quotePhone");
+
+  if(customerSelect){
+    customerSelect.onchange = function(){
+      const value = this.value;
+
+      if(value === "__manual__"){
+        quoteCustomer = "";
+        if(customer){
+          customer.style.display = "";
+          customer.focus();
+        }
+        if(phone){
+          phone.value = "";
+        }
+        quotePhone = "";
+        return;
+      }
+
+      if(value === ""){
+        quoteCustomer = "";
+        quotePhone = "";
+        if(customer){
+          customer.value = "";
+          customer.style.display = "none";
+        }
+        if(phone){
+          phone.value = "";
+        }
+        return;
+      }
+
+      const selectedCustomer = db.customers[Number(value)];
+
+      if(selectedCustomer){
+        quoteCustomer = String(selectedCustomer.name || "").trim();
+        quotePhone = String(selectedCustomer.phone || "").trim();
+
+        if(customer){
+          customer.value = quoteCustomer;
+          customer.style.display = "none";
+        }
+
+        if(phone){
+          phone.value = quotePhone;
+        }
+      }
+    };
   }
 
-  const phone = document.getElementById("quotePhone");
+  if(customer){
+    customer.oninput = function(){
+      quoteCustomer = this.value;
+    };
+  }
+
   if(phone){
-    phone.oninput = function(){ quotePhone = this.value; };
+    phone.oninput = function(){
+      quotePhone = this.value;
+    };
   }
 
   const note = document.getElementById("quoteNote");
