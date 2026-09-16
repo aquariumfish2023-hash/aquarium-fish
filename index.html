@@ -90,121 +90,71 @@
   </div>
 </section>
 
-<section id="home" class="screen">
-
-  <h1>Inicio</h1>
-
-  <div class="cards">
-
-    <div class="card card-today">
-      <span>💰 Ventas de hoy</span>
-      <b id="todaySalesTotal">$0</b>
-      <small id="todaySalesCount">0 ventas hoy</small>
+<section id="home" class="screen dashboard-screen">
+  <div class="dashboard-hero">
+    <div>
+      <span class="dashboard-kicker">🐠 AQUARIUM FISH</span>
+      <h1>Panel de control</h1>
+      <p>Una vista rápida de cómo está funcionando tu negocio.</p>
     </div>
-
-    <div class="card">
-      <span>📊 Ventas acumuladas</span>
-      <b id="salesTotal">$0</b>
-      <small id="salesCount">0 transacciones en total</small>
-    </div>
-
-    <div class="card">
-      <span>Productos</span>
-      <b id="productCount">0</b>
-      <small>en catálogo</small>
-    </div>
-
-    <div class="card">
-      <span>Clientes</span>
-      <b id="customerCount">0</b>
-      <small>registrados</small>
-    </div>
-
-    <div class="card">
-      <span>Stock bajo</span>
-      <b id="lowStock">0</b>
-      <small>requieren atención</small>
-    </div>
-
-    <div class="card">
-      <span>💰 Caja</span>
-      <b id="cashBalance">$0</b>
-      <small>saldo actual</small>
-    </div>
-
-    <div class="card">
-      <span>🧾 Cotizaciones pendientes</span>
-      <b id="pendingQuotesCount">0</b>
-      <small>por atender</small>
-    </div>
-
+    <div class="dashboard-date" id="dashboardDate">Hoy</div>
   </div>
 
-  <div class="panel quick-actions">
-    <div class="section-head">
+  <div class="dashboard-kpis">
+    <div class="card dash-main-card"><span>💰 Ventas de hoy</span><b id="todaySalesTotal">$0</b><small id="todaySalesCount">0 ventas hoy</small></div>
+    <div class="card"><span>💵 Recibido hoy</span><b id="todayReceived">$0</b><small>ingresos registrados</small></div>
+    <div class="card"><span>🧾 Por cobrar</span><b id="dashboardReceivable">$0</b><small>saldo pendiente</small></div>
+    <div class="card"><span>💸 Gastos hoy</span><b id="todayExpenses">$0</b><small>registrados en caja</small></div>
+    <div class="card"><span>📦 Inventario</span><b id="dashboardInventoryValue">$0</b><small>valor a costo</small></div>
+    <div class="card"><span>⚠️ Stock bajo</span><b id="lowStock">0</b><small>requieren atención</small></div>
+    <div class="card"><span>👥 Clientes</span><b id="customerCount">0</b><small>registrados</small></div>
+    <div class="card"><span>🧾 Cotizaciones</span><b id="pendingQuotesCount">0</b><small>pendientes</small></div>
+  </div>
+
+  <div class="dashboard-grid">
+    <div class="panel dashboard-chart-panel">
+      <div class="dashboard-panel-head"><div><h2>📈 Ventas recientes</h2><p class="muted">Últimos 7 días</p></div><strong id="dashboardWeekTotal">$0</strong></div>
+      <div id="dashboardSalesChart" class="dashboard-bars"></div>
+    </div>
+    <div class="panel dashboard-chart-panel">
+      <div class="dashboard-panel-head"><div><h2>🐠 Productos</h2><p class="muted">Más vendidos</p></div></div>
+      <div id="dashboardProductChart" class="dashboard-hbars"></div>
+    </div>
+  </div>
+
+  <div class="dashboard-grid dashboard-lower-grid">
+    <div class="panel">
+      <div class="dashboard-panel-head"><div><h2>🛒 Actividad reciente</h2><p class="muted">Últimas operaciones</p></div></div>
+      <div id="recentSales" class="list"></div>
+    </div>
+    <div class="panel">
       <h2>⚡ Acciones rápidas</h2>
+      <div class="dashboard-actions">
+        <button type="button" class="primary" onclick="openSale()">🛒 Nueva venta</button>
+        <button type="button" onclick="show('cotizador')">🧾 Nueva cotización</button>
+        <button type="button" onclick="openCustomer()">👤 Nuevo cliente</button>
+        <button type="button" onclick="show('cash')">💰 Abrir caja</button>
+        <button type="button" onclick="show('inventory')">📦 Ver inventario</button>
+        <button type="button" onclick="show('reports')">📊 Ver reportes</button>
+      </div>
     </div>
-    <div class="quick-actions-grid">
-      <button type="button" class="primary" onclick="openSale()">🛒 Nueva venta</button>
-      <button type="button" onclick="show('cotizador')">🧾 Nueva cotización</button>
-      <button type="button" onclick="openCustomer()">👤 Nuevo cliente</button>
-    </div>
+  </div>
+
+  <div class="panel dashboard-status-panel">
+    <div class="dashboard-panel-head"><div><h2>🧭 Estado del negocio</h2><p class="muted">Indicadores que merecen atención</p></div></div>
+    <div id="dashboardInsights" class="dashboard-insights"></div>
   </div>
 
   <div class="panel">
-    <h2>Últimas ventas</h2>
-    <div id="recentSales" class="list"></div>
-  </div>
-
-  <div class="panel">
-    <h2>Resumen interno</h2>
-
-    <p class="muted">
-      Las ganancias no aparecen en las pantallas de venta.
-    </p>
-
-    <button class="primary" type="button" onclick="openInternal()">
-      🔒 Ver ganancias y cuentas
-    </button>
-  </div>
-
-  <div class="panel">
-
     <h2>Datos</h2>
-
     <div class="data-actions">
-
-      <button type="button" onclick="exportData()">
-        Exportar respaldo
-      </button>
-
-      <button
-        type="button"
-        onclick="document.getElementById('importFile').click()"
-      >
-        Importar respaldo
-      </button>
-
-      <input
-        id="importFile"
-        type="file"
-        accept=".json"
-        hidden
-      >
-
+      <button type="button" onclick="exportData()">Exportar respaldo</button>
+      <button type="button" onclick="document.getElementById('importFile').click()">Importar respaldo</button>
+      <input id="importFile" type="file" accept=".json" hidden>
     </div>
-
-    <p class="muted">
-      El respaldo guarda productos, ventas, clientes, cotizaciones,
-      encargos, movimientos y caja.
-    </p>
-
-    <p id="syncStatus" class="muted">
-      ☁️ Preparando sincronización...
-    </p>
-
+    <p class="muted">El respaldo guarda productos, ventas, clientes, cotizaciones, encargos, movimientos y caja.</p>
+    <p id="syncStatus" class="muted">☁️ Preparando sincronización...</p>
   </div>
-
 </section>
 
 
@@ -380,21 +330,11 @@
 
   </div>
 
-  <div id="customersSummary" class="customer-summary"></div>
-
-  <div class="customer-toolbar">
-    <input
-      id="customerSearch"
-      class="search"
-      placeholder="Buscar por nombre o teléfono..."
-    >
-    <select id="customerFilter" class="search">
-      <option value="all">Todos los clientes</option>
-      <option value="debt">Con saldo pendiente</option>
-      <option value="active">Con compras</option>
-      <option value="inactive">Sin compras</option>
-    </select>
-  </div>
+  <input
+    id="customerSearch"
+    class="search"
+    placeholder="Buscar cliente..."
+  >
 
   <div id="customersList" class="list"></div>
 

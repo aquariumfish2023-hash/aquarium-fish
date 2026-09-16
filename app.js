@@ -388,9 +388,6 @@ let inventoryCategory =
 let inventorySort =
   "name-asc";
 
-let inventoryStockFilter =
-  "Todos";
-
 
 function inventoryCategories() {
 
@@ -461,11 +458,6 @@ function setInventorySort(
 
   renderInventory();
 
-}
-
-function setInventoryStockFilter(value){
-  inventoryStockFilter = value;
-  renderInventory();
 }
 
 
@@ -943,243 +935,104 @@ function renderAll() {
    INICIO
    ========================================================= */
 
-function renderHome() {
+function dashboardDateKey(date){
+  const d = date instanceof Date ? date : new Date(date);
+  if(Number.isNaN(d.getTime())) return "";
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+}
 
-  const total =
-    db.sales.reduce(
-      (sum,sale) =>
-        sum +
-        (+sale.total || 0),
-      0
-    );
+function dashboardDayLabel(date){
+  return date.toLocaleDateString("es-CO",{weekday:"short",day:"numeric"}).replace(".","");
+}
 
+function dashboardRecentDays(){
   const today = new Date();
-  const todaySales = db.sales.filter(sale => {
-    const d = parseLocalDate(sale.date || sale.createdAt);
-    return d ? sameDay(d, today) : false;
+  const days=[];
+  for(let i=6;i>=0;i--){
+    const d=new Date(today);
+    d.setHours(0,0,0,0);
+    d.setDate(d.getDate()-i);
+    days.push(d);
+  }
+  return days;
+}
+
+function dashboardProductRanking(){
+  const map=new Map();
+  (db.sales||[]).forEach(sale=>{
+    const items=Array.isArray(sale.items)&&sale.items.length
+      ? sale.items
+      : (sale.product ? [{product:sale.product,qty:sale.qty||0,price:sale.price||0}] : []);
+    items.forEach(item=>{
+      const name=String(item.product||item.name||"Producto").trim()||"Producto";
+      const qty=Math.max(0,+item.qty||0);
+      const current=map.get(name)||0;
+      map.set(name,current+qty);
+    });
   });
+  return [...map.entries()].sort((a,b)=>b[1]-a[1]).slice(0,5);
+}
 
-  const todayTotal = todaySales.reduce(
-    (sum, sale) => sum + (+sale.total || 0),
-    0
-  );
+function renderHome(){
+  const sales=Array.isArray(db.sales)?db.sales:[];
+  const products=Array.isArray(db.products)?db.products:[];
+  const customers=Array.isArray(db.customers)?db.customers:[];
+  const today=new Date();
+  const todaySales=sales.filter(s=>{const d=parseLocalDate(s.date||s.createdAt);return d?sameDay(d,today):false;});
+  const todayTotal=todaySales.reduce((sum,s)=>sum+(+s.total||0),0);
+  const cashToday=calculateCashTotals("today");
+  const receivable=calculateReceivable();
+  const inventory=inventoryStats();
+  const pendingQuotes=(db.quotes||[]).filter(q=>!q.convertedSaleId);
 
-  const pendingQuotes = (db.quotes || []).filter(q => !q.convertedSaleId);
+  const set=(id,value)=>{const el=document.getElementById(id);if(el)el.textContent=value;};
+  set("todaySalesTotal",money(todayTotal));
+  set("todaySalesCount",`${todaySales.length} venta${todaySales.length===1?"":"s"} hoy`);
+  set("todayReceived",money(cashToday.received));
+  set("dashboardReceivable",money(receivable));
+  set("todayExpenses",money(cashToday.expenses));
+  set("dashboardInventoryValue",money(inventory.costValue));
+  set("lowStock",inventory.lowStock);
+  set("customerCount",customers.length);
+  set("pendingQuotesCount",pendingQuotes.length);
+  set("dashboardDate",today.toLocaleDateString("es-CO",{weekday:"long",day:"numeric",month:"long"}));
 
-
-  const salesTotal =
-    document.getElementById(
-      "salesTotal"
-    );
-
-
-  const salesCount =
-    document.getElementById(
-      "salesCount"
-    );
-
-  const todaySalesTotal = document.getElementById("todaySalesTotal");
-  const todaySalesCount = document.getElementById("todaySalesCount");
-  const pendingQuotesCount = document.getElementById("pendingQuotesCount");
-
-
-  const productCount =
-    document.getElementById(
-      "productCount"
-    );
-
-
-  const customerCount =
-    document.getElementById(
-      "customerCount"
-    );
-
-
-  const lowStock =
-    document.getElementById(
-      "lowStock"
-    );
-
-
-  const cashBalance =
-    document.getElementById(
-      "cashBalance"
-    );
-
-
-  const recentSales =
-    document.getElementById(
-      "recentSales"
-    );
-
-
-  if(salesTotal){
-
-    salesTotal.textContent =
-      money(total);
-
+  const days=dashboardRecentDays();
+  const dayRows=days.map(day=>{
+    const key=dashboardDateKey(day);
+    const rows=sales.filter(s=>{const d=parseLocalDate(s.date||s.createdAt);return d&&dashboardDateKey(d)===key;});
+    return {date:day,total:rows.reduce((sum,s)=>sum+(+s.total||0),0),count:rows.length};
+  });
+  const maxDay=Math.max(1,...dayRows.map(r=>r.total));
+  const weekTotal=dayRows.reduce((sum,r)=>sum+r.total,0);
+  set("dashboardWeekTotal",money(weekTotal));
+  const chart=document.getElementById("dashboardSalesChart");
+  if(chart){
+    chart.innerHTML=dayRows.map(r=>`<div class="dashboard-bar-item"><span class="dashboard-bar-value">${r.total?money(r.total):"$0"}</span><div class="dashboard-bar-track"><i style="height:${Math.max(3,Math.round((r.total/maxDay)*100))}%"></i></div><small>${esc(dashboardDayLabel(r.date))}</small></div>`).join("");
   }
 
-
-  if(salesCount){
-
-    salesCount.textContent =
-      `${db.sales.length} transacciones en total`;
-
+  const ranking=dashboardProductRanking();
+  const maxProduct=Math.max(1,...ranking.map(r=>r[1]));
+  const pchart=document.getElementById("dashboardProductChart");
+  if(pchart){
+    pchart.innerHTML=ranking.length?ranking.map((r,i)=>`<div class="dashboard-hbar-item"><div class="dashboard-hbar-head"><span>${i+1}. ${esc(r[0])}</span><strong>${r[1]} und.</strong></div><div class="dashboard-hbar-track"><i style="width:${Math.max(3,Math.round((r[1]/maxProduct)*100))}%"></i></div></div>`).join(""):"<div class=\"empty\">Aún no hay ventas para analizar.</div>";
   }
 
-  if(todaySalesTotal){
-    todaySalesTotal.textContent = money(todayTotal);
+  const recent=document.getElementById("recentSales");
+  if(recent){
+    recent.innerHTML=sales.length?sales.slice(-6).reverse().map(sale=>`<div class="item"><div><b>${esc(saleLabel(sale))}</b><div class="muted">${esc(sale.client||"Sin cliente")} · ${saleQty(sale)} und. · ${esc(sale.pay||"")}</div></div><div class="right"><strong>${money(sale.total)}</strong><small>${sale.status==="Pendiente"?"Pendiente de pago":sale.status==="Abono"?"Abono: "+money(salePaid(sale)):"Pagada"}</small></div></div>`).join(""):"<div class=\"empty\">Todavía no hay ventas.</div>";
   }
 
-  if(todaySalesCount){
-    todaySalesCount.textContent = `${todaySales.length} venta${todaySales.length === 1 ? "" : "s"} hoy`;
+  const insights=document.getElementById("dashboardInsights");
+  if(insights){
+    const alerts=[];
+    if(inventory.zeroStock>0) alerts.push(`<div class="dashboard-insight alert"><span>🚨</span><div><b>${inventory.zeroStock} producto${inventory.zeroStock===1?"":"s"} sin stock</b><p>Revisa el inventario para evitar ventas sin existencias.</p></div></div>`);
+    else if(inventory.lowStock>0) alerts.push(`<div class="dashboard-insight warn"><span>⚠️</span><div><b>${inventory.lowStock} producto${inventory.lowStock===1?"":"s"} con stock bajo</b><p>Conviene revisar las existencias próximamente.</p></div></div>`);
+    if(receivable>0) alerts.push(`<div class="dashboard-insight"><span>🧾</span><div><b>${money(receivable)} pendientes por cobrar</b><p>Consulta Clientes para revisar los estados de cuenta.</p></div></div>`);
+    if(pendingQuotes.length>0) alerts.push(`<div class="dashboard-insight"><span>📝</span><div><b>${pendingQuotes.length} cotización${pendingQuotes.length===1?"":"es"} pendiente${pendingQuotes.length===1?"":"s"}</b><p>Hay oportunidades que todavía pueden convertirse en ventas.</p></div></div>`);
+    if(!alerts.length) alerts.push(`<div class="dashboard-insight good"><span>✅</span><div><b>Todo en orden</b><p>No hay alertas importantes en los indicadores actuales.</p></div></div>`);
+    insights.innerHTML=alerts.join("");
   }
-
-  if(pendingQuotesCount){
-    pendingQuotesCount.textContent = pendingQuotes.length;
-  }
-
-
-  if(productCount){
-
-    productCount.textContent =
-      db.products.length;
-
-  }
-
-
-  if(customerCount){
-
-    customerCount.textContent =
-      db.customers.length;
-
-  }
-
-
-  if(lowStock){
-
-    lowStock.textContent =
-      db.products.filter(
-        p =>
-          (+p.stock || 0) <=
-          (+p.min || 0)
-      ).length;
-
-  }
-
-
-  if(cashBalance){
-
-    const totalCash =
-      calculateCashTotals(
-        "all"
-      );
-
-
-    cashBalance.textContent =
-      money(
-        totalCash.balance
-      );
-
-  }
-
-
-  if(!recentSales){
-
-    return;
-
-  }
-
-
-  recentSales.innerHTML =
-    db.sales.length
-
-      ? db.sales
-          .slice(-6)
-          .reverse()
-          .map(
-            sale => `
-
-              <div class="item">
-
-                <div>
-
-                  <b>
-                    ${esc(
-                      saleLabel(sale)
-                    )}
-                  </b>
-
-                  <div class="muted">
-
-                    ${esc(
-                      sale.client ||
-                      "Sin cliente"
-                    )}
-
-                    ·
-
-                    ${saleQty(sale)}
-                    und.
-
-                    ·
-
-                    ${esc(
-                      sale.pay || ""
-                    )}
-
-                  </div>
-
-                </div>
-
-                <div class="right">
-
-                  <strong>
-                    ${money(
-                      sale.total
-                    )}
-                  </strong>
-
-                  <small>
-
-                    ${
-                      sale.status ===
-                      "Pendiente"
-
-                        ? "Pendiente de pago"
-
-                        : sale.status ===
-                          "Abono"
-
-                        ? "Abono: " +
-                          money(
-                            salePaid(
-                              sale
-                            )
-                          )
-
-                        : "Pagada"
-                    }
-
-                  </small>
-
-                </div>
-
-              </div>
-
-            `
-          )
-          .join("")
-
-      : `
-
-        <div class="empty">
-          Todavía no hay ventas.
-        </div>
-
-      `;
-
 }
 
 
@@ -1390,18 +1243,6 @@ function renderInventory() {
 
   }
 
-  if(inventoryStockFilter === "Bajo") {
-    rows = rows.filter(p => (+p.stock || 0) > 0 && (+p.stock || 0) <= (+p.min || 0));
-  }
-
-  if(inventoryStockFilter === "Sin stock") {
-    rows = rows.filter(p => (+p.stock || 0) <= 0);
-  }
-
-  if(inventoryStockFilter === "Disponible") {
-    rows = rows.filter(p => (+p.stock || 0) > (+p.min || 0));
-  }
-
 
   if(
     inventorySort ===
@@ -1599,20 +1440,8 @@ function renderInventory() {
 
       </select>
 
-      <select id="inventoryStockFilter" class="search">
-        <option value="Todos" ${inventoryStockFilter === "Todos" ? "selected" : ""}>📦 Todo el stock</option>
-        <option value="Bajo" ${inventoryStockFilter === "Bajo" ? "selected" : ""}>⚠️ Stock bajo</option>
-        <option value="Sin stock" ${inventoryStockFilter === "Sin stock" ? "selected" : ""}>🚫 Sin stock</option>
-        <option value="Disponible" ${inventoryStockFilter === "Disponible" ? "selected" : ""}>✅ Disponible</option>
-      </select>
-
     </div>
 
-    <div class="inventory-v2-actions">
-      <button type="button" onclick="openMove('Entrada','Compra')">➕ Entrada</button>
-      <button type="button" onclick="openMove('Salida','Ajuste')">↕️ Ajustar</button>
-      <button type="button" onclick="printInventory()">🖨️ Imprimir</button>
-    </div>
 
     <div
       class="muted"
@@ -1670,12 +1499,6 @@ function renderInventory() {
 
   }
 
-  const stockFilter = document.getElementById("inventoryStockFilter");
-  if(stockFilter){
-    stockFilter.onchange = function(){
-      setInventoryStockFilter(this.value);
-    };
-  }
 
   list.innerHTML =
     rows.length
@@ -1765,23 +1588,6 @@ function renderInventory() {
 
       `;
 
-}
-
-
-function printInventory(){
-  const rows = db.products.slice().sort((a,b)=>String(a.name||"").localeCompare(String(b.name||""),"es"));
-  const stats = inventoryStats();
-  const html = `
-    <html><head><title>Inventario Aquarium Fish</title>
-    <style>body{font-family:Arial,sans-serif;padding:24px;color:#172024}h1{margin-bottom:4px}.muted{color:#66777b}.summary{display:flex;gap:18px;margin:18px 0}.box{border:1px solid #ddd;border-radius:10px;padding:10px}.box b{display:block;font-size:18px}table{width:100%;border-collapse:collapse;margin-top:18px}th,td{border:1px solid #ddd;padding:8px;text-align:left}th{background:#f3f6f7}.low{color:#a43d16;font-weight:700}@media print{button{display:none}}</style></head>
-    <body><h1>📦 Inventario — Aquarium Fish</h1><div class="muted">${now()}</div>
-    <div class="summary"><div class="box"><b>${rows.length}</b>Productos</div><div class="box"><b>${stats.units}</b>Unidades</div><div class="box"><b>${money(stats.costValue)}</b>Valor costo</div><div class="box"><b>${money(stats.saleValue)}</b>Valor venta</div></div>
-    <table><thead><tr><th>Producto</th><th>Categoría</th><th>Stock</th><th>Mínimo</th><th>Costo</th><th>Venta</th><th>Margen/u</th></tr></thead><tbody>
-    ${rows.map(p=>`<tr><td>${esc(p.name)}</td><td>${esc(p.category||"Sin categoría")}</td><td class="${(+p.stock||0)<= (+p.min||0)?"low":""}">${+p.stock||0}</td><td>${+p.min||0}</td><td>${money(p.cost)}</td><td>${money(p.price)}</td><td>${money((+p.price||0)- (+p.cost||0))}</td></tr>`).join("")}
-    </tbody></table><script>window.onload=()=>window.print()<\/script></body></html>`;
-  const w=window.open("","_blank");
-  if(!w){ alert("El navegador bloqueó la ventana de impresión."); return; }
-  w.document.write(html); w.document.close();
 }
 
 
@@ -2502,10 +2308,6 @@ function openReceipt(index) {
         >
           🖨️ Imprimir
         </button>
-
-        <button type="button" onclick="printCustomerAccount(${index})">🖨️ Imprimir estado</button>
-
-        ${customer.phone ? `<button type="button" class="customer-wa" onclick="customerWhatsApp(${index})">💬 WhatsApp</button>` : ""}
 
         <button
           type="button"
@@ -3245,48 +3047,220 @@ function openCustomerPayment(index){
 }
 
 
-function customerAdvancedStats(customer){
-  const stats=customerStats(customer.name);
-  const sales=stats.sales.slice().sort((a,b)=>String(b.date||'').localeCompare(String(a.date||'')));
-  const productMap={};
-  sales.forEach(sale=>{
-    const items=Array.isArray(sale.items)?sale.items:[];
-    if(items.length){items.forEach(item=>{const name=String(item.product||item.name||'Producto').trim()||'Producto'; const qty=Math.max(0,+item.qty||+item.quantity||0); productMap[name]=(productMap[name]||0)+qty;});}
-    else if(sale.product){const name=String(sale.product).trim(); productMap[name]=(productMap[name]||0)+Math.max(0,+sale.qty||1);}
-  });
-  const topProduct=Object.entries(productMap).sort((a,b)=>b[1]-a[1])[0]||null;
-  return {...stats,lastSale:sales[0]||null,topProduct};
-}
+function renderCustomers() {
 
-function renderCustomersSummary(){
-  const box=document.getElementById('customersSummary'); if(!box)return;
-  const total=db.customers.length;
-  const active=db.customers.filter(c=>customerStats(c.name).sales.length>0).length;
-  const debtors=db.customers.filter(c=>customerStats(c.name).balance>0).length;
-  const receivable=db.customers.reduce((sum,c)=>sum+customerStats(c.name).balance,0);
-  box.innerHTML=`<div class="card"><span>👥 Clientes</span><b>${total}</b></div><div class="card"><span>🛒 Con compras</span><b>${active}</b></div><div class="card"><span>💳 Con saldo</span><b>${debtors}</b></div><div class="card"><span>💰 Por cobrar</span><b>${money(receivable)}</b></div>`;
-}
+  const search =
+    document.getElementById(
+      "customerSearch"
+    );
 
-function customerWhatsApp(index){
-  const customer=db.customers[index]; if(!customer||!customer.phone){alert('Este cliente no tiene teléfono registrado.');return;}
-  const digits=String(customer.phone).replace(/\D/g,''); const number=digits.startsWith('57')?digits:`57${digits}`;
-  const text=encodeURIComponent(`Hola ${customer.name}, te escribimos de Aquarium Fish.`);
-  window.open(`https://wa.me/${number}?text=${text}`,'_blank','noopener');
-}
 
-function printCustomerAccount(index){
-  const customer=db.customers[index]; if(!customer)return; const stats=customerAdvancedStats(customer);
-  const rows=stats.sales.map(sale=>{const items=Array.isArray(sale.items)?sale.items.map(i=>`${esc(i.product||i.name||'Producto')} × ${+i.qty||+i.quantity||1}`).join(', '):esc(sale.product||'Venta'); return `<tr><td>${esc(dateKey(sale.date))}</td><td>${items}</td><td>${money(sale.total)}</td><td>${money(salePaid(sale))}</td><td>${money(Math.max(0,(+sale.total||0)-salePaid(sale)))}</td></tr>`;}).join('');
-  const w=window.open('','_blank','width=900,height=700'); if(!w){alert('El navegador bloqueó la ventana de impresión.');return;}
-  w.document.write(`<!doctype html><html lang="es"><head><meta charset="utf-8"><title>Estado de cuenta - ${esc(customer.name)}</title><style>body{font-family:Arial,sans-serif;color:#172024;margin:0;padding:28px}h1{margin:0 0 4px}.muted{color:#68777b}.summary{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:20px 0}.box{border:1px solid #dce4e6;border-radius:10px;padding:12px}.box span{display:block;color:#68777b;font-size:12px}.box b{display:block;font-size:18px;margin-top:4px}table{width:100%;border-collapse:collapse;font-size:12px}th,td{border-bottom:1px solid #e1e7e9;padding:8px;text-align:left}th{background:#f3f6f7}.footer{margin-top:25px;text-align:center;color:#68777b;font-size:12px}@media print{body{padding:15px}}</style></head><body><h1>🐠 AQUARIUM FISH</h1><div>ESTADO DE CUENTA</div><p class="muted">Cliente: ${esc(customer.name)}${customer.phone?' · '+esc(customer.phone):''}<br>Generado: ${esc(new Date().toLocaleString('es-CO'))}</p><div class="summary"><div class="box"><span>Comprado</span><b>${money(stats.bought)}</b></div><div class="box"><span>Pagado</span><b>${money(stats.paid)}</b></div><div class="box"><span>Saldo pendiente</span><b>${money(stats.balance)}</b></div><div class="box"><span>Ventas</span><b>${stats.sales.length}</b></div></div><table><thead><tr><th>Fecha</th><th>Productos</th><th>Total</th><th>Pagado</th><th>Pendiente</th></tr></thead><tbody>${rows||'<tr><td colspan="5">No hay ventas registradas.</td></tr>'}</tbody></table><p class="footer">Aquarium Fish · Estado de cuenta del cliente</p><script>window.onload=()=>setTimeout(()=>window.print(),250)<\/script></body></html>`); w.document.close();
-}
+  const list =
+    document.getElementById(
+      "customersList"
+    );
 
-function renderCustomers(){
-  const search=document.getElementById('customerSearch'), list=document.getElementById('customersList'), filter=document.getElementById('customerFilter'); if(!search||!list)return;
-  const q=String(search.value||'').toLowerCase().trim(), mode=filter?filter.value:'all';
-  const rows=db.customers.filter(customer=>{const stats=customerStats(customer.name); const matches=`${customer.name||''} ${customer.phone||''}`.toLowerCase().includes(q); const modeOk=mode==='debt'?stats.balance>0:mode==='active'?stats.sales.length>0:mode==='inactive'?stats.sales.length===0:true; return matches&&modeOk;}).sort((a,b)=>String(a.name||'').localeCompare(String(b.name||''),'es'));
-  renderCustomersSummary();
-  list.innerHTML=rows.length?rows.map(customer=>{const index=db.customers.indexOf(customer), stats=customerAdvancedStats(customer); const last=stats.lastSale?dateKey(stats.lastSale.date):'Sin compras todavía'; const top=stats.topProduct?`Producto más comprado: ${esc(stats.topProduct[0])} · ${stats.topProduct[1]} ud.`:''; return `<div class="item clickable" onclick="editCustomer(${index})"><div><b>${esc(customer.name)}</b><div class="muted">${esc(customer.phone||'Sin teléfono')}</div><div class="customer-v2-meta"><span class="badge">${stats.sales.length} ${stats.sales.length===1?'venta':'ventas'}</span>${stats.balance>0?'<span class="badge low">Saldo pendiente</span>':'<span class="badge">Cuenta al día</span>'}</div><div class="muted">Comprado ${money(stats.bought)} · Pagado ${money(stats.paid)} · Saldo ${money(stats.balance)}</div><div class="customer-last">📅 Última compra: ${esc(last)}</div>${top?`<div class="customer-product">🐠 ${top}</div>`:''}${customer.note?`<div class="muted">Nota: ${esc(customer.note)}</div>`:''}</div><div class="customer-v2-actions"><button type="button" onclick="event.stopPropagation();openCustomerAccount(${index})">💳 Ver cuenta</button>${customer.phone?`<button type="button" class="customer-wa" onclick="event.stopPropagation();customerWhatsApp(${index})">💬 WhatsApp</button>`:''}${stats.balance>0?`<button type="button" class="primary" onclick="event.stopPropagation();openCustomerPayment(${index})">💰 Abonar</button>`:''}</div></div>`;}).join(''):`<div class="empty">No hay clientes que coincidan con el filtro.</div>`;
+
+  if(
+    !search ||
+    !list
+  ){
+
+    return;
+
+  }
+
+
+  const q =
+    String(
+      search.value || ""
+    )
+      .toLowerCase()
+      .trim();
+
+
+  const rows =
+    db.customers
+      .filter(
+        customer =>
+          `${customer.name || ""} ${
+            customer.phone || ""
+          }`
+            .toLowerCase()
+            .includes(q)
+      )
+      .sort(
+        (a,b) =>
+          String(
+            a.name || ""
+          ).localeCompare(
+            String(
+              b.name || ""
+            ),
+            "es"
+          )
+      );
+
+
+  list.innerHTML =
+    rows.length
+
+      ? rows
+          .map(
+            customer => {
+
+              const index =
+                db.customers.indexOf(
+                  customer
+                );
+
+
+              const stats =
+                customerStats(
+                  customer.name
+                );
+
+
+              return `
+
+                <div
+                  class="item clickable"
+                  onclick="editCustomer(
+                    ${index}
+                  )"
+                >
+
+                  <div>
+
+                    <b>
+                      ${esc(
+                        customer.name
+                      )}
+                    </b>
+
+                    <div class="muted">
+
+                      ${esc(
+                        customer.phone ||
+                        "Sin teléfono"
+                      )}
+
+                    </div>
+
+                    <div class="muted">
+
+                      Comprado
+                      ${money(
+                        stats.bought
+                      )}
+
+                      ·
+
+                      Pagado
+                      ${money(
+                        stats.paid
+                      )}
+
+                      ·
+
+                      Saldo
+                      ${money(
+                        stats.balance
+                      )}
+
+                    </div>
+
+                    ${
+                      customer.note
+                        ? `
+
+                          <div class="muted">
+
+                            Nota:
+                            ${esc(
+                              customer.note
+                            )}
+
+                          </div>
+
+                        `
+                        : ""
+                    }
+
+                  </div>
+
+
+                  <div
+                    style="
+                      display:flex;
+                      flex-direction:column;
+                      align-items:flex-end;
+                      gap:6px;
+                    "
+                  >
+
+                    <span
+                      class="badge ${
+                        stats.balance > 0
+                          ? "low"
+                          : ""
+                      }"
+                    >
+
+                      ${
+                        stats.sales.length
+                      }
+
+                      ${
+                        stats.sales.length === 1
+                          ? "venta"
+                          : "ventas"
+                      }
+
+                    </span>
+
+                    <button
+                      type="button"
+                      onclick="event.stopPropagation();openCustomerAccount(${index})"
+                    >
+                      💳 Ver cuenta
+                    </button>
+
+                    ${
+                      stats.balance > 0
+                        ? `
+                          <button
+                            type="button"
+                            class="primary"
+                            onclick="event.stopPropagation();openCustomerPayment(${index})"
+                          >
+                            💰 Abonar
+                          </button>
+                        `
+                        : ""
+                    }
+
+                  </div>
+
+                </div>
+
+              `;
+
+            }
+          )
+          .join("")
+
+      : `
+
+        <div class="empty">
+
+          No hay clientes.
+          Agrega el primero.
+
+        </div>
+
+      `;
+
 }
 
 
@@ -8729,10 +8703,16 @@ function bindSearches() {
     );
 
 
-  if(customerSearch){ customerSearch.oninput = renderCustomers; }
+  if(customerSearch){
 
-  const customerFilter = document.getElementById("customerFilter");
-  if(customerFilter){ customerFilter.onchange = renderCustomers; }
+    customerSearch.oninput =
+      function(){
+
+        renderCustomers();
+
+      };
+
+  }
 
 }
 
@@ -8772,12 +8752,6 @@ function exposeFunctions() {
 
   window.deleteProduct =
     deleteProduct;
-
-  window.setInventoryStockFilter =
-    setInventoryStockFilter;
-
-  window.printInventory =
-    printInventory;
 
 
   window.openSale =
