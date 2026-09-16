@@ -605,6 +605,34 @@ function reportCustomerRanking(){
   return Object.values(map).sort((a,b)=>b.total-a.total).slice(0,10);
 }
 
+function reportProductAnalysis(){
+  const map = {};
+  reportSales().forEach(sale => {
+    const items = Array.isArray(sale.items) && sale.items.length ? sale.items : (sale.product ? [{product:sale.product,qty:sale.qty,total:sale.total,cost:sale.cost}] : []);
+    items.forEach(item => {
+      const name = String(item.product || "Producto").trim() || "Producto";
+      const qty = +item.qty || 0;
+      const total = +item.total || 0;
+      const cost = (+item.cost || 0) * qty;
+      if(!map[name]) map[name] = {name,units:0,revenue:0,cost:0};
+      map[name].units += qty;
+      map[name].revenue += total;
+      map[name].cost += cost;
+    });
+  });
+  return Object.values(map).sort((a,b)=>b.units-a.units || b.revenue-a.revenue).slice(0,8);
+}
+
+function reportDailyAnalysis(){
+  return reportDaily().slice().sort((a,b)=>a.date-b.date);
+}
+
+function reportPaymentShare(){
+  const methods = reportPaymentMethods();
+  const total = methods.reduce((sum,r)=>sum+r[1],0);
+  return methods.map(r=>({name:r[0],value:r[1],pct:total ? (r[1]/total)*100 : 0}));
+}
+
 function reportPaymentMethods(){
   const map = {};
   reportSales().forEach(sale => {
@@ -671,6 +699,11 @@ function renderReports(){
   const customers = reportCustomerRanking();
   const methods = reportPaymentMethods();
   const daily = reportDaily();
+  const productAnalysis = reportProductAnalysis();
+  const dailyAnalysis = reportDailyAnalysis();
+  const paymentShare = reportPaymentShare();
+  const maxProductUnits = productAnalysis.length ? Math.max(...productAnalysis.map(r=>r.units),1) : 1;
+  const maxDailyTotal = dailyAnalysis.length ? Math.max(...dailyAnalysis.map(r=>r.total),1) : 1;
 
   section.innerHTML = `
     <div class="section-head report-header">
@@ -721,6 +754,41 @@ function renderReports(){
       <div class="panel">
         <h2>👥 Clientes con más compras</h2>
         ${customers.length ? `<div class="report-list">${customers.map((r,i)=>`<div class="report-rank"><span class="rank-number">${i+1}</span><div><b>${esc(r.name)}</b><small>${r.count} venta${r.count===1?'':'s'} · pagado ${money(r.paid)}</small></div><strong>${money(r.total)}</strong></div>`).join('')}</div>` : '<div class="empty">No hay ventas en este periodo.</div>'}
+      </div>
+    </div>
+
+
+    <div class="report-visual-grid">
+      <div class="panel report-chart-panel">
+        <div class="report-panel-title"><div><h2>📊 Evolución de ventas</h2><p class="muted">Total vendido por día en el periodo</p></div></div>
+        ${dailyAnalysis.length ? `<div class="report-bars report-bars-daily">${dailyAnalysis.map(r=>{
+          const pct = Math.max(5,(r.total/maxDailyTotal)*100);
+          const label = r.date.toLocaleDateString('es-CO',{day:'numeric',month:'short'});
+          return `<div class="bar-item" title="${esc(label)} · ${money(r.total)}"><div class="bar-value">${money(r.total)}</div><div class="bar-track"><span style="height:${pct}%"></span></div><small>${esc(label)}</small></div>`;
+        }).join('')}</div>` : '<div class="empty">No hay ventas en este periodo.</div>'}
+      </div>
+
+      <div class="panel report-chart-panel">
+        <div class="report-panel-title"><div><h2>🐠 Productos</h2><p class="muted">Unidades vendidas por producto</p></div></div>
+        ${productAnalysis.length ? `<div class="report-hbars">${productAnalysis.map((r,i)=>{
+          const pct = Math.max(3,(r.units/maxProductUnits)*100);
+          return `<div class="hbar-item"><div class="hbar-head"><span><b>${i+1}. ${esc(r.name)}</b></span><strong>${r.units} ud.</strong></div><div class="hbar-track"><span style="width:${pct}%"></span></div><small>${money(r.revenue)} en ventas</small></div>`;
+        }).join('')}</div>` : '<div class="empty">No hay productos vendidos en este periodo.</div>'}
+      </div>
+    </div>
+
+    <div class="report-columns">
+      <div class="panel">
+        <h2>💳 Ventas por forma de pago</h2>
+        ${paymentShare.length ? `<div class="payment-visual">${paymentShare.map(r=>`<div class="payment-row"><div class="payment-label"><span>${esc(r.name)}</span><b>${money(r.value)}</b></div><div class="payment-track"><span style="width:${Math.max(r.pct ? 4 : 0,r.pct)}%"></span></div><small>${r.pct.toFixed(1)}% de lo recibido</small></div>`).join('')}</div>` : '<div class="empty">No hay pagos en este periodo.</div>'}
+      </div>
+
+      <div class="panel report-insight-panel">
+        <h2>💡 Lectura rápida</h2>
+        ${productAnalysis.length ? `<div class="insight"><span>🏆</span><div><b>Producto con más unidades</b><p>${esc(productAnalysis[0].name)} · ${productAnalysis[0].units} unidades</p></div></div>` : ''}
+        ${customers.length ? `<div class="insight"><span>👤</span><div><b>Cliente con mayor compra</b><p>${esc(customers[0].name)} · ${money(customers[0].total)}</p></div></div>` : ''}
+        ${paymentShare.length ? `<div class="insight"><span>💳</span><div><b>Forma de pago principal</b><p>${esc(paymentShare[0].name)} · ${paymentShare[0].pct.toFixed(1)}% de lo recibido</p></div></div>` : ''}
+        ${sales.length ? `<div class="insight"><span>🎟️</span><div><b>Ticket promedio</b><p>${money(ticket)} por venta · ${sales.length} transacciones</p></div></div>` : '<div class="empty">Selecciona un periodo con ventas para ver el análisis.</div>'}
       </div>
     </div>
 
