@@ -1949,6 +1949,14 @@ function renderSales() {
                               🧾 Comprobante
                             </button>
 
+                            <button
+                              type="button"
+                              style="margin-top:6px;"
+                              onclick="deleteSale(${db.sales.indexOf(sale)})"
+                            >
+                              🗑️ Eliminar venta
+                            </button>
+
                           </div>
 
                         </div>
@@ -5764,7 +5772,8 @@ function openSale(quotePayload = null) {
             qty: item.qty,
             reason: "Venta",
             responsible: "Sistema",
-            source: "Venta"
+            source: "Venta",
+            saleId: newSale.id
           });
         }
       );
@@ -5823,6 +5832,108 @@ function openSale(quotePayload = null) {
 
 }
 
+
+/* =========================================================
+   ELIMINAR VENTA
+   ========================================================= */
+
+function deleteSale(index){
+
+  const sale = db.sales[index];
+
+  if(!sale){
+    return;
+  }
+
+  const saleNumber = sale.id || "esta venta";
+
+  if(!confirm(
+    `¿Eliminar la venta ${saleNumber}?\\n\\n` +
+    `Se quitará de los reportes y se devolverán al inventario ` +
+    `las cantidades vendidas.\\n\\n` +
+    `Esta acción no se puede deshacer.`
+  )){
+    return;
+  }
+
+  // Devolver al inventario las cantidades de esta venta.
+  if(Array.isArray(sale.items)){
+
+    sale.items.forEach(item => {
+
+      const productIndex =
+        Number.isInteger(+item.productIndex)
+          ? +item.productIndex
+          : -1;
+
+      const product =
+        db.products[productIndex];
+
+      if(product){
+        product.stock =
+          (+product.stock || 0) +
+          (+item.qty || 0);
+      }
+
+    });
+
+  }else if(
+    sale.product &&
+    sale.qty
+  ){
+
+    // Compatibilidad con ventas antiguas de un solo producto.
+    const product =
+      db.products.find(
+        p => String(p.name || "").trim() ===
+             String(sale.product || "").trim()
+      );
+
+    if(product){
+      product.stock =
+        (+product.stock || 0) +
+        (+sale.qty || 0);
+    }
+
+  }
+
+  // Eliminar los movimientos de inventario generados por esta venta.
+  // Las ventas nuevas llevan saleId. Para ventas antiguas sin saleId,
+  // dejamos los movimientos intactos para no borrar movimientos de otra venta.
+  if(sale.id){
+
+    db.moves =
+      db.moves.filter(
+        move => move.saleId !== sale.id
+      );
+
+  }
+
+  // Si la venta provino de una cotización, la devolvemos a estado pendiente
+  // para que no quede marcada como convertida después de borrar la venta.
+  if(sale.fromQuoteId){
+
+    const quote =
+      findQuoteById(sale.fromQuoteId);
+
+    if(quote){
+
+      quote.convertedSaleId = null;
+      quote.status = "Guardada";
+
+      delete quote.convertedAt;
+
+    }
+
+  }
+
+  db.sales.splice(index,1);
+
+  save();
+
+  closeModal();
+
+}
 
 /* =========================================================
    CLIENTES
@@ -8711,6 +8822,9 @@ function exposeFunctions() {
 
   window.openSale =
     openSale;
+
+  window.deleteSale =
+    deleteSale;
 
 
   window.addSaleRow =
