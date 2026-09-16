@@ -675,6 +675,7 @@ function renderAll() {
   // La interfaz de reportes se prepara por separado para evitar detener el resto de la aplicación.
   setupReportsUI();
   renderHome();
+  if(document.getElementById("quoteAutomationAlerts")) renderQuoteAutomationAlerts();
 
   renderInventory();
 
@@ -3554,6 +3555,9 @@ function markQuoteFollowupDone(quoteId){
   if(!q) return;
   q.followupCompleted=true;
   q.followupCompletedAt=now();
+  q.followupLastContactAt=now();
+  q.followupHistory=Array.isArray(q.followupHistory)?q.followupHistory:[];
+  q.followupHistory.push({date:now(),note:String(q.followupNote||'').trim()});
   save();
   renderCotizador();
 }
@@ -3944,6 +3948,99 @@ function renderQuoteFollowupPanel(){
   }).join("") : `<div class="empty">No hay seguimientos pendientes.</div>`;
 }
 
+function quoteAutomationData(){
+  const quotes=Array.isArray(db.quotes)?db.quotes:[];
+  let overdue=0,today=0,soon=0,scheduled=0,noFollowup=0;
+  const pending=[];
+  quotes.forEach(q=>{
+    if(!q || q.convertedSaleId) return;
+    if(q.followupCompleted) return;
+    const st=quoteFollowupState(q);
+    if(st.key==='late'){ overdue++; pending.push(q); }
+    else if(st.key==='today'){ today++; pending.push(q); }
+    else if(st.key==='soon'){ soon++; pending.push(q); }
+    else if(st.key==='scheduled'){ scheduled++; }
+    else { noFollowup++; }
+  });
+  pending.sort((a,b)=>{
+    const ad=String(a.followupDate||'9999-12-31');
+    const bd=String(b.followupDate||'9999-12-31');
+    return ad.localeCompare(bd);
+  });
+  return {overdue,today,soon,scheduled,noFollowup,pending};
+}
+
+function renderQuoteAutomationAlerts(){
+  const el=document.getElementById('quoteAutomationAlerts');
+  if(!el) return;
+  const a=quoteAutomationData();
+  const totalUrgent=a.overdue+a.today;
+  const card=(icon,label,value,extra='')=>`<div style="background:#f5f8f9;border:1px solid rgba(0,0,0,.07);border-radius:14px;padding:12px;min-width:0"><div class="muted">${icon} ${label}</div><strong style="display:block;font-size:1.25rem;margin-top:3px">${value}</strong>${extra?`<small class="muted">${extra}</small>`:''}</div>`;
+  const cards=`<div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-bottom:12px">${card('🔴','Vencidos',a.overdue)}${card('🟠','Hoy',a.today)}${card('🟡','Próximos',a.soon)}${card('⚪','Sin fecha',a.noFollowup)}</div>`;
+  const rows=a.pending.slice(0,8).map(q=>{
+    const st=quoteFollowupState(q);
+    const phone=String(q.phone||'').replace(/\D/g,'');
+    return `<div class="item" style="align-items:center;gap:8px;margin-bottom:6px"><div style="flex:1;min-width:0"><b>${esc(q.id||'')}</b> · ${esc(q.customer||'Cliente general')}<div class="muted">${st.icon} ${esc(st.label)} · ${esc(formatFollowupDate(q.followupDate))}${q.followupNote?` · ${esc(q.followupNote)}`:''}</div></div><div class="right"><b>${money(q.total||0)}</b><div style="display:flex;gap:5px;flex-wrap:wrap;justify-content:flex-end;margin-top:5px"><button type="button" onclick="openQuoteFollowup('${esc(String(q.id))}')">📌</button>${phone?`<button type="button" onclick="shareQuoteFollowupWhatsApp('${esc(String(q.id))}')">📲</button>`:''}<button type="button" onclick="markQuoteFollowupDone('${esc(String(q.id))}')">☑️ Listo</button></div></div></div>`;
+  }).join('');
+  let empty='';
+  if(!a.pending.length){
+    empty=a.noFollowup ? `<div class="empty">No hay seguimientos vencidos ni para hoy. Hay ${a.noFollowup} cotización(es) sin fecha de seguimiento.</div>` : `<div class="empty">🎉 No tienes seguimientos pendientes de atención.</div>`;
+  }
+  const footer=`<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px"><button type="button" onclick="requestQuoteNotifications()">🔔 Activar alertas del navegador</button>${totalUrgent?`<strong class="badge">${totalUrgent} requieren atención</strong>`:''}<span class="muted" style="align-self:center">Programadas próximas: ${a.scheduled}</span></div>`;
+  el.innerHTML=cards+(rows||empty)+footer;
+}
+
+function shareQuoteFollowupWhatsApp(quoteId){
+  const q=findQuoteById(quoteId);
+  if(!q){alert('No se encontró la cotización.');return;}
+  const customer=q.customer||'Cliente';
+  const total=money(q.total||0);
+  const text=encodeURIComponent(`Hola ${customer}, te escribimos para dar seguimiento a la cotización ${q.id} por ${total}. ¿Deseas que avancemos con el pedido?`);
+  let phone=String(q.phone||'').replace(/\D/g,'');
+  if(/^3\d{9}$/.test(phone)) phone='57'+phone;
+  const url=phone?`https://wa.me/${phone}?text=${text}`:`https://wa.me/?text=${text}`;
+  window.open(url,'_blank','noopener');
+}
+
+function requestQuoteNotifications(){
+  if(!('Notification' in window)){
+    alert('Este navegador no admite notificaciones.');
+    return;
+  }
+  if(Notification.permission==='granted'){
+    showQuoteBrowserNotification(true);
+    return;
+  }
+  Notification.requestPermission().then(permission=>{
+    if(permission==='granted') showQuoteBrowserNotification(true);
+    else alert('Las notificaciones quedaron desactivadas. Puedes habilitarlas desde los permisos del navegador.');
+  }).catch(()=>alert('No fue posible solicitar el permiso de notificaciones.'));
+}
+
+function showQuoteBrowserNotification(force=false){
+  if(!('Notification' in window) || Notification.permission!=='granted') return;
+  const a=quoteAutomationData();
+  const count=a.overdue+a.today;
+  if(!force && !count) return;
+  const title=count ? `🔔 ${count} cotización(es) requieren atención` : '🔔 Aquarium Fish';
+  const body=count ? `${a.overdue} vencida(s) · ${a.today} para hoy` : 'No hay seguimientos urgentes.';
+  try{
+    const n=new Notification(title,{body});
+    n.onclick=()=>{window.focus();show('cotizador');try{n.close();}catch(_){} };
+  }catch(e){ console.warn('No se pudo mostrar la notificación:',e); }
+}
+
+function maybeNotifyQuoteFollowups(){
+  try{
+    if(localStorage.getItem('aquarium_quote_alerts_last')===new Date().toISOString().slice(0,10)) return;
+    if(!('Notification' in window) || Notification.permission!=='granted') return;
+    const a=quoteAutomationData();
+    if(!(a.overdue+a.today)) return;
+    showQuoteBrowserNotification(false);
+    localStorage.setItem('aquarium_quote_alerts_last',new Date().toISOString().slice(0,10));
+  }catch(e){ console.warn('Aviso de cotizaciones:',e); }
+}
+
 function renderCotizador(){
   const section = document.getElementById("cotizador");
   if(!section){
@@ -4187,6 +4284,14 @@ function renderCotizador(){
 
     <div class="panel" style="margin-top:12px;">
       <div class="section-head" style="margin-bottom:8px;">
+        <h2>🔔 Automatización y alertas</h2>
+        <span class="muted">Control automático de seguimientos</span>
+      </div>
+      <div id="quoteAutomationAlerts"></div>
+    </div>
+
+    <div class="panel" style="margin-top:12px;">
+      <div class="section-head" style="margin-bottom:8px;">
         <h2>📋 Cotizaciones guardadas</h2>
         <span class="muted">${Array.isArray(db.quotes) ? db.quotes.length : 0} guardadas</span>
       </div>
@@ -4197,6 +4302,7 @@ function renderCotizador(){
   renderQuotesList();
   renderQuoteReports();
   renderQuoteFollowupPanel();
+  renderQuoteAutomationAlerts();
 
   const customerSelect = document.getElementById("quoteCustomerSelect");
   const customer = document.getElementById("quoteCustomer");
@@ -9290,6 +9396,7 @@ function iniciarApp() {
   bindSearches();
 
   renderAll();
+  setTimeout(maybeNotifyQuoteFollowups, 700);
 
   show("portada");
 
