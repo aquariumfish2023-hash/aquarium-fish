@@ -973,79 +973,17 @@ function dashboardProductRanking(){
   return [...map.entries()].sort((a,b)=>b[1]-a[1]).slice(0,5);
 }
 
-function dashboardSalesInRange(start,end){
-  return (db.sales||[]).filter(s=>{
-    const d=parseLocalDate(s.date||s.createdAt);
-    return d && d>=start && d<end;
-  });
-}
-
-function dashboardPeriodStats(daysBack, daysLength){
-  const end=new Date(); end.setHours(0,0,0,0); end.setDate(end.getDate()-daysBack);
-  const start=new Date(end); start.setDate(start.getDate()-daysLength);
-  const rows=dashboardSalesInRange(start,end);
-  return {rows,total:rows.reduce((sum,s)=>sum+(+s.total||0),0)};
-}
-
-function dashboardMonthStats(offset){
-  const now=new Date();
-  const end=new Date(now.getFullYear(),now.getMonth()-offset+1,1);
-  const start=new Date(now.getFullYear(),now.getMonth()-offset,1);
-  const rows=dashboardSalesInRange(start,end);
-  return {rows,total:rows.reduce((sum,s)=>sum+(+s.total||0),0)};
-}
-
-function dashboardComparison(current,previous){
-  if(!previous) return {text:"—",cls:"neutral"};
-  if(previous===0) return current>0?{text:"Nuevo",cls:"up"}:{text:"0%",cls:"neutral"};
-  const pct=((current-previous)/previous)*100;
-  const rounded=Math.round(Math.abs(pct));
-  return pct>0?{text:`↑ ${rounded}%`,cls:"up"}:pct<0?{text:`↓ ${rounded}%`,cls:"down"}:{text:"0%",cls:"neutral"};
-}
-
-function dashboardPaymentRanking(entries){
-  const methods={};
-  (entries||[]).forEach(e=>{
-    if(e.type==="Gasto") return;
-    const method=normalizePaymentMethod(e.method)||"Otro";
-    methods[method]=(methods[method]||0)+Math.abs(+e.amount||0);
-  });
-  return Object.entries(methods).filter(x=>x[1]>0).sort((a,b)=>b[1]-a[1]);
-}
-
-function dashboardCustomerRanking(){
-  const map=new Map();
-  (db.sales||[]).forEach(s=>{
-    const name=String(s.client||"Sin cliente").trim()||"Sin cliente";
-    map.set(name,(map.get(name)||0)+Math.max(0,+s.total||0));
-  });
-  return [...map.entries()].sort((a,b)=>b[1]-a[1]).slice(0,5);
-}
-
-function dashboardRenderComparison(id,current,previous){
-  const el=document.getElementById(id); if(!el) return;
-  const c=dashboardComparison(current,previous);
-  el.textContent=c.text; el.className=`dashboard-change ${c.cls}`;
-}
-
 function renderHome(){
   const sales=Array.isArray(db.sales)?db.sales:[];
   const products=Array.isArray(db.products)?db.products:[];
   const customers=Array.isArray(db.customers)?db.customers:[];
   const today=new Date();
-  const todayStart=new Date(today); todayStart.setHours(0,0,0,0);
-  const tomorrow=new Date(todayStart); tomorrow.setDate(tomorrow.getDate()+1);
-  const yesterdayStart=new Date(todayStart); yesterdayStart.setDate(yesterdayStart.getDate()-1);
-  const todaySales=dashboardSalesInRange(todayStart,tomorrow);
-  const yesterdaySales=dashboardSalesInRange(yesterdayStart,todayStart);
+  const todaySales=sales.filter(s=>{const d=parseLocalDate(s.date||s.createdAt);return d?sameDay(d,today):false;});
   const todayTotal=todaySales.reduce((sum,s)=>sum+(+s.total||0),0);
-  const yesterdayTotal=yesterdaySales.reduce((sum,s)=>sum+(+s.total||0),0);
   const cashToday=calculateCashTotals("today");
   const receivable=calculateReceivable();
   const inventory=inventoryStats();
   const pendingQuotes=(db.quotes||[]).filter(q=>!q.convertedSaleId);
-  const week=dashboardPeriodStats(0,7), prevWeek=dashboardPeriodStats(7,7);
-  const month=dashboardMonthStats(0), prevMonth=dashboardMonthStats(1);
 
   const set=(id,value)=>{const el=document.getElementById(id);if(el)el.textContent=value;};
   set("todaySalesTotal",money(todayTotal));
@@ -1054,23 +992,10 @@ function renderHome(){
   set("dashboardReceivable",money(receivable));
   set("todayExpenses",money(cashToday.expenses));
   set("dashboardInventoryValue",money(inventory.costValue));
-  set("dashboardInventorySaleValue",money(inventory.saleValue));
-  set("dashboardUnits",inventory.units);
   set("lowStock",inventory.lowStock);
-  set("dashboardZeroStock",inventory.zeroStock);
   set("customerCount",customers.length);
   set("pendingQuotesCount",pendingQuotes.length);
   set("dashboardDate",today.toLocaleDateString("es-CO",{weekday:"long",day:"numeric",month:"long"}));
-  set("dashboardWeekTotal",money(week.total));
-  set("dashboardWeekTotalCopy",money(week.total));
-  set("dashboardMonthTotal",money(month.total));
-  set("dashboardWeekCount",`${week.rows.length} venta${week.rows.length===1?"":"s"}`);
-  set("dashboardMonthCount",`${month.rows.length} venta${month.rows.length===1?"":"s"}`);
-  set("dashboardNetToday",money(cashToday.received-cashToday.expenses));
-
-  dashboardRenderComparison("todaySalesChange",todayTotal,yesterdayTotal);
-  dashboardRenderComparison("weekSalesChange",week.total,prevWeek.total);
-  dashboardRenderComparison("monthSalesChange",month.total,prevMonth.total);
 
   const days=dashboardRecentDays();
   const dayRows=days.map(day=>{
@@ -1079,42 +1004,32 @@ function renderHome(){
     return {date:day,total:rows.reduce((sum,s)=>sum+(+s.total||0),0),count:rows.length};
   });
   const maxDay=Math.max(1,...dayRows.map(r=>r.total));
+  const weekTotal=dayRows.reduce((sum,r)=>sum+r.total,0);
+  set("dashboardWeekTotal",money(weekTotal));
   const chart=document.getElementById("dashboardSalesChart");
-  if(chart) chart.innerHTML=dayRows.map(r=>`<div class="dashboard-bar-item"><span class="dashboard-bar-value">${r.total?money(r.total):"$0"}</span><div class="dashboard-bar-track"><i style="height:${Math.max(3,Math.round((r.total/maxDay)*100))}%"></i></div><small>${esc(dashboardDayLabel(r.date))}</small></div>`).join("");
+  if(chart){
+    chart.innerHTML=dayRows.map(r=>`<div class="dashboard-bar-item"><span class="dashboard-bar-value">${r.total?money(r.total):"$0"}</span><div class="dashboard-bar-track"><i style="height:${Math.max(3,Math.round((r.total/maxDay)*100))}%"></i></div><small>${esc(dashboardDayLabel(r.date))}</small></div>`).join("");
+  }
 
-  const ranking=dashboardProductRanking(), maxProduct=Math.max(1,...ranking.map(r=>r[1]));
+  const ranking=dashboardProductRanking();
+  const maxProduct=Math.max(1,...ranking.map(r=>r[1]));
   const pchart=document.getElementById("dashboardProductChart");
-  if(pchart) pchart.innerHTML=ranking.length?ranking.map((r,i)=>`<div class="dashboard-hbar-item"><div class="dashboard-hbar-head"><span>${i+1}. ${esc(r[0])}</span><strong>${r[1]} und.</strong></div><div class="dashboard-hbar-track"><i style="width:${Math.max(3,Math.round((r[1]/maxProduct)*100))}%"></i></div></div>`).join(""):"<div class=\"empty\">Aún no hay ventas para analizar.</div>";
-
-  const pay=document.getElementById("dashboardPayments");
-  if(pay){
-    const rows=dashboardPaymentRanking(cashToday.entries), max=Math.max(1,...rows.map(r=>r[1]));
-    pay.innerHTML=rows.length?rows.slice(0,5).map(r=>`<div class="dashboard-pay-row"><div><span>${esc(r[0])}</span><strong>${money(r[1])}</strong></div><div class="dashboard-hbar-track"><i style="width:${Math.max(3,Math.round(r[1]/max*100))}%"></i></div></div>`).join(""):"<div class=\"empty\">Sin ingresos registrados hoy.</div>";
-  }
-
-  const customersBox=document.getElementById("dashboardCustomers");
-  if(customersBox){
-    const rows=dashboardCustomerRanking();
-    customersBox.innerHTML=rows.length?rows.map((r,i)=>`<div class="dashboard-mini-row"><span><b>${i+1}.</b> ${esc(r[0])}</span><strong>${money(r[1])}</strong></div>`).join(""):"<div class=\"empty\">Aún no hay compras registradas.</div>";
-  }
-
-  const inventoryBox=document.getElementById("dashboardInventoryAlerts");
-  if(inventoryBox){
-    const low=products.filter(p=>Math.max(0,+p.stock||0)<=Math.max(0,+p.min||0)).sort((a,b)=>(+a.stock||0)-(+b.stock||0)).slice(0,5);
-    inventoryBox.innerHTML=low.length?low.map(p=>`<div class="dashboard-mini-row"><span>🐠 ${esc(p.name||p.product||"Producto")}</span><strong>${Math.max(0,+p.stock||0)} und.</strong></div>`).join(""):"<div class=\"empty\">No hay productos en alerta.</div>";
+  if(pchart){
+    pchart.innerHTML=ranking.length?ranking.map((r,i)=>`<div class="dashboard-hbar-item"><div class="dashboard-hbar-head"><span>${i+1}. ${esc(r[0])}</span><strong>${r[1]} und.</strong></div><div class="dashboard-hbar-track"><i style="width:${Math.max(3,Math.round((r[1]/maxProduct)*100))}%"></i></div></div>`).join(""):"<div class=\"empty\">Aún no hay ventas para analizar.</div>";
   }
 
   const recent=document.getElementById("recentSales");
-  if(recent) recent.innerHTML=sales.length?sales.slice(-6).reverse().map(sale=>`<div class="item"><div><b>${esc(saleLabel(sale))}</b><div class="muted">${esc(sale.client||"Sin cliente")} · ${saleQty(sale)} und. · ${esc(sale.pay||"")}</div></div><div class="right"><strong>${money(sale.total)}</strong><small>${sale.status==="Pendiente"?"Pendiente de pago":sale.status==="Abono"?"Abono: "+money(salePaid(sale)):"Pagada"}</small></div></div>`).join(""):"<div class=\"empty\">Todavía no hay ventas.</div>";
+  if(recent){
+    recent.innerHTML=sales.length?sales.slice(-6).reverse().map(sale=>`<div class="item"><div><b>${esc(saleLabel(sale))}</b><div class="muted">${esc(sale.client||"Sin cliente")} · ${saleQty(sale)} und. · ${esc(sale.pay||"")}</div></div><div class="right"><strong>${money(sale.total)}</strong><small>${sale.status==="Pendiente"?"Pendiente de pago":sale.status==="Abono"?"Abono: "+money(salePaid(sale)):"Pagada"}</small></div></div>`).join(""):"<div class=\"empty\">Todavía no hay ventas.</div>";
+  }
 
   const insights=document.getElementById("dashboardInsights");
   if(insights){
     const alerts=[];
-    if(inventory.zeroStock>0) alerts.push(`<div class="dashboard-insight alert"><span>🚨</span><div><b>${inventory.zeroStock} producto${inventory.zeroStock===1?"":"s"} sin stock</b><p>Revisa Inventario para programar reposición.</p></div></div>`);
+    if(inventory.zeroStock>0) alerts.push(`<div class="dashboard-insight alert"><span>🚨</span><div><b>${inventory.zeroStock} producto${inventory.zeroStock===1?"":"s"} sin stock</b><p>Revisa el inventario para evitar ventas sin existencias.</p></div></div>`);
     else if(inventory.lowStock>0) alerts.push(`<div class="dashboard-insight warn"><span>⚠️</span><div><b>${inventory.lowStock} producto${inventory.lowStock===1?"":"s"} con stock bajo</b><p>Conviene revisar las existencias próximamente.</p></div></div>`);
-    if(receivable>0) alerts.push(`<div class="dashboard-insight"><span>🧾</span><div><b>${money(receivable)} pendientes por cobrar</b><p>Hay saldos abiertos en clientes o ventas.</p></div></div>`);
-    if(pendingQuotes.length>0) alerts.push(`<div class="dashboard-insight"><span>📝</span><div><b>${pendingQuotes.length} cotización${pendingQuotes.length===1?"":"es"} pendiente${pendingQuotes.length===1?"":"s"}</b><p>Revisa si alguna puede convertirse en venta.</p></div></div>`);
-    if(todayTotal>yesterdayTotal && yesterdayTotal>0) alerts.push(`<div class="dashboard-insight good"><span>📈</span><div><b>Las ventas de hoy superan las de ayer</b><p>${money(todayTotal-yesterdayTotal)} más acumulados hasta ahora.</p></div></div>`);
+    if(receivable>0) alerts.push(`<div class="dashboard-insight"><span>🧾</span><div><b>${money(receivable)} pendientes por cobrar</b><p>Consulta Clientes para revisar los estados de cuenta.</p></div></div>`);
+    if(pendingQuotes.length>0) alerts.push(`<div class="dashboard-insight"><span>📝</span><div><b>${pendingQuotes.length} cotización${pendingQuotes.length===1?"":"es"} pendiente${pendingQuotes.length===1?"":"s"}</b><p>Hay oportunidades que todavía pueden convertirse en ventas.</p></div></div>`);
     if(!alerts.length) alerts.push(`<div class="dashboard-insight good"><span>✅</span><div><b>Todo en orden</b><p>No hay alertas importantes en los indicadores actuales.</p></div></div>`);
     insights.innerHTML=alerts.join("");
   }
@@ -2237,10 +2152,19 @@ function formatReceiptDate(value) {
 
 function receiptNumber(index) {
 
+  const sale = db.sales[index];
+  const id = String(sale?.id || "").trim();
+
+  // El número se basa en el ID real de la venta para que no cambie
+  // cuando posteriormente se elimine otra venta.
+  const match = id.match(/(?:V-|VENTA-)?(\d+)/i);
+  if(match){
+    return String(Number(match[1]) || 0).padStart(5,"0");
+  }
+
   return String(
     Math.max(0, Number(index) || 0) + 1
   ).padStart(5,"0");
-
 }
 
 
