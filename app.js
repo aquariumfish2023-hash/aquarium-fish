@@ -3934,6 +3934,86 @@ function printQuoteReport(){
   w.document.write(html); w.document.close();
 }
 
+
+function quoteIntelligenceData(){
+  const quotes=Array.isArray(db.quotes)?db.quotes:[];
+  const active=quotes.filter(q=>q && !q.convertedSaleId && String(q.status||'').toLowerCase()!=='rechazada');
+  const today=new Date(); today.setHours(0,0,0,0);
+  let pending=0, overdue=0, todayCount=0, noFollowup=0, totalPending=0, convertedValue=0;
+  const customerMap={};
+  active.forEach(q=>{
+    pending++;
+    const total=Math.max(0,Number(q.total)||0);
+    totalPending+=total;
+    const key=String(q.phone||q.customer||'').trim().toLowerCase() || `quote:${q.id}`;
+    customerMap[key]=(customerMap[key]||0)+1;
+    if(q.followupCompleted) return;
+    if(!q.followupDate){ noFollowup++; return; }
+    const st=quoteFollowupState(q);
+    if(st.key==='late') overdue++;
+    else if(st.key==='today') todayCount++;
+  });
+  quotes.forEach(q=>{
+    if(q && (q.convertedSaleId || String(q.status||'').toLowerCase()==='convertida en venta')) convertedValue+=Math.max(0,Number(q.total)||0);
+  });
+  const repeatedCustomers=Object.values(customerMap).filter(n=>n>1).length;
+  const avg=active.length?totalPending/active.length:0;
+  const highThreshold=Math.max(500000,avg*1.5);
+  const highValue=active.filter(q=>Number(q.total)||0>=highThreshold).sort((a,b)=>(Number(b.total)||0)-(Number(a.total)||0));
+  const opportunities=active.map(q=>{
+    const total=Math.max(0,Number(q.total)||0);
+    let priority=1;
+    let reasons=[];
+    if(!q.followupDate&&!q.followupCompleted){priority+=2;reasons.push('sin seguimiento');}
+    else if(!q.followupCompleted){const st=quoteFollowupState(q); if(st.key==='late'){priority+=4;reasons.push('seguimiento vencido');}else if(st.key==='today'){priority+=3;reasons.push('seguimiento hoy');}}
+    if(total>=highThreshold){priority+=2;reasons.push('valor alto');}
+    if(String(q.customer||'').trim()){
+      const key=String(q.phone||q.customer||'').trim().toLowerCase();
+      if((customerMap[key]||0)>1){priority+=1;reasons.push('cliente recurrente');}
+    }
+    return {...q,__priority:priority,__reasons:reasons};
+  }).sort((a,b)=>b.__priority-a.__priority || (Number(b.total)||0)-(Number(a.total)||0));
+  return {activeCount:active.length,pending,overdue,today:todayCount,noFollowup,totalPending,convertedValue,repeatedCustomers,avg,highThreshold,highValue,opportunities};
+}
+
+function renderQuoteIntelligence(){
+  const el=document.getElementById('quoteIntelligence');
+  if(!el) return;
+  const d=quoteIntelligenceData();
+  const card=(icon,label,value,sub='')=>`<div style="background:#f5f8f9;border:1px solid rgba(0,0,0,.07);border-radius:14px;padding:12px;min-width:0"><div class="muted">${icon} ${label}</div><strong style="display:block;font-size:1.22rem;margin-top:3px">${value}</strong>${sub?`<small class="muted">${sub}</small>`:''}</div>`;
+  const rows=d.opportunities.slice(0,10).map(q=>{
+    const priority=q.__priority>=6?'🔴':q.__priority>=4?'🟠':'🟢';
+    const reason=q.__reasons.length?q.__reasons.join(' · '):'seguimiento normal';
+    const phone=String(q.phone||'').replace(/\D/g,'');
+    return `<div class="item" style="align-items:center;gap:8px;margin-bottom:6px"><div style="flex:1;min-width:0"><b>${priority} ${esc(q.id||'')} · ${esc(q.customer||'Cliente general')}</b><div class="muted">${esc(reason)} · ${q.followupDate?esc(formatFollowupDate(q.followupDate)):'sin fecha'} </div></div><div class="right"><b>${money(q.total||0)}</b><div style="display:flex;gap:5px;flex-wrap:wrap;justify-content:flex-end;margin-top:5px"><button type="button" onclick="viewQuote('${esc(String(q.id))}')">👁️</button><button type="button" onclick="openQuoteFollowup('${esc(String(q.id))}')">📅</button>${phone?`<button type="button" onclick="shareQuoteFollowupWhatsApp('${esc(String(q.id))}')">📲</button>`:''}<button type="button" onclick="convertQuoteToSale('${esc(String(q.id))}')">💰</button></div></div></div>`;
+  }).join('');
+  const high=d.highValue.slice(0,5).map(q=>`<div class="item" style="margin-bottom:6px"><div style="flex:1"><b>${esc(q.id||'')} · ${esc(q.customer||'Cliente general')}</b><div class="muted">${q.followupDate?'Seguimiento '+esc(formatFollowupDate(q.followupDate)):'Sin seguimiento programado'}</div></div><div class="right"><b>${money(q.total||0)}</b></div></div>`).join('');
+  el.innerHTML=`
+    <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-bottom:12px">
+      ${card('🎯','Oportunidades',d.activeCount,'cotizaciones activas')}
+      ${card('💰','Valor pendiente',money(d.totalPending))}
+      ${card('🔴','Atención urgente',d.overdue+d.today,'vencidas + hoy')}
+      ${card('📅','Sin seguimiento',d.noFollowup)}
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+      <div class="item" style="display:block"><b>🔥 Oportunidades prioritarias</b><div class="muted" style="margin:4px 0 8px">Ordenadas por seguimiento, valor y actividad del cliente.</div>${rows||'<div class="empty">No hay cotizaciones activas.</div>'}</div>
+      <div class="item" style="display:block"><b>💎 Cotizaciones de valor alto</b><div class="muted" style="margin:4px 0 8px">Umbral actual: ${money(d.highThreshold)} · ${d.highValue.length} detectadas</div>${high||'<div class="empty">No hay cotizaciones de valor alto.</div>'}<div class="muted" style="margin-top:10px">👥 Clientes con más de una cotización pendiente: <b>${d.repeatedCustomers}</b></div><div class="muted">📊 Promedio pendiente: <b>${money(d.avg)}</b></div></div>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px"><button type="button" onclick="printQuoteIntelligence()">🖨️ Imprimir análisis</button><button type="button" class="primary" onclick="shareQuoteIntelligenceWhatsApp()">📲 Compartir resumen</button></div>`;
+}
+
+function buildQuoteIntelligenceText(){
+  const d=quoteIntelligenceData();
+  return ['🧠 INTELIGENCIA COMERCIAL · COTIZADOR','',`Oportunidades activas: ${d.activeCount}`,`Valor pendiente: ${money(d.totalPending)}`,`Atención urgente: ${d.overdue+d.today}`,`Sin seguimiento: ${d.noFollowup}`,`Cotizaciones de valor alto: ${d.highValue.length}`,`Clientes con varias cotizaciones: ${d.repeatedCustomers}`,`Promedio pendiente: ${money(d.avg)}`,'','Aquarium Fish 🐠'].join('\n');
+}
+function shareQuoteIntelligenceWhatsApp(){ window.open('https://wa.me/?text='+encodeURIComponent(buildQuoteIntelligenceText()),'_blank','noopener'); }
+function printQuoteIntelligence(){
+  const d=quoteIntelligenceData();
+  const rows=d.opportunities.slice(0,15).map(q=>`<tr><td>${esc(q.id||'')}</td><td>${esc(q.customer||'Cliente general')}</td><td>${money(q.total||0)}</td><td>${esc(q.__reasons.join(', ')||'Normal')}</td></tr>`).join('');
+  const html=`<!doctype html><html><head><meta charset="utf-8"><title>Inteligencia comercial</title><style>body{font-family:Arial,sans-serif;padding:28px;color:#17212b}h1{margin:0 0 6px}.muted{color:#667781}.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin:20px 0}.card{border:1px solid #d9e0e4;border-radius:10px;padding:14px}.value{font-size:20px;font-weight:700;margin-top:5px}table{width:100%;border-collapse:collapse;margin-top:18px}th,td{border:1px solid #d9e0e4;padding:8px;text-align:left}th{font-weight:700}@media print{button{display:none}}</style></head><body><h1>AQUARIUM FISH</h1><div class="muted">Inteligencia comercial del cotizador · ${new Date().toLocaleString('es-CO')}</div><div class="grid"><div class="card">Oportunidades activas<div class="value">${d.activeCount}</div></div><div class="card">Valor pendiente<div class="value">${money(d.totalPending)}</div></div><div class="card">Atención urgente<div class="value">${d.overdue+d.today}</div></div><div class="card">Sin seguimiento<div class="value">${d.noFollowup}</div></div></div><h2>Oportunidades prioritarias</h2><table><thead><tr><th>Cotización</th><th>Cliente</th><th>Valor</th><th>Motivos</th></tr></thead><tbody>${rows||'<tr><td colspan="4">No hay oportunidades activas.</td></tr>'}</tbody></table><p class="muted">Este análisis es informativo y no modifica inventario, caja, ventas ni clientes.</p><button onclick="window.print()">Imprimir</button><script>window.onload=()=>setTimeout(()=>window.print(),250)</script></body></html>`;
+  const w=window.open('','_blank','noopener'); if(!w){alert('El navegador bloqueó la ventana de impresión. Permite ventanas emergentes e inténtalo de nuevo.');return;} w.document.write(html);w.document.close();
+}
+
 function renderQuoteFollowupPanel(){
   const summary=document.getElementById("quoteFollowupSummary");
   const list=document.getElementById("quoteFollowupList");
@@ -3968,107 +4048,6 @@ function quoteAutomationData(){
     return ad.localeCompare(bd);
   });
   return {overdue,today,soon,scheduled,noFollowup,pending};
-}
-
-
-/* ===== ETAPA 4.7: RECUPERACION Y REACTIVACION DE COTIZACIONES ===== */
-function quoteAgeDays(q){
-  const raw=q?.createdAt || q?.date || q?.updatedAt;
-  if(!raw) return 0;
-  const d=parseLocalDate(raw) || new Date(raw);
-  if(!d || Number.isNaN(d.getTime())) return 0;
-  const base=new Date(d); base.setHours(0,0,0,0);
-  const today=new Date(); today.setHours(0,0,0,0);
-  return Math.max(0, Math.floor((today-base)/86400000));
-}
-
-function quoteOpportunityState(q){
-  if(!q || q.convertedSaleId) return {key:'converted',label:'Convertida',icon:'✅'};
-  const fs=quoteFollowupState(q);
-  if(q.followupCompleted) return {key:'contacted',label:'Contactada',icon:'📞'};
-  if(fs.key==='late') return {key:'overdue',label:'Vencida',icon:'🔴'};
-  if(fs.key==='today') return {key:'today',label:'Seguimiento hoy',icon:'🟠'};
-  if(!q.followupDate) return {key:'no_followup',label:'Sin seguimiento',icon:'⚪'};
-  if(quoteAgeDays(q)>=7) return {key:'old',label:'Pendiente antigua',icon:'🟡'};
-  return {key:'active',label:'En seguimiento',icon:'🟢'};
-}
-
-function quoteOpportunityData(){
-  const quotes=Array.isArray(db.quotes)?db.quotes:[];
-  const opportunities=quotes.filter(q=>q && !q.convertedSaleId && !q.followupCompleted);
-  let total=0,overdue=0,today=0,noFollowup=0,old=0;
-  opportunities.forEach(q=>{
-    total += Number(q.total||0);
-    const st=quoteOpportunityState(q);
-    if(st.key==='overdue') overdue++;
-    if(st.key==='today') today++;
-    if(st.key==='no_followup') noFollowup++;
-    if(st.key==='old') old++;
-  });
-  const sorted=opportunities.slice().sort((a,b)=>{
-    const priority={overdue:0,today:1,no_followup:2,old:3,active:4};
-    const pa=priority[quoteOpportunityState(a).key]??9;
-    const pb=priority[quoteOpportunityState(b).key]??9;
-    if(pa!==pb) return pa-pb;
-    return Number(b.total||0)-Number(a.total||0);
-  });
-  return {count:opportunities.length,total,overdue,today,noFollowup,old,opportunities:sorted};
-}
-
-function reactivationMessage(q){
-  const customer=String(q?.customer||'cliente').trim() || 'cliente';
-  const total=money(q?.total||0);
-  return `Hola ${customer}, te contactamos para dar seguimiento a la cotización ${q?.id||''} por ${total}. Queríamos saber si deseas continuar con el pedido o si necesitas algún cambio. Quedamos atentos. 🐠`;
-}
-
-function reactivateQuoteWhatsApp(quoteId){
-  const q=findQuoteById(quoteId);
-  if(!q){alert('No se encontró la cotización.');return;}
-  const text=encodeURIComponent(reactivationMessage(q));
-  let phone=String(q.phone||'').replace(/\D/g,'');
-  if(/^3\d{9}$/.test(phone)) phone='57'+phone;
-  const url=phone?`https://wa.me/${phone}?text=${text}`:`https://wa.me/?text=${text}`;
-  window.open(url,'_blank','noopener');
-}
-
-function markQuoteReactivationContacted(quoteId){
-  const q=findQuoteById(quoteId);
-  if(!q){alert('No se encontró la cotización.');return;}
-  q.followupCompleted=true;
-  q.followupLastContactAt=now();
-  q.followupCompletedAt=now();
-  q.followupHistory=Array.isArray(q.followupHistory)?q.followupHistory:[];
-  q.followupHistory.push({date:now(),note:String(q.followupNote||'Contacto de reactivación').trim()});
-  save();
-  renderCotizador();
-}
-
-function scheduleQuoteReactivation(quoteId,days){
-  const q=findQuoteById(quoteId);
-  if(!q)return;
-  const d=new Date(); d.setHours(0,0,0,0); d.setDate(d.getDate()+Number(days||0));
-  const iso=d.toISOString().slice(0,10);
-  q.followupDate=iso;
-  q.followupCompleted=false;
-  q.followupNote=String(q.followupNote||'Seguimiento de reactivación').trim() || 'Seguimiento de reactivación';
-  q.followupUpdatedAt=now();
-  save();
-  renderCotizador();
-}
-
-function renderQuoteOpportunities(){
-  const el=document.getElementById('quoteOpportunities');
-  if(!el)return;
-  const d=quoteOpportunityData();
-  const card=(icon,label,value,sub='')=>`<div style="background:#f5f8f9;border:1px solid rgba(0,0,0,.07);border-radius:14px;padding:12px"><div class="muted">${icon} ${label}</div><strong style="display:block;font-size:1.2rem;margin-top:3px">${value}</strong>${sub?`<small class="muted">${sub}</small>`:''}</div>`;
-  const cards=`<div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-bottom:12px">${card('🎯','Oportunidades',d.count)}${card('💰','Valor pendiente',money(d.total))}${card('🔴','Vencidas',d.overdue)}${card('⚪','Sin seguimiento',d.noFollowup)}</div>`;
-  const rows=d.opportunities.slice(0,10).map(q=>{
-    const st=quoteOpportunityState(q);
-    const age=quoteAgeDays(q);
-    return `<div class="item" style="align-items:center;gap:8px;margin-bottom:6px"><div style="flex:1;min-width:0"><b>${esc(q.id||'')}</b> · ${esc(q.customer||'Cliente general')}<div class="muted">${st.icon} ${esc(st.label)} · ${age} día(s) · ${q.followupDate?esc(formatFollowupDate(q.followupDate)):'sin fecha'}</div></div><div class="right"><b>${money(q.total||0)}</b><div style="display:flex;gap:5px;flex-wrap:wrap;justify-content:flex-end;margin-top:5px"><button type="button" onclick="viewQuote('${esc(String(q.id))}')">👁️</button><button type="button" onclick="reactivateQuoteWhatsApp('${esc(String(q.id))}')">📲 Reactivar</button><button type="button" onclick="scheduleQuoteReactivation('${esc(String(q.id))}',1)">📅 Mañana</button><button type="button" onclick="markQuoteReactivationContacted('${esc(String(q.id))}')">☑️ Contactado</button></div></div></div>`;
-  }).join('');
-  const more=d.opportunities.length>10?`<div class="muted" style="margin-top:8px">Mostrando 10 de ${d.opportunities.length} oportunidades.</div>`:'';
-  el.innerHTML=cards+(rows||`<div class="empty">🎉 No hay oportunidades pendientes de reactivación.</div>`)+more;
 }
 
 function renderQuoteAutomationAlerts(){
@@ -4376,6 +4355,14 @@ function renderCotizador(){
 
     <div class="panel" style="margin-top:12px;">
       <div class="section-head" style="margin-bottom:8px;">
+        <h2>🧠 Inteligencia comercial</h2>
+        <span class="muted">Oportunidades y prioridades del cotizador</span>
+      </div>
+      <div id="quoteIntelligence"></div>
+    </div>
+
+    <div class="panel" style="margin-top:12px;">
+      <div class="section-head" style="margin-bottom:8px;">
         <h2>📌 Seguimiento comercial</h2>
         <span class="muted">Control de próximas llamadas y contactos</span>
       </div>
@@ -4393,14 +4380,6 @@ function renderCotizador(){
 
     <div class="panel" style="margin-top:12px;">
       <div class="section-head" style="margin-bottom:8px;">
-        <h2>🎯 Oportunidades de reactivación</h2>
-        <span class="muted">Recupera cotizaciones pendientes</span>
-      </div>
-      <div id="quoteOpportunities"></div>
-    </div>
-
-    <div class="panel" style="margin-top:12px;">
-      <div class="section-head" style="margin-bottom:8px;">
         <h2>📋 Cotizaciones guardadas</h2>
         <span class="muted">${Array.isArray(db.quotes) ? db.quotes.length : 0} guardadas</span>
       </div>
@@ -4410,9 +4389,9 @@ function renderCotizador(){
 
   renderQuotesList();
   renderQuoteReports();
+  renderQuoteIntelligence();
   renderQuoteFollowupPanel();
   renderQuoteAutomationAlerts();
-  renderQuoteOpportunities();
 
   const customerSelect = document.getElementById("quoteCustomerSelect");
   const customer = document.getElementById("quoteCustomer");
