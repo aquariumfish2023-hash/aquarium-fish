@@ -79,12 +79,6 @@ db.cashClosings =
     ? db.cashClosings
     : [];
 
-// Seguridad adicional: renderCash() siempre debe recibir un arreglo.
-// Esto evita que datos antiguos o incompletos provoquen "not iterable".
-if(!Array.isArray(db.cashClosings)){
-  db.cashClosings = [];
-}
-
 db.quotes = Array.isArray(db.quotes) ? db.quotes : [];
 
 db.quotes.forEach(quote => {
@@ -3368,6 +3362,8 @@ let quotePhone = "";
 let quoteNote = "";
 let quoteDiscount = 0;
 let quoteEditingId = null;
+let quoteHistorySearch = "";
+let quoteHistoryStatus = "Todas";
 
 function setupCotizadorUI(){
   const main = document.querySelector("main");
@@ -3924,21 +3920,39 @@ function renderCotizador(){
       if(quoteCategory !== "Todas" && category !== quoteCategory){
         return false;
       }
-
       if(!q){
         return true;
       }
-
-      return `${product.name || ""} ${category}`
-        .toLowerCase()
-        .includes(q);
+      return `${product.name || ""} ${category}`.toLowerCase().includes(q);
     })
-    .sort((a,b) =>
-      String(a.product.name || "").localeCompare(
-        String(b.product.name || ""),
-        "es"
-      )
-    );
+    .sort((a,b) => String(a.product.name || "").localeCompare(String(b.product.name || ""), "es"));
+
+  const allQuotes = Array.isArray(db.quotes) ? db.quotes.slice() : [];
+  const historyQuery = quoteHistorySearch.trim().toLowerCase();
+  const history = allQuotes
+    .filter(quote => {
+      const status = quoteStatusLabel(quote);
+      if(quoteHistoryStatus !== "Todas" && status !== quoteHistoryStatus){
+        return false;
+      }
+      if(!historyQuery){
+        return true;
+      }
+      const haystack = `${quote.id || ""} ${quote.customer || ""} ${quote.phone || ""} ${quote.note || ""}`.toLowerCase();
+      return haystack.includes(historyQuery);
+    })
+    .sort((a,b) => {
+      const da = parseLocalDate(a.updatedAt || a.createdAt || a.date);
+      const dbb = parseLocalDate(b.updatedAt || b.createdAt || b.date);
+      return (dbb ? dbb.getTime() : 0) - (da ? da.getTime() : 0);
+    });
+
+  const pendingCount = allQuotes.filter(q => !q.convertedSaleId && String(q.status || "Pendiente") !== "Rechazada").length;
+  const convertedCount = allQuotes.filter(q => !!q.convertedSaleId).length;
+  const rejectedCount = allQuotes.filter(q => String(q.status || "") === "Rechazada").length;
+  const quotedValue = allQuotes.reduce((sum,q) => sum + (Number(q.total) || 0), 0);
+
+  const statusOptions = ["Todas", "Pendiente", "Lista para venta", "Convertida en venta", "Rechazada"];
 
   section.innerHTML = `
     <div class="section-head">
@@ -3949,60 +3963,27 @@ function renderCotizador(){
     <div class="panel">
       <h2>Cliente</h2>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
-        <input
-          id="quoteCustomer"
-          class="search"
-          placeholder="Nombre del cliente"
-          value="${esc(quoteCustomer)}"
-        >
-        <input
-          id="quotePhone"
-          class="search"
-          type="tel"
-          placeholder="WhatsApp / teléfono"
-          value="${esc(quotePhone)}"
-        >
+        <input id="quoteCustomer" class="search" placeholder="Nombre del cliente" value="${esc(quoteCustomer)}">
+        <input id="quotePhone" class="search" type="tel" placeholder="WhatsApp / teléfono" value="${esc(quotePhone)}">
       </div>
     </div>
 
     <div class="panel">
       <h2>Agregar productos</h2>
-      <p class="muted">
-        Selecciona varios productos. El cotizador usa el precio de venta del inventario y no modifica el stock.
-      </p>
-
+      <p class="muted">Selecciona varios productos. El cotizador usa el precio de venta del inventario y no modifica el stock.</p>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:10px 0;">
-        <input
-          id="quoteSearch"
-          class="search"
-          placeholder="🔎 Buscar producto..."
-          value="${esc(quoteSearch)}"
-        >
+        <input id="quoteSearch" class="search" placeholder="🔎 Buscar producto..." value="${esc(quoteSearch)}">
         <select id="quoteCategory" class="search">
-          ${categories.map(category => `
-            <option value="${esc(category)}" ${category === quoteCategory ? "selected" : ""}>
-              ${esc(category)}
-            </option>
-          `).join("")}
+          ${categories.map(category => `<option value="${esc(category)}" ${category === quoteCategory ? "selected" : ""}>${esc(category)}</option>`).join("")}
         </select>
       </div>
-
       <div class="list" style="max-height:360px;overflow:auto;">
         ${products.length ? products.map(({product,index}) => `
           <div class="item" style="align-items:center;gap:8px;">
-            <div style="flex:1;min-width:0;">
-              <b>${esc(product.name || "Producto")}</b>
-              <div class="muted">
-                ${esc(product.category || "Sin categoría")} · ${money(product.price)}
-              </div>
-            </div>
-            <button type="button" class="primary" onclick="addQuoteItem(${index})">
-              + Agregar
-            </button>
+            <div style="flex:1;min-width:0;"><b>${esc(product.name || "Producto")}</b><div class="muted">${esc(product.category || "Sin categoría")} · ${money(product.price)}</div></div>
+            <button type="button" class="primary" onclick="addQuoteItem(${index})">+ Agregar</button>
           </div>
-        `).join("") : `
-          <div class="empty">No hay productos que coincidan.</div>
-        `}
+        `).join("") : `<div class="empty">No hay productos que coincidan.</div>`}
       </div>
     </div>
 
@@ -4015,133 +3996,97 @@ function renderCotizador(){
             <div style="flex:1;min-width:0;">
               <b>${esc(item.name)}</b>
               <div style="display:grid;grid-template-columns:90px 1fr;gap:8px;margin-top:6px;">
-                <input
-                  class="search"
-                  type="number"
-                  min="1"
-                  step="1"
-                  value="${+item.qty || 1}"
-                  aria-label="Cantidad"
-                  onchange="updateQuoteItem('${esc(item.key)}','qty',this.value)"
-                >
-                <input
-                  class="search"
-                  type="number"
-                  min="0"
-                  step="1"
-                  value="${+item.unitPrice || 0}"
-                  aria-label="Precio unitario"
-                  onchange="updateQuoteItem('${esc(item.key)}','unitPrice',this.value)"
-                >
+                <input class="search" type="number" min="1" step="1" value="${+item.qty || 1}" aria-label="Cantidad" onchange="updateQuoteItem('${esc(item.key)}','qty',this.value)">
+                <input class="search" type="number" min="0" step="1" value="${+item.unitPrice || 0}" aria-label="Precio unitario" onchange="updateQuoteItem('${esc(item.key)}','unitPrice',this.value)">
               </div>
-              <div class="muted" style="margin-top:5px;">
-                ${Number(item.qty) || 1} unidad(es) · Subtotal ${money(subtotal)}
-              </div>
+              <div class="muted" style="margin-top:5px;">${Number(item.qty) || 1} unidad(es) · Subtotal ${money(subtotal)}</div>
             </div>
             <button type="button" onclick="removeQuoteItem('${esc(item.key)}')">🗑️</button>
-          </div>
-        `;
-      }).join("") : `
-        <div class="empty">Agrega productos para comenzar.</div>
-      `}
+          </div>`;
+      }).join("") : `<div class="empty">Agrega productos para comenzar.</div>`}
 
       <div style="margin-top:12px;padding-top:12px;border-top:1px solid rgba(0,0,0,.08);">
-        <label>
-          Nota para el cliente
-          <textarea
-            id="quoteNote"
-            rows="3"
-            placeholder="Ej. Instalación, domicilio, disponibilidad, etc."
-          >${esc(quoteNote)}</textarea>
-        </label>
+        <label>Nota para el cliente<textarea id="quoteNote" rows="3" placeholder="Ej. Instalación, domicilio, disponibilidad, etc.">${esc(quoteNote)}</textarea></label>
       </div>
 
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px;">
-        <label>Descuento
-          <input id="quoteDiscount" class="search" type="number" min="0" step="1" placeholder="0" value="${quoteDiscount || 0}">
-        </label>
-        <div style="background:#f5f8f9;border-radius:14px;padding:12px;margin-bottom:10px;">
-          <div class="muted">Subtotal</div><strong>${money(quoteSubtotal())}</strong>
-          <div class="muted" style="margin-top:5px;">Descuento</div><strong>-${money(quoteDiscountAmount())}</strong>
-        </div>
+        <label>Descuento<input id="quoteDiscount" class="search" type="number" min="0" step="1" placeholder="0" value="${quoteDiscount || 0}"></label>
+        <div style="background:#f5f8f9;border-radius:14px;padding:12px;margin-bottom:10px;"><div class="muted">Subtotal</div><strong>${money(quoteSubtotal())}</strong><div class="muted" style="margin-top:5px;">Descuento</div><strong>-${money(quoteDiscountAmount())}</strong></div>
       </div>
 
-      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:4px;padding-top:12px;border-top:1px solid rgba(0,0,0,.08);">
-        <span><b>Total</b></span>
-        <strong style="font-size:1.35rem;">${money(quoteTotal())}</strong>
-      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:4px;padding-top:12px;border-top:1px solid rgba(0,0,0,.08);"><span><b>Total</b></span><strong style="font-size:1.35rem;">${money(quoteTotal())}</strong></div>
 
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px;">
-        <button type="button" class="primary" onclick="saveQuote()">
-          ${quoteEditingId ? "💾 Guardar cambios" : "💾 Guardar cotización"}
-        </button>
+        <button type="button" class="primary" onclick="saveQuote()">${quoteEditingId ? "💾 Guardar cambios" : "💾 Guardar cotización"}</button>
         <button type="button" onclick="copyQuote()">📋 Copiar</button>
         <button type="button" class="primary" onclick="shareQuoteWhatsApp()">📲 WhatsApp</button>
       </div>
-
-      <p class="muted" style="margin-top:10px;">
-        El cotizador muestra precios de venta. La ganancia nunca se muestra al cliente.
-      </p>
+      <p class="muted" style="margin-top:10px;">El cotizador muestra precios de venta. La ganancia nunca se muestra al cliente.</p>
     </div>
 
     <div class="panel" style="margin-top:12px;">
       <div class="section-head" style="margin-bottom:8px;">
-        <h2>📋 Cotizaciones guardadas</h2>
-        <span class="muted">${Array.isArray(db.quotes) ? db.quotes.length : 0} guardadas</span>
+        <div><h2>📋 Historial de cotizaciones</h2><p class="muted">Busca, revisa y recupera cotizaciones anteriores.</p></div>
+        <span class="muted">${allQuotes.length} total</span>
       </div>
+
+      <div style="display:grid;grid-template-columns:1.5fr 1fr;gap:8px;margin:10px 0;">
+        <input id="quoteHistorySearch" class="search" placeholder="🔎 Buscar por N.º, cliente, teléfono o nota..." value="${esc(quoteHistorySearch)}">
+        <select id="quoteHistoryStatus" class="search">
+          ${statusOptions.map(status => `<option value="${esc(status)}" ${status === quoteHistoryStatus ? "selected" : ""}>${esc(status)}</option>`).join("")}
+        </select>
+      </div>
+
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:10px 0 14px;">
+        <div style="background:#f5f8f9;border-radius:14px;padding:10px;"><div class="muted">Pendientes</div><strong>${pendingCount}</strong></div>
+        <div style="background:#f5f8f9;border-radius:14px;padding:10px;"><div class="muted">Convertidas</div><strong>${convertedCount}</strong></div>
+        <div style="background:#f5f8f9;border-radius:14px;padding:10px;"><div class="muted">Rechazadas</div><strong>${rejectedCount}</strong></div>
+        <div style="background:#f5f8f9;border-radius:14px;padding:10px;"><div class="muted">Valor cotizado</div><strong>${money(quotedValue)}</strong></div>
+      </div>
+
       <div id="quotesList">
-        ${
-          Array.isArray(db.quotes) && db.quotes.length
-            ? db.quotes.slice().reverse().map(q => {
-                const id = q.id || "";
-                const customer = q.customer || "Cliente general";
-                const dateObj = parseLocalDate(q.createdAt || q.date);
-                const dateText = dateObj ? dateObj.toLocaleDateString("es-CO") : "";
-                const total = Number(q.total || 0);
-                const converted = !!q.convertedSaleId;
-                return `
-                  <div class="quote-row" style="display:grid;grid-template-columns:1.2fr 1fr .9fr 1.1fr;gap:8px;align-items:center;padding:10px 0;border-bottom:1px solid rgba(0,0,0,.08);">
-                    <div><b>${esc(id)}</b><div class="muted">${esc(customer)}</div></div>
-                    <div class="muted">${esc(dateText)}</div>
-                    <div><b>${money(total)}</b></div>
-                    <div style="display:flex;gap:6px;flex-wrap:wrap;">
-                      <button type="button" onclick="viewQuote('${esc(id)}')">👁️ Ver</button>
-                      <button type="button" onclick="duplicateQuote('${esc(id)}')">📑 Duplicar</button>
-                      <button type="button" onclick="shareSavedQuoteWhatsApp('${esc(id)}')">📲 WhatsApp</button>
-                      <button type="button" onclick="printQuote('${esc(id)}')">🖨️ Imprimir</button>
-                      ${converted
-                        ? `<span class="badge">✅ Venta ${esc(q.convertedSaleId)}</span>`
-                        : `<button type="button" onclick="editQuote('${esc(id)}')">✏️ Editar</button>
-                           <button type="button" class="primary" onclick="convertQuoteToSale('${esc(id)}')">➡️ Convertir en venta</button>`}
-                      ${!converted ? `<button type="button" onclick="deleteQuote('${esc(id)}')">🗑️</button>` : ""}
-                    </div>
-                  </div>`;
-              }).join("")
-            : `<div class="empty">No hay cotizaciones guardadas todavía.</div>`
-        }
+        ${history.length ? history.map(q => {
+          const id = q.id || "";
+          const customer = q.customer || "Cliente general";
+          const dateObj = parseLocalDate(q.updatedAt || q.createdAt || q.date);
+          const dateText = dateObj ? dateObj.toLocaleDateString("es-CO") : "";
+          const total = Number(q.total || 0);
+          const converted = !!q.convertedSaleId;
+          const status = quoteStatusLabel(q);
+          const statusClass = converted ? "badge" : (status === "Rechazada" ? "badge" : "badge");
+          return `
+            <div class="quote-row" style="padding:12px 0;border-bottom:1px solid rgba(0,0,0,.08);">
+              <div style="display:grid;grid-template-columns:1.1fr .9fr .8fr 1.2fr;gap:8px;align-items:center;">
+                <div><b>${esc(id)}</b><div class="muted">${esc(customer)}</div>${q.phone ? `<div class="muted">📱 ${esc(q.phone)}</div>` : ""}</div>
+                <div class="muted">${esc(dateText)}</div>
+                <div><b>${money(total)}</b><div style="margin-top:4px"><span class="${statusClass}">${esc(status)}</span></div></div>
+                <div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end;">
+                  <button type="button" onclick="viewQuote('${esc(id)}')">👁️ Ver</button>
+                  <button type="button" onclick="duplicateQuote('${esc(id)}')">📑 Duplicar</button>
+                  <button type="button" onclick="shareSavedQuoteWhatsApp('${esc(id)}')">📲 WhatsApp</button>
+                  <button type="button" onclick="printQuote('${esc(id)}')">🖨️ Imprimir</button>
+                  ${converted
+                    ? `<span class="badge">Venta ${esc(q.convertedSaleId)}</span>`
+                    : `<button type="button" onclick="editQuote('${esc(id)}')">✏️ Editar</button>
+                       <button type="button" class="primary" onclick="convertQuoteToSale('${esc(id)}')">➡️ Convertir en venta</button>
+                       <button type="button" onclick="markQuoteRejected('${esc(id)}')">🚫 Rechazar</button>
+                       <button type="button" onclick="deleteQuote('${esc(id)}')">🗑️</button>`}
+                </div>
+              </div>
+            </div>`;
+        }).join("") : `<div class="empty">No hay cotizaciones que coincidan con los filtros.</div>`}
       </div>
     </div>
   `;
 
   const customer = document.getElementById("quoteCustomer");
-  if(customer){
-    customer.oninput = function(){ quoteCustomer = this.value; };
-  }
-
+  if(customer) customer.oninput = function(){ quoteCustomer = this.value; };
   const phone = document.getElementById("quotePhone");
-  if(phone){
-    phone.oninput = function(){ quotePhone = this.value; };
-  }
-
+  if(phone) phone.oninput = function(){ quotePhone = this.value; };
   const note = document.getElementById("quoteNote");
-  if(note){
-    note.oninput = function(){ quoteNote = this.value; };
-  }
-
+  if(note) note.oninput = function(){ quoteNote = this.value; };
   const discount = document.getElementById("quoteDiscount");
-  if(discount){
-    discount.oninput = function(){ quoteDiscount = Math.max(0, Number(this.value) || 0); renderCotizador(); };
-  }
+  if(discount) discount.oninput = function(){ quoteDiscount = Math.max(0, Number(this.value) || 0); renderCotizador(); };
 
   const search = document.getElementById("quoteSearch");
   if(search){
@@ -4150,20 +4095,35 @@ function renderCotizador(){
       const cursor = this.value.length;
       renderCotizador();
       const next = document.getElementById("quoteSearch");
-      if(next){
-        next.focus();
-        try{ next.setSelectionRange(cursor,cursor); }catch(_){ }
-      }
+      if(next){ next.focus(); try{ next.setSelectionRange(cursor,cursor); }catch(_){} }
     };
   }
-
   const category = document.getElementById("quoteCategory");
-  if(category){
-    category.onchange = function(){
-      quoteCategory = this.value;
+  if(category) category.onchange = function(){ quoteCategory = this.value; renderCotizador(); };
+
+  const historySearch = document.getElementById("quoteHistorySearch");
+  if(historySearch){
+    historySearch.oninput = function(){
+      quoteHistorySearch = this.value;
+      const cursor = this.value.length;
       renderCotizador();
+      const next = document.getElementById("quoteHistorySearch");
+      if(next){ next.focus(); try{ next.setSelectionRange(cursor,cursor); }catch(_){} }
     };
   }
+  const historyStatus = document.getElementById("quoteHistoryStatus");
+  if(historyStatus) historyStatus.onchange = function(){ quoteHistoryStatus = this.value; renderCotizador(); };
+}
+
+function markQuoteRejected(quoteId){
+  const q=findQuoteById(quoteId);
+  if(!q){ alert("No se encontró la cotización."); return; }
+  if(q.convertedSaleId){ alert("Esta cotización ya fue convertida en una venta."); return; }
+  if(!confirm(`¿Marcar ${quoteId} como rechazada?`)) return;
+  q.status="Rechazada";
+  q.updatedAt=now();
+  save();
+  renderQuotesList();
 }
 
 /* =========================================================
