@@ -194,3 +194,17 @@ button{cursor:pointer}
 @media(max-width:699px){.report-visual-grid{grid-template-columns:1fr;gap:10px}.report-bars{height:220px}.bar-track{height:165px}.bar-item .bar-value{font-size:9px}.hbar-head{font-size:12px}}
 .report-header{gap:14px}.report-header h1{margin-bottom:2px}.report-header p{margin:0 0 8px}.report-actions{display:flex;gap:8px;flex-wrap:wrap}.report-actions button{border:1px solid #d7dfe1;background:#fff;border-radius:12px;padding:10px 13px;font-weight:700}.report-actions .primary{color:#fff;border-color:#087f8c}.report-filter-panel h2{margin-bottom:10px}.report-period-buttons{display:flex;gap:8px;flex-wrap:wrap}.report-period-buttons button{border:1px solid #d7dfe1;background:#fff;border-radius:999px;padding:9px 13px;font-weight:700}.report-period-buttons button.selected{background:#e7f5f5;border-color:#087f8c;color:#087f8c}.report-date-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}.report-date-grid label{margin:0}.report-date-grid input{margin-top:6px;margin-bottom:0}.report-card-main{background:linear-gradient(135deg,#e9fbfc,#fff)}.report-columns{display:grid;grid-template-columns:1fr 1fr;gap:16px}.report-columns .panel{margin-top:16px}.report-list{display:grid;gap:8px}.report-rank{display:grid;grid-template-columns:32px minmax(0,1fr) auto;gap:10px;align-items:center;padding:10px 0;border-bottom:1px solid #edf0f1}.report-rank:last-child{border-bottom:0}.rank-number{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;background:#eef7f8;color:#087f8c;font-weight:800}.report-rank b{display:block;overflow-wrap:anywhere}.report-rank small{display:block;color:#6b797d;margin-top:2px}.report-rank>strong{font-size:15px}.report-note{display:flex;gap:10px;align-items:flex-start}.report-note>span{font-size:20px}.report-note p{margin:4px 0 0;color:#68777b;font-size:13px;line-height:1.45}
 @media(max-width:699px){.report-header{align-items:stretch}.report-actions{width:100%}.report-actions button{flex:1}.report-date-grid{grid-template-columns:1fr}.report-columns{grid-template-columns:1fr;gap:0}.report-columns .panel{margin-top:10px}.report-period-buttons{display:grid;grid-template-columns:repeat(2,1fr)}.report-period-buttons button{width:100%}.report-period-buttons button:last-child{grid-column:1/-1}.report-rank{grid-template-columns:30px minmax(0,1fr) auto}.report-rank>strong{font-size:13px}}
+
+/* =========================================================
+   CAJA V4 - CIERRE Y CONTROL
+   ========================================================= */
+.cash-close-box{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:10px 0 14px}
+.cash-close-box>div{padding:14px;border:1px solid #e5e7eb;border-radius:12px;background:#f8fafc}
+.cash-close-box span,.cash-closing-row span{display:block;font-size:.82rem;color:#64748b;margin-bottom:4px}
+.cash-close-box b{font-size:1.25rem}
+.cash-closing-list{display:grid;gap:8px;margin-top:12px}
+.cash-closing-row{display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:12px;align-items:center;padding:12px;border:1px solid #e5e7eb;border-radius:12px;background:#fff}
+.cash-closing-row small{display:block;color:#64748b;margin-top:3px}
+.cash-ok b{font-weight:700}
+.cash-diff b{font-weight:700}
+@media(max-width:700px){.cash-close-box{grid-template-columns:1fr}.cash-closing-row{grid-template-columns:1fr 1fr}.cash-closing-row>div:first-child{grid-column:1/-1}}

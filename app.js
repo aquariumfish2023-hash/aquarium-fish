@@ -74,6 +74,11 @@ db.cash =
     ? db.cash
     : [];
 
+db.cashClosings =
+  Array.isArray(db.cashClosings)
+    ? db.cashClosings
+    : [];
+
 db.quotes = Array.isArray(db.quotes) ? db.quotes : [];
 
 db.quotes.forEach(quote => {
@@ -7386,6 +7391,48 @@ function getCashEntries(
    Calcula totales de caja.
 */
 
+function getCashMethodTotals(entries){
+  const methods = { Efectivo:0, Nequi:0, Transferencia:0, Daviplata:0, Tarjeta:0, Otro:0 };
+  entries.forEach(entry => {
+    const amount = Math.abs(+entry.amount || 0);
+    const method = normalizePaymentMethod(entry.method);
+    methods[method] = (methods[method] || 0) + (entry.type === "Gasto" ? -amount : amount);
+  });
+  return methods;
+}
+
+function getCashPeriodLabel(period){
+  return ({today:"Hoy", "7days":"Últimos 7 días", month:"Este mes", all:"Todo"})[period] || "Periodo";
+}
+
+function getLatestCashClosing(){
+  return [...db.cashClosings].sort((a,b) => (parseLocalDate(b.date)?.getTime() || 0) - (parseLocalDate(a.date)?.getTime() || 0))[0] || null;
+}
+
+function openCashClosing(){
+  const totals = calculateCashTotals(cashPeriod);
+  const expected = Math.max(0, totals.methods.Efectivo || 0);
+  modal("Cierre de caja", `
+    <div class="cash-close-box">
+      <div><span>Efectivo registrado</span><b>${money(expected)}</b></div>
+      <div><span>Periodo</span><b>${esc(getCashPeriodLabel(cashPeriod))}</b></div>
+    </div>
+    <p class="muted">Cuenta físicamente el efectivo y escribe el valor. El sistema calculará la diferencia.</p>
+    <label>Efectivo contado<input name="actual" type="number" min="0" step="1" required value="${expected}"></label>
+    <label>Observación<textarea name="note" rows="3" placeholder="Ej. cierre normal, faltante, sobrante..."></textarea></label>
+    <div style="display:flex;gap:8px;margin-top:14px;flex-wrap:wrap;">
+      <button class="primary" type="submit">🔒 Guardar cierre</button>
+      <button type="button" onclick="closeModal()">Cancelar</button>
+    </div>`, event => {
+      event.preventDefault();
+      const form = event.target;
+      const actual = Math.max(0, +form.actual.value || 0);
+      db.cashClosings.push({ id: Date.now()+"-"+Math.random().toString(36).slice(2), date: now(), period: getCashPeriodLabel(cashPeriod), expected, actual, difference: actual-expected, note: form.note.value.trim() });
+      save();
+      closeModal();
+    });
+}
+
 function calculateCashTotals(
   period =
     cashPeriod
@@ -7402,21 +7449,7 @@ function calculateCashTotals(
   let expenses = 0;
 
 
-  const methods = {
-
-    Efectivo: 0,
-
-    Nequi: 0,
-
-    Transferencia: 0,
-
-    Daviplata: 0,
-
-    Tarjeta: 0,
-
-    Otro: 0
-
-  };
+  const methods = getCashMethodTotals(entries);
 
 
   entries.forEach(
@@ -7428,12 +7461,6 @@ function calculateCashTotals(
         );
 
 
-      const method =
-        normalizePaymentMethod(
-          entry.method
-        );
-
-
       if(
         entry.type ===
         "Gasto"
@@ -7442,18 +7469,9 @@ function calculateCashTotals(
         expenses +=
           amount;
 
-        methods[method] =
-          (methods[method] || 0) -
-          amount;
-
-
       }else{
 
         received +=
-          amount;
-
-        methods[method] =
-          (methods[method] || 0) +
           amount;
 
       }
@@ -7667,6 +7685,13 @@ function renderCash(){
 
 
     <div class="card">
+      <span>Digital</span>
+      <b>${money(totals.methods.Nequi + totals.methods.Transferencia + totals.methods.Daviplata + totals.methods.Tarjeta + totals.methods.Otro)}</b>
+      <small>pagos no físicos</small>
+    </div>
+
+
+    <div class="card">
 
       <span>
         Nequi
@@ -7780,6 +7805,19 @@ function renderCash(){
     </div>
 
   `;
+
+
+  const closingHistory = document.getElementById("cashClosingHistory");
+  if(closingHistory){
+    const closings = [...db.cashClosings].sort((a,b) => (parseLocalDate(b.date)?.getTime() || 0) - (parseLocalDate(a.date)?.getTime() || 0)).slice(0,5);
+    closingHistory.innerHTML = closings.length ? `<div class="cash-closing-list">${closings.map(close => `
+      <div class="cash-closing-row">
+        <div><b>${esc(close.period || "Cierre")}</b><small>${esc(close.date || "")}</small></div>
+        <div><span>Esperado</span><b>${money(close.expected)}</b></div>
+        <div><span>Contado</span><b>${money(close.actual)}</b></div>
+        <div class="${(+close.difference || 0) === 0 ? "cash-ok" : "cash-diff"}"><span>Diferencia</span><b>${(+close.difference || 0) > 0 ? "+" : ""}${money(close.difference)}</b></div>
+      </div>`).join("")}</div>` : `<div class="muted">Todavía no hay cierres registrados.</div>`;
+  }
 
 
   if(!totals.entries.length){
@@ -8713,6 +8751,13 @@ function importData(input) {
               imported.cash
             )
               ? imported.cash
+              : [],
+
+          cashClosings:
+            Array.isArray(
+              imported.cashClosings
+            )
+              ? imported.cashClosings
               : []
 
         };
