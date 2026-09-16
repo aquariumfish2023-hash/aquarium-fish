@@ -74,11 +74,6 @@ db.cash =
     ? db.cash
     : [];
 
-db.cashClosings =
-  Array.isArray(db.cashClosings)
-    ? db.cashClosings
-    : [];
-
 db.quotes = Array.isArray(db.quotes) ? db.quotes : [];
 
 db.quotes.forEach(quote => {
@@ -468,55 +463,27 @@ function setInventorySort(
    ========================================================= */
 
 let reportPeriod = "today";
-let reportCustomStart = "";
-let reportCustomEnd = "";
 
 function reportRange(period = reportPeriod){
   const nowDate = new Date();
   let start = null;
-  let end = endOfDay(nowDate);
+  let end = new Date(nowDate);
+  end.setHours(23,59,59,999);
 
   if(period === "today"){
-    start = startOfDay(nowDate);
+    start = new Date(nowDate);
+    start.setHours(0,0,0,0);
   }else if(period === "7days"){
-    start = startOfDay(nowDate);
+    start = new Date(nowDate);
     start.setDate(start.getDate()-6);
+    start.setHours(0,0,0,0);
   }else if(period === "month"){
     start = new Date(nowDate.getFullYear(), nowDate.getMonth(), 1);
-    start = startOfDay(start);
-  }else if(period === "custom"){
-    if(reportCustomStart){
-      const [y,m,d] = reportCustomStart.split("-").map(Number);
-      if(y && m && d) start = new Date(y,m-1,d,0,0,0,0);
-    }
-    if(reportCustomEnd){
-      const [y,m,d] = reportCustomEnd.split("-").map(Number);
-      if(y && m && d) end = new Date(y,m-1,d,23,59,59,999);
-    }
-    if(start && end && start > end){
-      const tmp = start; start = new Date(end); end = new Date(tmp);
-      end.setHours(23,59,59,999);
-      start.setHours(0,0,0,0);
-    }
+    start.setHours(0,0,0,0);
+  }else{
+    start = null;
   }
-
   return {start,end};
-}
-
-function reportPeriodLabel(){
-  if(reportPeriod === "today") return "Hoy";
-  if(reportPeriod === "7days") return "Últimos 7 días";
-  if(reportPeriod === "month") return "Este mes";
-  if(reportPeriod === "all") return "Todo el historial";
-  if(reportPeriod === "custom"){
-    const start = reportCustomStart ? new Date(reportCustomStart + "T00:00:00") : null;
-    const end = reportCustomEnd ? new Date(reportCustomEnd + "T00:00:00") : null;
-    if(start && end && !isNaN(start) && !isNaN(end)){
-      return `${start.toLocaleDateString("es-CO")} al ${end.toLocaleDateString("es-CO")}`;
-    }
-    return "Periodo personalizado";
-  }
-  return "Periodo";
 }
 
 function inReportRange(value, range){
@@ -567,19 +534,9 @@ function reportExpenseTotal(){
   return reportExpenses().reduce((sum,m)=>sum + (+m.amount||0),0);
 }
 
-function reportUnits(){
-  return reportSales().reduce((sum,sale)=>sum + saleQty(sale),0);
-}
-
 function reportAverageTicket(){
   const sales = reportSales();
   return sales.length ? reportRevenue()/sales.length : 0;
-}
-
-function reportMargin(){
-  const revenue = reportRevenue();
-  const profit = reportProfit();
-  return revenue ? (profit/revenue)*100 : 0;
 }
 
 function reportProductRanking(){
@@ -598,46 +555,6 @@ function reportProductRanking(){
   return Object.entries(map).sort((a,b)=>b[1]-a[1]).slice(0,10);
 }
 
-function reportCustomerRanking(){
-  const map = {};
-  reportSales().forEach(sale => {
-    const name = String(sale.client || sale.customer || "Cliente general").trim() || "Cliente general";
-    if(!map[name]) map[name] = {name,total:0,count:0,paid:0};
-    map[name].total += (+sale.total||0);
-    map[name].paid += salePaid(sale);
-    map[name].count += 1;
-  });
-  return Object.values(map).sort((a,b)=>b.total-a.total).slice(0,10);
-}
-
-function reportProductAnalysis(){
-  const map = {};
-  reportSales().forEach(sale => {
-    const items = Array.isArray(sale.items) && sale.items.length ? sale.items : (sale.product ? [{product:sale.product,qty:sale.qty,total:sale.total,cost:sale.cost}] : []);
-    items.forEach(item => {
-      const name = String(item.product || "Producto").trim() || "Producto";
-      const qty = +item.qty || 0;
-      const total = +item.total || 0;
-      const cost = (+item.cost || 0) * qty;
-      if(!map[name]) map[name] = {name,units:0,revenue:0,cost:0};
-      map[name].units += qty;
-      map[name].revenue += total;
-      map[name].cost += cost;
-    });
-  });
-  return Object.values(map).sort((a,b)=>b.units-a.units || b.revenue-a.revenue).slice(0,8);
-}
-
-function reportDailyAnalysis(){
-  return reportDaily().slice().sort((a,b)=>a.date-b.date);
-}
-
-function reportPaymentShare(){
-  const methods = reportPaymentMethods();
-  const total = methods.reduce((sum,r)=>sum+r[1],0);
-  return methods.map(r=>({name:r[0],value:r[1],pct:total ? (r[1]/total)*100 : 0}));
-}
-
 function reportPaymentMethods(){
   const map = {};
   reportSales().forEach(sale => {
@@ -652,10 +569,9 @@ function reportDaily(){
   reportSales().forEach(sale => {
     const d = parseLocalDate(sale.date);
     if(!d) return;
-    const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
-    if(!map[key]) map[key] = {date:new Date(d.getFullYear(),d.getMonth(),d.getDate()),total:0,count:0,paid:0};
+    const key = d.toISOString().slice(0,10);
+    if(!map[key]) map[key] = {date:d,total:0,count:0};
     map[key].total += (+sale.total||0);
-    map[key].paid += salePaid(sale);
     map[key].count += 1;
   });
   return Object.values(map).sort((a,b)=>b.date-a.date);
@@ -697,208 +613,56 @@ function renderReports(){
   const pending = reportPending();
   const profit = reportProfit();
   const net = profit - expenses;
-  const units = reportUnits();
   const ticket = reportAverageTicket();
-  const margin = reportMargin();
   const ranking = reportProductRanking();
-  const customers = reportCustomerRanking();
   const methods = reportPaymentMethods();
   const daily = reportDaily();
-  const productAnalysis = reportProductAnalysis();
-  const dailyAnalysis = reportDailyAnalysis();
-  const paymentShare = reportPaymentShare();
-  const maxProductUnits = productAnalysis.length ? Math.max(...productAnalysis.map(r=>r.units),1) : 1;
-  const maxDailyTotal = dailyAnalysis.length ? Math.max(...dailyAnalysis.map(r=>r.total),1) : 1;
 
   section.innerHTML = `
-    <div class="section-head report-header">
-      <div>
-        <h1>📊 Reportes</h1>
-        <p class="muted">Resumen del negocio · <b>${esc(reportPeriodLabel())}</b></p>
-      </div>
-      <div class="report-actions">
-        <button type="button" class="primary" onclick="printReport()">🖨️ Imprimir</button>
-        <button type="button" onclick="exportReportCSV()">📥 CSV</button>
-      </div>
+    <div class="section-head">
+      <h1>📊 Reportes</h1>
     </div>
 
-    <div class="panel report-filter-panel">
-      <h2>🔎 Filtrar periodo</h2>
-      <div class="report-period-buttons">
-        <button type="button" class="${reportPeriod==='today'?'selected':''}" onclick="setReportPeriod('today')">📅 Hoy</button>
-        <button type="button" class="${reportPeriod==='7days'?'selected':''}" onclick="setReportPeriod('7days')">📆 7 días</button>
-        <button type="button" class="${reportPeriod==='month'?'selected':''}" onclick="setReportPeriod('month')">🗓️ Este mes</button>
-        <button type="button" class="${reportPeriod==='all'?'selected':''}" onclick="setReportPeriod('all')">📚 Todo</button>
-        <button type="button" class="${reportPeriod==='custom'?'selected':''}" onclick="setReportPeriod('custom')">🧭 Personalizado</button>
-      </div>
-      ${reportPeriod==='custom' ? `
-        <div class="report-date-grid">
-          <label>Desde<input type="date" value="${esc(reportCustomStart)}" onchange="setReportCustomStart(this.value)"></label>
-          <label>Hasta<input type="date" value="${esc(reportCustomEnd)}" onchange="setReportCustomEnd(this.value)"></label>
-        </div>
-      ` : ''}
+    <div class="panel">
+      <h2>Periodo</h2>
+      <select class="search" onchange="setReportPeriod(this.value)">
+        <option value="today" ${reportPeriod==='today'?'selected':''}>📅 Hoy</option>
+        <option value="7days" ${reportPeriod==='7days'?'selected':''}>📆 Últimos 7 días</option>
+        <option value="month" ${reportPeriod==='month'?'selected':''}>🗓️ Este mes</option>
+        <option value="all" ${reportPeriod==='all'?'selected':''}>📚 Todo</option>
+      </select>
     </div>
 
-    <div class="cards report-cards">
-      <div class="card report-card-main"><span>💰 Ventas</span><b>${money(revenue)}</b><small>${sales.length} transacciones · ${units} unidades</small></div>
-      <div class="card"><span>💵 Pagado</span><b>${money(payments)}</b><small>dinero recibido</small></div>
-      <div class="card"><span>🕐 Pendiente</span><b>${money(pending)}</b><small>por cobrar</small></div>
-      <div class="card"><span>📈 Ganancia bruta</span><b>${money(profit)}</b><small>antes de gastos</small></div>
-      <div class="card"><span>💸 Gastos</span><b>${money(expenses)}</b><small>registrados en caja</small></div>
-      <div class="card"><span>🧮 Resultado</span><b>${money(net)}</b><small>ganancia − gastos</small></div>
-      <div class="card"><span>🎟️ Ticket promedio</span><b>${money(ticket)}</b><small>por venta</small></div>
-      <div class="card"><span>📊 Margen bruto</span><b>${margin.toFixed(1)}%</b><small>sobre las ventas</small></div>
+    <div class="cards">
+      <div class="card"><span>Ventas</span><b>${money(revenue)}</b><small>${sales.length} transacciones</small></div>
+      <div class="card"><span>Pagado</span><b>${money(payments)}</b><small>recibido</small></div>
+      <div class="card"><span>Pendiente</span><b>${money(pending)}</b><small>por cobrar</small></div>
+      <div class="card"><span>Ganancia</span><b>${money(profit)}</b><small>antes de gastos</small></div>
+      <div class="card"><span>Gastos</span><b>${money(expenses)}</b><small>registrados en caja</small></div>
+      <div class="card"><span>Resultado</span><b>${money(net)}</b><small>ganancia − gastos</small></div>
+      <div class="card"><span>Ticket promedio</span><b>${money(ticket)}</b><small>por venta</small></div>
     </div>
 
-    <div class="report-columns">
-      <div class="panel">
-        <h2>🏆 Productos más vendidos</h2>
-        ${ranking.length ? `<div class="report-list">${ranking.map((r,i)=>`<div class="report-rank"><span class="rank-number">${i+1}</span><div><b>${esc(r[0])}</b><small>${r[1]} unidad${r[1]===1?'':'es'}</small></div><strong>${r[1]}</strong></div>`).join('')}</div>` : '<div class="empty">No hay ventas en este periodo.</div>'}
-      </div>
-
-      <div class="panel">
-        <h2>👥 Clientes con más compras</h2>
-        ${customers.length ? `<div class="report-list">${customers.map((r,i)=>`<div class="report-rank"><span class="rank-number">${i+1}</span><div><b>${esc(r.name)}</b><small>${r.count} venta${r.count===1?'':'s'} · pagado ${money(r.paid)}</small></div><strong>${money(r.total)}</strong></div>`).join('')}</div>` : '<div class="empty">No hay ventas en este periodo.</div>'}
-      </div>
+    <div class="panel">
+      <h2>🏆 Productos más vendidos</h2>
+      ${ranking.length ? ranking.map((r,i)=>`<div class="item"><div><b>${i+1}. ${esc(r[0])}</b></div><div class="right"><b>${r[1]}</b><small>unidades</small></div></div>`).join('') : '<div class="empty">No hay ventas en este periodo.</div>'}
     </div>
 
-
-    <div class="report-visual-grid">
-      <div class="panel report-chart-panel">
-        <div class="report-panel-title"><div><h2>📊 Evolución de ventas</h2><p class="muted">Total vendido por día en el periodo</p></div></div>
-        ${dailyAnalysis.length ? `<div class="report-bars report-bars-daily">${dailyAnalysis.map(r=>{
-          const pct = Math.max(5,(r.total/maxDailyTotal)*100);
-          const label = r.date.toLocaleDateString('es-CO',{day:'numeric',month:'short'});
-          return `<div class="bar-item" title="${esc(label)} · ${money(r.total)}"><div class="bar-value">${money(r.total)}</div><div class="bar-track"><span style="height:${pct}%"></span></div><small>${esc(label)}</small></div>`;
-        }).join('')}</div>` : '<div class="empty">No hay ventas en este periodo.</div>'}
-      </div>
-
-      <div class="panel report-chart-panel">
-        <div class="report-panel-title"><div><h2>🐠 Productos</h2><p class="muted">Unidades vendidas por producto</p></div></div>
-        ${productAnalysis.length ? `<div class="report-hbars">${productAnalysis.map((r,i)=>{
-          const pct = Math.max(3,(r.units/maxProductUnits)*100);
-          return `<div class="hbar-item"><div class="hbar-head"><span><b>${i+1}. ${esc(r.name)}</b></span><strong>${r.units} ud.</strong></div><div class="hbar-track"><span style="width:${pct}%"></span></div><small>${money(r.revenue)} en ventas</small></div>`;
-        }).join('')}</div>` : '<div class="empty">No hay productos vendidos en este periodo.</div>'}
-      </div>
+    <div class="panel">
+      <h2>💳 Ventas por forma de pago</h2>
+      ${methods.length ? methods.map(r=>`<div class="item"><div><b>${esc(r[0])}</b></div><div class="right"><b>${money(r[1])}</b></div></div>`).join('') : '<div class="empty">No hay pagos en este periodo.</div>'}
     </div>
 
-    <div class="report-columns">
-      <div class="panel">
-        <h2>💳 Ventas por forma de pago</h2>
-        ${paymentShare.length ? `<div class="payment-visual">${paymentShare.map(r=>`<div class="payment-row"><div class="payment-label"><span>${esc(r.name)}</span><b>${money(r.value)}</b></div><div class="payment-track"><span style="width:${Math.max(r.pct ? 4 : 0,r.pct)}%"></span></div><small>${r.pct.toFixed(1)}% de lo recibido</small></div>`).join('')}</div>` : '<div class="empty">No hay pagos en este periodo.</div>'}
-      </div>
-
-      <div class="panel report-insight-panel">
-        <h2>💡 Lectura rápida</h2>
-        ${productAnalysis.length ? `<div class="insight"><span>🏆</span><div><b>Producto con más unidades</b><p>${esc(productAnalysis[0].name)} · ${productAnalysis[0].units} unidades</p></div></div>` : ''}
-        ${customers.length ? `<div class="insight"><span>👤</span><div><b>Cliente con mayor compra</b><p>${esc(customers[0].name)} · ${money(customers[0].total)}</p></div></div>` : ''}
-        ${paymentShare.length ? `<div class="insight"><span>💳</span><div><b>Forma de pago principal</b><p>${esc(paymentShare[0].name)} · ${paymentShare[0].pct.toFixed(1)}% de lo recibido</p></div></div>` : ''}
-        ${sales.length ? `<div class="insight"><span>🎟️</span><div><b>Ticket promedio</b><p>${money(ticket)} por venta · ${sales.length} transacciones</p></div></div>` : '<div class="empty">Selecciona un periodo con ventas para ver el análisis.</div>'}
-      </div>
-    </div>
-
-    <div class="report-columns">
-      <div class="panel">
-        <h2>💳 Ventas por forma de pago</h2>
-        ${methods.length ? `<div class="report-list">${methods.map(r=>`<div class="item"><div><b>${esc(r[0])}</b></div><div class="right"><b>${money(r[1])}</b></div></div>`).join('')}</div>` : '<div class="empty">No hay pagos en este periodo.</div>'}
-      </div>
-
-      <div class="panel">
-        <h2>📅 Ventas por día</h2>
-        ${daily.length ? `<div class="report-list">${daily.map(r=>`<div class="item"><div><b>${esc(r.date.toLocaleDateString('es-CO',{weekday:'short',day:'numeric',month:'short',year:'numeric'}))}</b><small>${r.count} venta${r.count===1?'':'s'} · pagado ${money(r.paid)}</small></div><div class="right"><b>${money(r.total)}</b></div></div>`).join('')}</div>` : '<div class="empty">No hay ventas en este periodo.</div>'}
-      </div>
-    </div>
-
-    <div class="panel report-note">
-      <span>ℹ️</span>
-      <div><b>Nota sobre ganancias</b><p>La ganancia bruta se calcula con el costo registrado en cada producto/venta. El resultado resta además los gastos registrados en Caja.</p></div>
+    <div class="panel">
+      <h2>📅 Ventas por día</h2>
+      ${daily.length ? daily.map(r=>`<div class="item"><div><b>${esc(r.date.toLocaleDateString('es-CO',{weekday:'short',day:'numeric',month:'short'}))}</b><small>${r.count} venta${r.count===1?'':'s'}</small></div><div class="right"><b>${money(r.total)}</b></div></div>`).join('') : '<div class="empty">No hay ventas en este periodo.</div>'}
     </div>
   `;
 }
 
 function setReportPeriod(value){
-  reportPeriod = ["today","7days","month","all","custom"].includes(value) ? value : "today";
-  if(reportPeriod === "custom" && !reportCustomStart && !reportCustomEnd){
-    const nowDate = new Date();
-    const start = new Date(nowDate.getFullYear(), nowDate.getMonth(), 1);
-    reportCustomStart = `${start.getFullYear()}-${String(start.getMonth()+1).padStart(2,"0")}-${String(start.getDate()).padStart(2,"0")}`;
-    reportCustomEnd = `${nowDate.getFullYear()}-${String(nowDate.getMonth()+1).padStart(2,"0")}-${String(nowDate.getDate()).padStart(2,"0")}`;
-  }
+  reportPeriod = ["today","7days","month","all"].includes(value) ? value : "today";
   renderReports();
-}
-
-function setReportCustomStart(value){
-  reportCustomStart = value || "";
-  renderReports();
-}
-
-function setReportCustomEnd(value){
-  reportCustomEnd = value || "";
-  renderReports();
-}
-
-function reportRowsForExport(){
-  return reportSales().map(sale => ({
-    date: sale.date || "",
-    id: sale.id || "",
-    client: sale.client || sale.customer || "Cliente general",
-    items: saleLabel(sale),
-    units: saleQty(sale),
-    total: +sale.total || 0,
-    paid: salePaid(sale),
-    pending: Math.max(0,(+sale.total||0)-salePaid(sale)),
-    payment: sale.pay || "",
-    status: sale.status || ""
-  }));
-}
-
-function exportReportCSV(){
-  const rows = reportRowsForExport();
-  if(!rows.length){
-    alert("No hay ventas en el periodo seleccionado para exportar.");
-    return;
-  }
-  const headers = ["Fecha","Venta","Cliente","Productos","Unidades","Total","Pagado","Pendiente","Forma de pago","Estado"];
-  const values = rows.map(r=>[r.date,r.id,r.client,r.items,r.units,r.total,r.paid,r.pending,r.payment,r.status]);
-  const csv = [headers,...values].map(row=>row.map(v=>`"${String(v ?? "").replace(/"/g,'""')}"`).join(",")).join("\n");
-  const blob = new Blob(["\uFEFF"+csv],{type:"text/csv;charset=utf-8;"});
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = `aquarium-fish-reporte-${new Date().toISOString().slice(0,10)}.csv`;
-  document.body.appendChild(link);
-  link.click();
-  link.remove();
-  URL.revokeObjectURL(url);
-}
-
-function printReport(){
-  const sales = reportSales();
-  const expenses = reportExpenseTotal();
-  const revenue = reportRevenue();
-  const payments = reportPayments();
-  const pending = reportPending();
-  const profit = reportProfit();
-  const net = profit-expenses;
-  const units = reportUnits();
-  const ticket = reportAverageTicket();
-  const rows = reportRowsForExport();
-
-  if(!sales.length){
-    alert("No hay ventas en el periodo seleccionado para imprimir.");
-    return;
-  }
-
-  const win = window.open("","_blank","width=900,height=900");
-  if(!win){
-    alert("El navegador bloqueó la ventana de impresión. Permite ventanas emergentes para esta app.");
-    return;
-  }
-
-  const tableRows = rows.map(r=>`<tr><td>${esc(r.date)}</td><td>${esc(r.client)}</td><td>${esc(r.items)}</td><td>${r.units}</td><td>${money(r.total)}</td><td>${money(r.paid)}</td><td>${money(r.pending)}</td></tr>`).join("");
-
-  win.document.write(`<!doctype html><html lang="es"><head><meta charset="utf-8"><title>Reporte Aquarium Fish</title><style>body{font-family:Arial,sans-serif;color:#172024;margin:0;padding:28px}h1{margin:0 0 4px}h2{margin:24px 0 10px;font-size:17px}.muted{color:#68777b}.summary{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:20px 0}.box{border:1px solid #dce4e6;border-radius:10px;padding:12px}.box span{display:block;color:#68777b;font-size:12px}.box b{display:block;font-size:18px;margin-top:4px}table{width:100%;border-collapse:collapse;font-size:12px}th,td{border-bottom:1px solid #e1e7e9;padding:8px;text-align:left}th{background:#f3f6f7}th:nth-child(n+4),td:nth-child(n+4){text-align:right}.footer{margin-top:25px;text-align:center;color:#68777b;font-size:12px}@media print{body{padding:15px}.summary{grid-template-columns:repeat(4,1fr)}}</style></head><body><h1>🐠 AQUARIUM FISH</h1><div>REPORTE DE VENTAS</div><p class="muted">Periodo: ${esc(reportPeriodLabel())} · Generado: ${esc(new Date().toLocaleString("es-CO"))}</p><div class="summary"><div class="box"><span>Ventas</span><b>${money(revenue)}</b></div><div class="box"><span>Pagado</span><b>${money(payments)}</b></div><div class="box"><span>Pendiente</span><b>${money(pending)}</b></div><div class="box"><span>Resultado</span><b>${money(net)}</b></div><div class="box"><span>Transacciones</span><b>${sales.length}</b></div><div class="box"><span>Unidades</span><b>${units}</b></div><div class="box"><span>Ganancia bruta</span><b>${money(profit)}</b></div><div class="box"><span>Ticket promedio</span><b>${money(ticket)}</b></div></div><h2>Detalle de ventas</h2><table><thead><tr><th>Fecha</th><th>Cliente</th><th>Productos</th><th>Unid.</th><th>Total</th><th>Pagado</th><th>Pendiente</th></tr></thead><tbody>${tableRows}</tbody></table><p class="footer">Aquarium Fish · Reporte interno</p><script>window.onload=()=>setTimeout(()=>window.print(),250)<\/script></body></html>`);
-  win.document.close();
 }
 
 
@@ -935,189 +699,243 @@ function renderAll() {
    INICIO
    ========================================================= */
 
-function dashboardDateKey(date){
-  const d = date instanceof Date ? date : new Date(date);
-  if(Number.isNaN(d.getTime())) return "";
-  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
-}
+function renderHome() {
 
-function dashboardDayLabel(date){
-  return date.toLocaleDateString("es-CO",{weekday:"short",day:"numeric"}).replace(".","");
-}
+  const total =
+    db.sales.reduce(
+      (sum,sale) =>
+        sum +
+        (+sale.total || 0),
+      0
+    );
 
-function dashboardRecentDays(){
   const today = new Date();
-  const days=[];
-  for(let i=6;i>=0;i--){
-    const d=new Date(today);
-    d.setHours(0,0,0,0);
-    d.setDate(d.getDate()-i);
-    days.push(d);
-  }
-  return days;
-}
-
-function dashboardProductRanking(){
-  const map=new Map();
-  (db.sales||[]).forEach(sale=>{
-    const items=Array.isArray(sale.items)&&sale.items.length
-      ? sale.items
-      : (sale.product ? [{product:sale.product,qty:sale.qty||0,price:sale.price||0}] : []);
-    items.forEach(item=>{
-      const name=String(item.product||item.name||"Producto").trim()||"Producto";
-      const qty=Math.max(0,+item.qty||0);
-      const current=map.get(name)||0;
-      map.set(name,current+qty);
-    });
+  const todaySales = db.sales.filter(sale => {
+    const d = parseLocalDate(sale.date || sale.createdAt);
+    return d ? sameDay(d, today) : false;
   });
-  return [...map.entries()].sort((a,b)=>b[1]-a[1]).slice(0,5);
-}
 
-function dashboardSalesInRange(start,end){
-  return (db.sales||[]).filter(s=>{
-    const d=parseLocalDate(s.date||s.createdAt);
-    return d && d>=start && d<end;
-  });
-}
+  const todayTotal = todaySales.reduce(
+    (sum, sale) => sum + (+sale.total || 0),
+    0
+  );
 
-function dashboardPeriodStats(daysBack, daysLength){
-  const end=new Date(); end.setHours(0,0,0,0); end.setDate(end.getDate()-daysBack);
-  const start=new Date(end); start.setDate(start.getDate()-daysLength);
-  const rows=dashboardSalesInRange(start,end);
-  return {rows,total:rows.reduce((sum,s)=>sum+(+s.total||0),0)};
-}
+  const pendingQuotes = (db.quotes || []).filter(q => !q.convertedSaleId);
 
-function dashboardMonthStats(offset){
-  const now=new Date();
-  const end=new Date(now.getFullYear(),now.getMonth()-offset+1,1);
-  const start=new Date(now.getFullYear(),now.getMonth()-offset,1);
-  const rows=dashboardSalesInRange(start,end);
-  return {rows,total:rows.reduce((sum,s)=>sum+(+s.total||0),0)};
-}
 
-function dashboardComparison(current,previous){
-  if(!previous) return {text:"—",cls:"neutral"};
-  if(previous===0) return current>0?{text:"Nuevo",cls:"up"}:{text:"0%",cls:"neutral"};
-  const pct=((current-previous)/previous)*100;
-  const rounded=Math.round(Math.abs(pct));
-  return pct>0?{text:`↑ ${rounded}%`,cls:"up"}:pct<0?{text:`↓ ${rounded}%`,cls:"down"}:{text:"0%",cls:"neutral"};
-}
+  const salesTotal =
+    document.getElementById(
+      "salesTotal"
+    );
 
-function dashboardPaymentRanking(entries){
-  const methods={};
-  (entries||[]).forEach(e=>{
-    if(e.type==="Gasto") return;
-    const method=normalizePaymentMethod(e.method)||"Otro";
-    methods[method]=(methods[method]||0)+Math.abs(+e.amount||0);
-  });
-  return Object.entries(methods).filter(x=>x[1]>0).sort((a,b)=>b[1]-a[1]);
-}
 
-function dashboardCustomerRanking(){
-  const map=new Map();
-  (db.sales||[]).forEach(s=>{
-    const name=String(s.client||"Sin cliente").trim()||"Sin cliente";
-    map.set(name,(map.get(name)||0)+Math.max(0,+s.total||0));
-  });
-  return [...map.entries()].sort((a,b)=>b[1]-a[1]).slice(0,5);
-}
+  const salesCount =
+    document.getElementById(
+      "salesCount"
+    );
 
-function dashboardRenderComparison(id,current,previous){
-  const el=document.getElementById(id); if(!el) return;
-  const c=dashboardComparison(current,previous);
-  el.textContent=c.text; el.className=`dashboard-change ${c.cls}`;
-}
+  const todaySalesTotal = document.getElementById("todaySalesTotal");
+  const todaySalesCount = document.getElementById("todaySalesCount");
+  const pendingQuotesCount = document.getElementById("pendingQuotesCount");
 
-function renderHome(){
-  const sales=Array.isArray(db.sales)?db.sales:[];
-  const products=Array.isArray(db.products)?db.products:[];
-  const customers=Array.isArray(db.customers)?db.customers:[];
-  const today=new Date();
-  const todayStart=new Date(today); todayStart.setHours(0,0,0,0);
-  const tomorrow=new Date(todayStart); tomorrow.setDate(tomorrow.getDate()+1);
-  const yesterdayStart=new Date(todayStart); yesterdayStart.setDate(yesterdayStart.getDate()-1);
-  const todaySales=dashboardSalesInRange(todayStart,tomorrow);
-  const yesterdaySales=dashboardSalesInRange(yesterdayStart,todayStart);
-  const todayTotal=todaySales.reduce((sum,s)=>sum+(+s.total||0),0);
-  const yesterdayTotal=yesterdaySales.reduce((sum,s)=>sum+(+s.total||0),0);
-  const cashToday=calculateCashTotals("today");
-  const receivable=calculateReceivable();
-  const inventory=inventoryStats();
-  const pendingQuotes=(db.quotes||[]).filter(q=>!q.convertedSaleId);
-  const week=dashboardPeriodStats(0,7), prevWeek=dashboardPeriodStats(7,7);
-  const month=dashboardMonthStats(0), prevMonth=dashboardMonthStats(1);
 
-  const set=(id,value)=>{const el=document.getElementById(id);if(el)el.textContent=value;};
-  set("todaySalesTotal",money(todayTotal));
-  set("todaySalesCount",`${todaySales.length} venta${todaySales.length===1?"":"s"} hoy`);
-  set("todayReceived",money(cashToday.received));
-  set("dashboardReceivable",money(receivable));
-  set("todayExpenses",money(cashToday.expenses));
-  set("dashboardInventoryValue",money(inventory.costValue));
-  set("dashboardInventorySaleValue",money(inventory.saleValue));
-  set("dashboardUnits",inventory.units);
-  set("lowStock",inventory.lowStock);
-  set("dashboardZeroStock",inventory.zeroStock);
-  set("customerCount",customers.length);
-  set("pendingQuotesCount",pendingQuotes.length);
-  set("dashboardDate",today.toLocaleDateString("es-CO",{weekday:"long",day:"numeric",month:"long"}));
-  set("dashboardWeekTotal",money(week.total));
-  set("dashboardWeekTotalCopy",money(week.total));
-  set("dashboardMonthTotal",money(month.total));
-  set("dashboardWeekCount",`${week.rows.length} venta${week.rows.length===1?"":"s"}`);
-  set("dashboardMonthCount",`${month.rows.length} venta${month.rows.length===1?"":"s"}`);
-  set("dashboardNetToday",money(cashToday.received-cashToday.expenses));
+  const productCount =
+    document.getElementById(
+      "productCount"
+    );
 
-  dashboardRenderComparison("todaySalesChange",todayTotal,yesterdayTotal);
-  dashboardRenderComparison("weekSalesChange",week.total,prevWeek.total);
-  dashboardRenderComparison("monthSalesChange",month.total,prevMonth.total);
 
-  const days=dashboardRecentDays();
-  const dayRows=days.map(day=>{
-    const key=dashboardDateKey(day);
-    const rows=sales.filter(s=>{const d=parseLocalDate(s.date||s.createdAt);return d&&dashboardDateKey(d)===key;});
-    return {date:day,total:rows.reduce((sum,s)=>sum+(+s.total||0),0),count:rows.length};
-  });
-  const maxDay=Math.max(1,...dayRows.map(r=>r.total));
-  const chart=document.getElementById("dashboardSalesChart");
-  if(chart) chart.innerHTML=dayRows.map(r=>`<div class="dashboard-bar-item"><span class="dashboard-bar-value">${r.total?money(r.total):"$0"}</span><div class="dashboard-bar-track"><i style="height:${Math.max(3,Math.round((r.total/maxDay)*100))}%"></i></div><small>${esc(dashboardDayLabel(r.date))}</small></div>`).join("");
+  const customerCount =
+    document.getElementById(
+      "customerCount"
+    );
 
-  const ranking=dashboardProductRanking(), maxProduct=Math.max(1,...ranking.map(r=>r[1]));
-  const pchart=document.getElementById("dashboardProductChart");
-  if(pchart) pchart.innerHTML=ranking.length?ranking.map((r,i)=>`<div class="dashboard-hbar-item"><div class="dashboard-hbar-head"><span>${i+1}. ${esc(r[0])}</span><strong>${r[1]} und.</strong></div><div class="dashboard-hbar-track"><i style="width:${Math.max(3,Math.round((r[1]/maxProduct)*100))}%"></i></div></div>`).join(""):"<div class=\"empty\">Aún no hay ventas para analizar.</div>";
 
-  const pay=document.getElementById("dashboardPayments");
-  if(pay){
-    const rows=dashboardPaymentRanking(cashToday.entries), max=Math.max(1,...rows.map(r=>r[1]));
-    pay.innerHTML=rows.length?rows.slice(0,5).map(r=>`<div class="dashboard-pay-row"><div><span>${esc(r[0])}</span><strong>${money(r[1])}</strong></div><div class="dashboard-hbar-track"><i style="width:${Math.max(3,Math.round(r[1]/max*100))}%"></i></div></div>`).join(""):"<div class=\"empty\">Sin ingresos registrados hoy.</div>";
+  const lowStock =
+    document.getElementById(
+      "lowStock"
+    );
+
+
+  const cashBalance =
+    document.getElementById(
+      "cashBalance"
+    );
+
+
+  const recentSales =
+    document.getElementById(
+      "recentSales"
+    );
+
+
+  if(salesTotal){
+
+    salesTotal.textContent =
+      money(total);
+
   }
 
-  const customersBox=document.getElementById("dashboardCustomers");
-  if(customersBox){
-    const rows=dashboardCustomerRanking();
-    customersBox.innerHTML=rows.length?rows.map((r,i)=>`<div class="dashboard-mini-row"><span><b>${i+1}.</b> ${esc(r[0])}</span><strong>${money(r[1])}</strong></div>`).join(""):"<div class=\"empty\">Aún no hay compras registradas.</div>";
+
+  if(salesCount){
+
+    salesCount.textContent =
+      `${db.sales.length} transacciones en total`;
+
   }
 
-  const inventoryBox=document.getElementById("dashboardInventoryAlerts");
-  if(inventoryBox){
-    const low=products.filter(p=>Math.max(0,+p.stock||0)<=Math.max(0,+p.min||0)).sort((a,b)=>(+a.stock||0)-(+b.stock||0)).slice(0,5);
-    inventoryBox.innerHTML=low.length?low.map(p=>`<div class="dashboard-mini-row"><span>🐠 ${esc(p.name||p.product||"Producto")}</span><strong>${Math.max(0,+p.stock||0)} und.</strong></div>`).join(""):"<div class=\"empty\">No hay productos en alerta.</div>";
+  if(todaySalesTotal){
+    todaySalesTotal.textContent = money(todayTotal);
   }
 
-  const recent=document.getElementById("recentSales");
-  if(recent) recent.innerHTML=sales.length?sales.slice(-6).reverse().map(sale=>`<div class="item"><div><b>${esc(saleLabel(sale))}</b><div class="muted">${esc(sale.client||"Sin cliente")} · ${saleQty(sale)} und. · ${esc(sale.pay||"")}</div></div><div class="right"><strong>${money(sale.total)}</strong><small>${sale.status==="Pendiente"?"Pendiente de pago":sale.status==="Abono"?"Abono: "+money(salePaid(sale)):"Pagada"}</small></div></div>`).join(""):"<div class=\"empty\">Todavía no hay ventas.</div>";
-
-  const insights=document.getElementById("dashboardInsights");
-  if(insights){
-    const alerts=[];
-    if(inventory.zeroStock>0) alerts.push(`<div class="dashboard-insight alert"><span>🚨</span><div><b>${inventory.zeroStock} producto${inventory.zeroStock===1?"":"s"} sin stock</b><p>Revisa Inventario para programar reposición.</p></div></div>`);
-    else if(inventory.lowStock>0) alerts.push(`<div class="dashboard-insight warn"><span>⚠️</span><div><b>${inventory.lowStock} producto${inventory.lowStock===1?"":"s"} con stock bajo</b><p>Conviene revisar las existencias próximamente.</p></div></div>`);
-    if(receivable>0) alerts.push(`<div class="dashboard-insight"><span>🧾</span><div><b>${money(receivable)} pendientes por cobrar</b><p>Hay saldos abiertos en clientes o ventas.</p></div></div>`);
-    if(pendingQuotes.length>0) alerts.push(`<div class="dashboard-insight"><span>📝</span><div><b>${pendingQuotes.length} cotización${pendingQuotes.length===1?"":"es"} pendiente${pendingQuotes.length===1?"":"s"}</b><p>Revisa si alguna puede convertirse en venta.</p></div></div>`);
-    if(todayTotal>yesterdayTotal && yesterdayTotal>0) alerts.push(`<div class="dashboard-insight good"><span>📈</span><div><b>Las ventas de hoy superan las de ayer</b><p>${money(todayTotal-yesterdayTotal)} más acumulados hasta ahora.</p></div></div>`);
-    if(!alerts.length) alerts.push(`<div class="dashboard-insight good"><span>✅</span><div><b>Todo en orden</b><p>No hay alertas importantes en los indicadores actuales.</p></div></div>`);
-    insights.innerHTML=alerts.join("");
+  if(todaySalesCount){
+    todaySalesCount.textContent = `${todaySales.length} venta${todaySales.length === 1 ? "" : "s"} hoy`;
   }
+
+  if(pendingQuotesCount){
+    pendingQuotesCount.textContent = pendingQuotes.length;
+  }
+
+
+  if(productCount){
+
+    productCount.textContent =
+      db.products.length;
+
+  }
+
+
+  if(customerCount){
+
+    customerCount.textContent =
+      db.customers.length;
+
+  }
+
+
+  if(lowStock){
+
+    lowStock.textContent =
+      db.products.filter(
+        p =>
+          (+p.stock || 0) <=
+          (+p.min || 0)
+      ).length;
+
+  }
+
+
+  if(cashBalance){
+
+    const totalCash =
+      calculateCashTotals(
+        "all"
+      );
+
+
+    cashBalance.textContent =
+      money(
+        totalCash.balance
+      );
+
+  }
+
+
+  if(!recentSales){
+
+    return;
+
+  }
+
+
+  recentSales.innerHTML =
+    db.sales.length
+
+      ? db.sales
+          .slice(-6)
+          .reverse()
+          .map(
+            sale => `
+
+              <div class="item">
+
+                <div>
+
+                  <b>
+                    ${esc(
+                      saleLabel(sale)
+                    )}
+                  </b>
+
+                  <div class="muted">
+
+                    ${esc(
+                      sale.client ||
+                      "Sin cliente"
+                    )}
+
+                    ·
+
+                    ${saleQty(sale)}
+                    und.
+
+                    ·
+
+                    ${esc(
+                      sale.pay || ""
+                    )}
+
+                  </div>
+
+                </div>
+
+                <div class="right">
+
+                  <strong>
+                    ${money(
+                      sale.total
+                    )}
+                  </strong>
+
+                  <small>
+
+                    ${
+                      sale.status ===
+                      "Pendiente"
+
+                        ? "Pendiente de pago"
+
+                        : sale.status ===
+                          "Abono"
+
+                        ? "Abono: " +
+                          money(
+                            salePaid(
+                              sale
+                            )
+                          )
+
+                        : "Pagada"
+                    }
+
+                  </small>
+
+                </div>
+
+              </div>
+
+            `
+          )
+          .join("")
+
+      : `
+
+        <div class="empty">
+          Todavía no hay ventas.
+        </div>
+
+      `;
+
 }
 
 
@@ -2129,6 +1947,14 @@ function renderSales() {
                               onclick="openReceipt(${db.sales.indexOf(sale)})"
                             >
                               🧾 Comprobante
+                            </button>
+
+                            <button
+                              type="button"
+                              style="margin-top:6px;"
+                              onclick="deleteSale(${db.sales.indexOf(sale)})"
+                            >
+                              🗑️ Eliminar venta
                             </button>
 
                           </div>
@@ -3362,8 +3188,7 @@ let quotePhone = "";
 let quoteNote = "";
 let quoteDiscount = 0;
 let quoteEditingId = null;
-let quoteHistorySearch = "";
-let quoteHistoryStatus = "Todas";
+let quoteCustomerIndex = null;
 
 function setupCotizadorUI(){
   const main = document.querySelector("main");
@@ -3437,6 +3262,8 @@ function duplicateQuote(quoteId){
   quoteEditingId=null;
   quoteCustomer=String(q.customer||"");
   quotePhone=String(q.phone||"");
+  quoteCustomerIndex = Number.isInteger(q.customerIndex) ? q.customerIndex : db.customers.findIndex(c => String(c?.name || "").trim().toLowerCase() === quoteCustomer.trim().toLowerCase());
+  if(quoteCustomerIndex < 0) quoteCustomerIndex = null;
   quoteNote=String(q.note||"");
   quoteDiscount=Number(q.discount||0);
   quoteItems=(Array.isArray(q.items)?q.items:[]).map((item,i)=>({
@@ -3537,6 +3364,7 @@ function clearQuote(){
     quoteNote = "";
     quoteDiscount = 0;
     quoteEditingId = null;
+    quoteCustomerIndex = null;
     renderCotizador();
   }
 }
@@ -3660,6 +3488,8 @@ function editQuote(quoteId){
   quoteEditingId=q.id;
   quoteCustomer=String(q.customer || "");
   quotePhone=String(q.phone || "");
+  quoteCustomerIndex = Number.isInteger(q.customerIndex) ? q.customerIndex : db.customers.findIndex(c => String(c?.name || "").trim().toLowerCase() === quoteCustomer.trim().toLowerCase());
+  if(quoteCustomerIndex < 0) quoteCustomerIndex = null;
   quoteNote=String(q.note || "");
   quoteDiscount=Number(q.discount || 0);
 
@@ -3748,15 +3578,6 @@ function viewQuote(quoteId){
     `,
     null
   );
-}
-
-function renderQuotesList(){
-  // La lista de cotizaciones se renderiza dentro del cotizador.
-  // Esta función evita errores cuando eliminar/convertir una cotización
-  // intenta actualizar una función que no existía en versiones anteriores.
-  if(typeof renderCotizador === "function"){
-    try{ renderCotizador(); }catch(e){ console.error(e); }
-  }
 }
 
 function deleteQuote(quoteId){
@@ -3870,6 +3691,7 @@ function saveQuote(){
     quote.updatedAt = now();
     quote.customer = String(quoteCustomer || "").trim();
     quote.phone = String(quotePhone || "").trim();
+    quote.customerIndex = Number.isInteger(quoteCustomerIndex) ? quoteCustomerIndex : null;
     quote.note = String(quoteNote || "").trim();
     quote.discount = discount;
     quote.subtotal = subtotal;
@@ -3920,39 +3742,21 @@ function renderCotizador(){
       if(quoteCategory !== "Todas" && category !== quoteCategory){
         return false;
       }
+
       if(!q){
         return true;
       }
-      return `${product.name || ""} ${category}`.toLowerCase().includes(q);
+
+      return `${product.name || ""} ${category}`
+        .toLowerCase()
+        .includes(q);
     })
-    .sort((a,b) => String(a.product.name || "").localeCompare(String(b.product.name || ""), "es"));
-
-  const allQuotes = Array.isArray(db.quotes) ? db.quotes.slice() : [];
-  const historyQuery = quoteHistorySearch.trim().toLowerCase();
-  const history = allQuotes
-    .filter(quote => {
-      const status = quoteStatusLabel(quote);
-      if(quoteHistoryStatus !== "Todas" && status !== quoteHistoryStatus){
-        return false;
-      }
-      if(!historyQuery){
-        return true;
-      }
-      const haystack = `${quote.id || ""} ${quote.customer || ""} ${quote.phone || ""} ${quote.note || ""}`.toLowerCase();
-      return haystack.includes(historyQuery);
-    })
-    .sort((a,b) => {
-      const da = parseLocalDate(a.updatedAt || a.createdAt || a.date);
-      const dbb = parseLocalDate(b.updatedAt || b.createdAt || b.date);
-      return (dbb ? dbb.getTime() : 0) - (da ? da.getTime() : 0);
-    });
-
-  const pendingCount = allQuotes.filter(q => !q.convertedSaleId && String(q.status || "Pendiente") !== "Rechazada").length;
-  const convertedCount = allQuotes.filter(q => !!q.convertedSaleId).length;
-  const rejectedCount = allQuotes.filter(q => String(q.status || "") === "Rechazada").length;
-  const quotedValue = allQuotes.reduce((sum,q) => sum + (Number(q.total) || 0), 0);
-
-  const statusOptions = ["Todas", "Pendiente", "Lista para venta", "Convertida en venta", "Rechazada"];
+    .sort((a,b) =>
+      String(a.product.name || "").localeCompare(
+        String(b.product.name || ""),
+        "es"
+      )
+    );
 
   section.innerHTML = `
     <div class="section-head">
@@ -3962,28 +3766,99 @@ function renderCotizador(){
 
     <div class="panel">
       <h2>Cliente</h2>
+
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
-        <input id="quoteCustomer" class="search" placeholder="Nombre del cliente" value="${esc(quoteCustomer)}">
-        <input id="quotePhone" class="search" type="tel" placeholder="WhatsApp / teléfono" value="${esc(quotePhone)}">
+        <select id="quoteCustomerSelect" class="search">
+          <option value="">Cliente general</option>
+          ${db.customers
+            .map((customer, index) => ({
+              customer,
+              index
+            }))
+            .filter(({customer}) => customer && String(customer.name || "").trim())
+            .sort((a,b) =>
+              String(a.customer.name || "").localeCompare(
+                String(b.customer.name || ""),
+                "es"
+              )
+            )
+            .map(({customer,index}) => `
+              <option
+                value="${index}"
+                ${index === quoteCustomerIndex || (quoteCustomerIndex === null && String(customer.name || "").trim() === String(quoteCustomer || "").trim()) ? "selected" : ""}
+              >
+                ${esc(customer.name)}${customer.phone ? ` — ${esc(customer.phone)}` : ""}
+              </option>
+            `).join("")}
+          <option value="__manual__" ${quoteCustomerIndex === null && quoteCustomer && !db.customers.some(c => String(c?.name || "").trim() === String(quoteCustomer || "").trim()) ? "selected" : ""}>
+            ✏️ Escribir otro cliente
+          </option>
+        </select>
+
+        <input
+          id="quotePhone"
+          class="search"
+          type="tel"
+          placeholder="WhatsApp / teléfono"
+          value="${esc(quotePhone)}"
+        >
       </div>
+
+      <div style="margin-top:8px;">
+        <input
+          id="quoteCustomer"
+          class="search"
+          placeholder="Nombre del cliente"
+          value="${esc(quoteCustomer)}"
+          ${quoteCustomer && db.customers.some(c => String(c?.name || "").trim() === String(quoteCustomer || "").trim()) ? 'style="display:none;"' : ""}
+        >
+      </div>
+
+      <p class="muted" style="margin:8px 0 0;">
+        ${db.customers.length
+          ? "Selecciona un cliente registrado y sus datos se cargarán automáticamente."
+          : "No hay clientes registrados todavía. Puedes escribir el nombre manualmente."}
+      </p>
     </div>
 
     <div class="panel">
       <h2>Agregar productos</h2>
-      <p class="muted">Selecciona varios productos. El cotizador usa el precio de venta del inventario y no modifica el stock.</p>
+      <p class="muted">
+        Selecciona varios productos. El cotizador usa el precio de venta del inventario y no modifica el stock.
+      </p>
+
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:10px 0;">
-        <input id="quoteSearch" class="search" placeholder="🔎 Buscar producto..." value="${esc(quoteSearch)}">
+        <input
+          id="quoteSearch"
+          class="search"
+          placeholder="🔎 Buscar producto..."
+          value="${esc(quoteSearch)}"
+        >
         <select id="quoteCategory" class="search">
-          ${categories.map(category => `<option value="${esc(category)}" ${category === quoteCategory ? "selected" : ""}>${esc(category)}</option>`).join("")}
+          ${categories.map(category => `
+            <option value="${esc(category)}" ${category === quoteCategory ? "selected" : ""}>
+              ${esc(category)}
+            </option>
+          `).join("")}
         </select>
       </div>
+
       <div class="list" style="max-height:360px;overflow:auto;">
         ${products.length ? products.map(({product,index}) => `
           <div class="item" style="align-items:center;gap:8px;">
-            <div style="flex:1;min-width:0;"><b>${esc(product.name || "Producto")}</b><div class="muted">${esc(product.category || "Sin categoría")} · ${money(product.price)}</div></div>
-            <button type="button" class="primary" onclick="addQuoteItem(${index})">+ Agregar</button>
+            <div style="flex:1;min-width:0;">
+              <b>${esc(product.name || "Producto")}</b>
+              <div class="muted">
+                ${esc(product.category || "Sin categoría")} · ${money(product.price)}
+              </div>
+            </div>
+            <button type="button" class="primary" onclick="addQuoteItem(${index})">
+              + Agregar
+            </button>
           </div>
-        `).join("") : `<div class="empty">No hay productos que coincidan.</div>`}
+        `).join("") : `
+          <div class="empty">No hay productos que coincidan.</div>
+        `}
       </div>
     </div>
 
@@ -3996,97 +3871,192 @@ function renderCotizador(){
             <div style="flex:1;min-width:0;">
               <b>${esc(item.name)}</b>
               <div style="display:grid;grid-template-columns:90px 1fr;gap:8px;margin-top:6px;">
-                <input class="search" type="number" min="1" step="1" value="${+item.qty || 1}" aria-label="Cantidad" onchange="updateQuoteItem('${esc(item.key)}','qty',this.value)">
-                <input class="search" type="number" min="0" step="1" value="${+item.unitPrice || 0}" aria-label="Precio unitario" onchange="updateQuoteItem('${esc(item.key)}','unitPrice',this.value)">
+                <input
+                  class="search"
+                  type="number"
+                  min="1"
+                  step="1"
+                  value="${+item.qty || 1}"
+                  aria-label="Cantidad"
+                  onchange="updateQuoteItem('${esc(item.key)}','qty',this.value)"
+                >
+                <input
+                  class="search"
+                  type="number"
+                  min="0"
+                  step="1"
+                  value="${+item.unitPrice || 0}"
+                  aria-label="Precio unitario"
+                  onchange="updateQuoteItem('${esc(item.key)}','unitPrice',this.value)"
+                >
               </div>
-              <div class="muted" style="margin-top:5px;">${Number(item.qty) || 1} unidad(es) · Subtotal ${money(subtotal)}</div>
+              <div class="muted" style="margin-top:5px;">
+                ${Number(item.qty) || 1} unidad(es) · Subtotal ${money(subtotal)}
+              </div>
             </div>
             <button type="button" onclick="removeQuoteItem('${esc(item.key)}')">🗑️</button>
-          </div>`;
-      }).join("") : `<div class="empty">Agrega productos para comenzar.</div>`}
+          </div>
+        `;
+      }).join("") : `
+        <div class="empty">Agrega productos para comenzar.</div>
+      `}
 
       <div style="margin-top:12px;padding-top:12px;border-top:1px solid rgba(0,0,0,.08);">
-        <label>Nota para el cliente<textarea id="quoteNote" rows="3" placeholder="Ej. Instalación, domicilio, disponibilidad, etc.">${esc(quoteNote)}</textarea></label>
+        <label>
+          Nota para el cliente
+          <textarea
+            id="quoteNote"
+            rows="3"
+            placeholder="Ej. Instalación, domicilio, disponibilidad, etc."
+          >${esc(quoteNote)}</textarea>
+        </label>
       </div>
 
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px;">
-        <label>Descuento<input id="quoteDiscount" class="search" type="number" min="0" step="1" placeholder="0" value="${quoteDiscount || 0}"></label>
-        <div style="background:#f5f8f9;border-radius:14px;padding:12px;margin-bottom:10px;"><div class="muted">Subtotal</div><strong>${money(quoteSubtotal())}</strong><div class="muted" style="margin-top:5px;">Descuento</div><strong>-${money(quoteDiscountAmount())}</strong></div>
+        <label>Descuento
+          <input id="quoteDiscount" class="search" type="number" min="0" step="1" placeholder="0" value="${quoteDiscount || 0}">
+        </label>
+        <div style="background:#f5f8f9;border-radius:14px;padding:12px;margin-bottom:10px;">
+          <div class="muted">Subtotal</div><strong>${money(quoteSubtotal())}</strong>
+          <div class="muted" style="margin-top:5px;">Descuento</div><strong>-${money(quoteDiscountAmount())}</strong>
+        </div>
       </div>
 
-      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:4px;padding-top:12px;border-top:1px solid rgba(0,0,0,.08);"><span><b>Total</b></span><strong style="font-size:1.35rem;">${money(quoteTotal())}</strong></div>
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:4px;padding-top:12px;border-top:1px solid rgba(0,0,0,.08);">
+        <span><b>Total</b></span>
+        <strong style="font-size:1.35rem;">${money(quoteTotal())}</strong>
+      </div>
 
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px;">
-        <button type="button" class="primary" onclick="saveQuote()">${quoteEditingId ? "💾 Guardar cambios" : "💾 Guardar cotización"}</button>
+        <button type="button" class="primary" onclick="saveQuote()">
+          ${quoteEditingId ? "💾 Guardar cambios" : "💾 Guardar cotización"}
+        </button>
         <button type="button" onclick="copyQuote()">📋 Copiar</button>
         <button type="button" class="primary" onclick="shareQuoteWhatsApp()">📲 WhatsApp</button>
       </div>
-      <p class="muted" style="margin-top:10px;">El cotizador muestra precios de venta. La ganancia nunca se muestra al cliente.</p>
+
+      <p class="muted" style="margin-top:10px;">
+        El cotizador muestra precios de venta. La ganancia nunca se muestra al cliente.
+      </p>
     </div>
 
     <div class="panel" style="margin-top:12px;">
       <div class="section-head" style="margin-bottom:8px;">
-        <div><h2>📋 Historial de cotizaciones</h2><p class="muted">Busca, revisa y recupera cotizaciones anteriores.</p></div>
-        <span class="muted">${allQuotes.length} total</span>
+        <h2>📋 Cotizaciones guardadas</h2>
+        <span class="muted">${Array.isArray(db.quotes) ? db.quotes.length : 0} guardadas</span>
       </div>
-
-      <div style="display:grid;grid-template-columns:1.5fr 1fr;gap:8px;margin:10px 0;">
-        <input id="quoteHistorySearch" class="search" placeholder="🔎 Buscar por N.º, cliente, teléfono o nota..." value="${esc(quoteHistorySearch)}">
-        <select id="quoteHistoryStatus" class="search">
-          ${statusOptions.map(status => `<option value="${esc(status)}" ${status === quoteHistoryStatus ? "selected" : ""}>${esc(status)}</option>`).join("")}
-        </select>
-      </div>
-
-      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:10px 0 14px;">
-        <div style="background:#f5f8f9;border-radius:14px;padding:10px;"><div class="muted">Pendientes</div><strong>${pendingCount}</strong></div>
-        <div style="background:#f5f8f9;border-radius:14px;padding:10px;"><div class="muted">Convertidas</div><strong>${convertedCount}</strong></div>
-        <div style="background:#f5f8f9;border-radius:14px;padding:10px;"><div class="muted">Rechazadas</div><strong>${rejectedCount}</strong></div>
-        <div style="background:#f5f8f9;border-radius:14px;padding:10px;"><div class="muted">Valor cotizado</div><strong>${money(quotedValue)}</strong></div>
-      </div>
-
       <div id="quotesList">
-        ${history.length ? history.map(q => {
-          const id = q.id || "";
-          const customer = q.customer || "Cliente general";
-          const dateObj = parseLocalDate(q.updatedAt || q.createdAt || q.date);
-          const dateText = dateObj ? dateObj.toLocaleDateString("es-CO") : "";
-          const total = Number(q.total || 0);
-          const converted = !!q.convertedSaleId;
-          const status = quoteStatusLabel(q);
-          const statusClass = converted ? "badge" : (status === "Rechazada" ? "badge" : "badge");
-          return `
-            <div class="quote-row" style="padding:12px 0;border-bottom:1px solid rgba(0,0,0,.08);">
-              <div style="display:grid;grid-template-columns:1.1fr .9fr .8fr 1.2fr;gap:8px;align-items:center;">
-                <div><b>${esc(id)}</b><div class="muted">${esc(customer)}</div>${q.phone ? `<div class="muted">📱 ${esc(q.phone)}</div>` : ""}</div>
-                <div class="muted">${esc(dateText)}</div>
-                <div><b>${money(total)}</b><div style="margin-top:4px"><span class="${statusClass}">${esc(status)}</span></div></div>
-                <div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end;">
-                  <button type="button" onclick="viewQuote('${esc(id)}')">👁️ Ver</button>
-                  <button type="button" onclick="duplicateQuote('${esc(id)}')">📑 Duplicar</button>
-                  <button type="button" onclick="shareSavedQuoteWhatsApp('${esc(id)}')">📲 WhatsApp</button>
-                  <button type="button" onclick="printQuote('${esc(id)}')">🖨️ Imprimir</button>
-                  ${converted
-                    ? `<span class="badge">Venta ${esc(q.convertedSaleId)}</span>`
-                    : `<button type="button" onclick="editQuote('${esc(id)}')">✏️ Editar</button>
-                       <button type="button" class="primary" onclick="convertQuoteToSale('${esc(id)}')">➡️ Convertir en venta</button>
-                       <button type="button" onclick="markQuoteRejected('${esc(id)}')">🚫 Rechazar</button>
-                       <button type="button" onclick="deleteQuote('${esc(id)}')">🗑️</button>`}
-                </div>
-              </div>
-            </div>`;
-        }).join("") : `<div class="empty">No hay cotizaciones que coincidan con los filtros.</div>`}
+        ${
+          Array.isArray(db.quotes) && db.quotes.length
+            ? db.quotes.slice().reverse().map(q => {
+                const id = q.id || "";
+                const customer = q.customer || "Cliente general";
+                const dateObj = parseLocalDate(q.createdAt || q.date);
+                const dateText = dateObj ? dateObj.toLocaleDateString("es-CO") : "";
+                const total = Number(q.total || 0);
+                const converted = !!q.convertedSaleId;
+                return `
+                  <div class="quote-row" style="display:grid;grid-template-columns:1.2fr 1fr .9fr 1.1fr;gap:8px;align-items:center;padding:10px 0;border-bottom:1px solid rgba(0,0,0,.08);">
+                    <div><b>${esc(id)}</b><div class="muted">${esc(customer)}</div></div>
+                    <div class="muted">${esc(dateText)}</div>
+                    <div><b>${money(total)}</b></div>
+                    <div style="display:flex;gap:6px;flex-wrap:wrap;">
+                      <button type="button" onclick="viewQuote('${esc(id)}')">👁️ Ver</button>
+                      <button type="button" onclick="duplicateQuote('${esc(id)}')">📑 Duplicar</button>
+                      <button type="button" onclick="shareSavedQuoteWhatsApp('${esc(id)}')">📲 WhatsApp</button>
+                      <button type="button" onclick="printQuote('${esc(id)}')">🖨️ Imprimir</button>
+                      ${converted
+                        ? `<span class="badge">✅ Venta ${esc(q.convertedSaleId)}</span>`
+                        : `<button type="button" onclick="editQuote('${esc(id)}')">✏️ Editar</button>
+                           <button type="button" class="primary" onclick="convertQuoteToSale('${esc(id)}')">➡️ Convertir en venta</button>`}
+                      ${!converted ? `<button type="button" onclick="deleteQuote('${esc(id)}')">🗑️</button>` : ""}
+                    </div>
+                  </div>`;
+              }).join("")
+            : `<div class="empty">No hay cotizaciones guardadas todavía.</div>`
+        }
       </div>
     </div>
   `;
 
+  const customerSelect = document.getElementById("quoteCustomerSelect");
   const customer = document.getElementById("quoteCustomer");
-  if(customer) customer.oninput = function(){ quoteCustomer = this.value; };
   const phone = document.getElementById("quotePhone");
-  if(phone) phone.oninput = function(){ quotePhone = this.value; };
+
+  if(customerSelect){
+    customerSelect.onchange = function(){
+      const value = this.value;
+
+      if(value === "__manual__"){
+        quoteCustomer = "";
+        quoteCustomerIndex = null;
+        if(customer){
+          customer.style.display = "";
+          customer.focus();
+        }
+        if(phone){
+          phone.value = "";
+        }
+        quotePhone = "";
+        return;
+      }
+
+      if(value === ""){
+        quoteCustomer = "";
+        quoteCustomerIndex = null;
+        quotePhone = "";
+        if(customer){
+          customer.value = "";
+          customer.style.display = "none";
+        }
+        if(phone){
+          phone.value = "";
+        }
+        return;
+      }
+
+      const selectedIndex = Number(value);
+      const selectedCustomer = db.customers[selectedIndex];
+
+      if(selectedCustomer){
+        quoteCustomerIndex = selectedIndex;
+        quoteCustomer = String(selectedCustomer.name || "").trim();
+        quotePhone = String(selectedCustomer.phone || "").trim();
+
+        if(customer){
+          customer.value = quoteCustomer;
+          customer.style.display = "none";
+        }
+
+        if(phone){
+          phone.value = quotePhone;
+        }
+      }
+    };
+  }
+
+  if(customer){
+    customer.oninput = function(){
+      quoteCustomer = this.value;
+      quoteCustomerIndex = null;
+    };
+  }
+
+  if(phone){
+    phone.oninput = function(){
+      quotePhone = this.value;
+    };
+  }
+
   const note = document.getElementById("quoteNote");
-  if(note) note.oninput = function(){ quoteNote = this.value; };
+  if(note){
+    note.oninput = function(){ quoteNote = this.value; };
+  }
+
   const discount = document.getElementById("quoteDiscount");
-  if(discount) discount.oninput = function(){ quoteDiscount = Math.max(0, Number(this.value) || 0); renderCotizador(); };
+  if(discount){
+    discount.oninput = function(){ quoteDiscount = Math.max(0, Number(this.value) || 0); renderCotizador(); };
+  }
 
   const search = document.getElementById("quoteSearch");
   if(search){
@@ -4095,35 +4065,20 @@ function renderCotizador(){
       const cursor = this.value.length;
       renderCotizador();
       const next = document.getElementById("quoteSearch");
-      if(next){ next.focus(); try{ next.setSelectionRange(cursor,cursor); }catch(_){} }
+      if(next){
+        next.focus();
+        try{ next.setSelectionRange(cursor,cursor); }catch(_){ }
+      }
     };
   }
+
   const category = document.getElementById("quoteCategory");
-  if(category) category.onchange = function(){ quoteCategory = this.value; renderCotizador(); };
-
-  const historySearch = document.getElementById("quoteHistorySearch");
-  if(historySearch){
-    historySearch.oninput = function(){
-      quoteHistorySearch = this.value;
-      const cursor = this.value.length;
+  if(category){
+    category.onchange = function(){
+      quoteCategory = this.value;
       renderCotizador();
-      const next = document.getElementById("quoteHistorySearch");
-      if(next){ next.focus(); try{ next.setSelectionRange(cursor,cursor); }catch(_){} }
     };
   }
-  const historyStatus = document.getElementById("quoteHistoryStatus");
-  if(historyStatus) historyStatus.onchange = function(){ quoteHistoryStatus = this.value; renderCotizador(); };
-}
-
-function markQuoteRejected(quoteId){
-  const q=findQuoteById(quoteId);
-  if(!q){ alert("No se encontró la cotización."); return; }
-  if(q.convertedSaleId){ alert("Esta cotización ya fue convertida en una venta."); return; }
-  if(!confirm(`¿Marcar ${quoteId} como rechazada?`)) return;
-  q.status="Rechazada";
-  q.updatedAt=now();
-  save();
-  renderQuotesList();
 }
 
 /* =========================================================
@@ -5829,7 +5784,8 @@ function openSale(quotePayload = null) {
             qty: item.qty,
             reason: "Venta",
             responsible: "Sistema",
-            source: "Venta"
+            source: "Venta",
+            saleId: newSale.id
           });
         }
       );
@@ -5888,6 +5844,108 @@ function openSale(quotePayload = null) {
 
 }
 
+
+/* =========================================================
+   ELIMINAR VENTA
+   ========================================================= */
+
+function deleteSale(index){
+
+  const sale = db.sales[index];
+
+  if(!sale){
+    return;
+  }
+
+  const saleNumber = sale.id || "esta venta";
+
+  if(!confirm(
+    `¿Eliminar la venta ${saleNumber}?\\n\\n` +
+    `Se quitará de los reportes y se devolverán al inventario ` +
+    `las cantidades vendidas.\\n\\n` +
+    `Esta acción no se puede deshacer.`
+  )){
+    return;
+  }
+
+  // Devolver al inventario las cantidades de esta venta.
+  if(Array.isArray(sale.items)){
+
+    sale.items.forEach(item => {
+
+      const productIndex =
+        Number.isInteger(+item.productIndex)
+          ? +item.productIndex
+          : -1;
+
+      const product =
+        db.products[productIndex];
+
+      if(product){
+        product.stock =
+          (+product.stock || 0) +
+          (+item.qty || 0);
+      }
+
+    });
+
+  }else if(
+    sale.product &&
+    sale.qty
+  ){
+
+    // Compatibilidad con ventas antiguas de un solo producto.
+    const product =
+      db.products.find(
+        p => String(p.name || "").trim() ===
+             String(sale.product || "").trim()
+      );
+
+    if(product){
+      product.stock =
+        (+product.stock || 0) +
+        (+sale.qty || 0);
+    }
+
+  }
+
+  // Eliminar los movimientos de inventario generados por esta venta.
+  // Las ventas nuevas llevan saleId. Para ventas antiguas sin saleId,
+  // dejamos los movimientos intactos para no borrar movimientos de otra venta.
+  if(sale.id){
+
+    db.moves =
+      db.moves.filter(
+        move => move.saleId !== sale.id
+      );
+
+  }
+
+  // Si la venta provino de una cotización, la devolvemos a estado pendiente
+  // para que no quede marcada como convertida después de borrar la venta.
+  if(sale.fromQuoteId){
+
+    const quote =
+      findQuoteById(sale.fromQuoteId);
+
+    if(quote){
+
+      quote.convertedSaleId = null;
+      quote.status = "Guardada";
+
+      delete quote.convertedAt;
+
+    }
+
+  }
+
+  db.sales.splice(index,1);
+
+  save();
+
+  closeModal();
+
+}
 
 /* =========================================================
    CLIENTES
@@ -7312,48 +7370,6 @@ function getCashEntries(
    Calcula totales de caja.
 */
 
-function getCashMethodTotals(entries){
-  const methods = { Efectivo:0, Nequi:0, Transferencia:0, Daviplata:0, Tarjeta:0, Otro:0 };
-  entries.forEach(entry => {
-    const amount = Math.abs(+entry.amount || 0);
-    const method = normalizePaymentMethod(entry.method);
-    methods[method] = (methods[method] || 0) + (entry.type === "Gasto" ? -amount : amount);
-  });
-  return methods;
-}
-
-function getCashPeriodLabel(period){
-  return ({today:"Hoy", "7days":"Últimos 7 días", month:"Este mes", all:"Todo"})[period] || "Periodo";
-}
-
-function getLatestCashClosing(){
-  return [...db.cashClosings].sort((a,b) => (parseLocalDate(b.date)?.getTime() || 0) - (parseLocalDate(a.date)?.getTime() || 0))[0] || null;
-}
-
-function openCashClosing(){
-  const totals = calculateCashTotals(cashPeriod);
-  const expected = Math.max(0, totals.methods.Efectivo || 0);
-  modal("Cierre de caja", `
-    <div class="cash-close-box">
-      <div><span>Efectivo registrado</span><b>${money(expected)}</b></div>
-      <div><span>Periodo</span><b>${esc(getCashPeriodLabel(cashPeriod))}</b></div>
-    </div>
-    <p class="muted">Cuenta físicamente el efectivo y escribe el valor. El sistema calculará la diferencia.</p>
-    <label>Efectivo contado<input name="actual" type="number" min="0" step="1" required value="${expected}"></label>
-    <label>Observación<textarea name="note" rows="3" placeholder="Ej. cierre normal, faltante, sobrante..."></textarea></label>
-    <div style="display:flex;gap:8px;margin-top:14px;flex-wrap:wrap;">
-      <button class="primary" type="submit">🔒 Guardar cierre</button>
-      <button type="button" onclick="closeModal()">Cancelar</button>
-    </div>`, event => {
-      event.preventDefault();
-      const form = event.target;
-      const actual = Math.max(0, +form.actual.value || 0);
-      db.cashClosings.push({ id: Date.now()+"-"+Math.random().toString(36).slice(2), date: now(), period: getCashPeriodLabel(cashPeriod), expected, actual, difference: actual-expected, note: form.note.value.trim() });
-      save();
-      closeModal();
-    });
-}
-
 function calculateCashTotals(
   period =
     cashPeriod
@@ -7370,7 +7386,21 @@ function calculateCashTotals(
   let expenses = 0;
 
 
-  const methods = getCashMethodTotals(entries);
+  const methods = {
+
+    Efectivo: 0,
+
+    Nequi: 0,
+
+    Transferencia: 0,
+
+    Daviplata: 0,
+
+    Tarjeta: 0,
+
+    Otro: 0
+
+  };
 
 
   entries.forEach(
@@ -7382,6 +7412,12 @@ function calculateCashTotals(
         );
 
 
+      const method =
+        normalizePaymentMethod(
+          entry.method
+        );
+
+
       if(
         entry.type ===
         "Gasto"
@@ -7390,9 +7426,18 @@ function calculateCashTotals(
         expenses +=
           amount;
 
+        methods[method] =
+          (methods[method] || 0) -
+          amount;
+
+
       }else{
 
         received +=
+          amount;
+
+        methods[method] =
+          (methods[method] || 0) +
           amount;
 
       }
@@ -7507,12 +7552,6 @@ function setCashPeriod(
 
 function renderCash(){
 
-  // Protección: Firebase/localStorage puede devolver cashClosings ausente
-  // o con un formato antiguo. Siempre trabajamos con un arreglo.
-  if(!Array.isArray(db.cashClosings)){
-    db.cashClosings = [];
-  }
-
   const summary =
     document.getElementById(
       "cashSummary"
@@ -7608,13 +7647,6 @@ function renderCash(){
         dinero físico
       </small>
 
-    </div>
-
-
-    <div class="card">
-      <span>Digital</span>
-      <b>${money(totals.methods.Nequi + totals.methods.Transferencia + totals.methods.Daviplata + totals.methods.Tarjeta + totals.methods.Otro)}</b>
-      <small>pagos no físicos</small>
     </div>
 
 
@@ -7732,19 +7764,6 @@ function renderCash(){
     </div>
 
   `;
-
-
-  const closingHistory = document.getElementById("cashClosingHistory");
-  if(closingHistory){
-    const closings = [...db.cashClosings].sort((a,b) => (parseLocalDate(b.date)?.getTime() || 0) - (parseLocalDate(a.date)?.getTime() || 0)).slice(0,5);
-    closingHistory.innerHTML = closings.length ? `<div class="cash-closing-list">${closings.map(close => `
-      <div class="cash-closing-row">
-        <div><b>${esc(close.period || "Cierre")}</b><small>${esc(close.date || "")}</small></div>
-        <div><span>Esperado</span><b>${money(close.expected)}</b></div>
-        <div><span>Contado</span><b>${money(close.actual)}</b></div>
-        <div class="${(+close.difference || 0) === 0 ? "cash-ok" : "cash-diff"}"><span>Diferencia</span><b>${(+close.difference || 0) > 0 ? "+" : ""}${money(close.difference)}</b></div>
-      </div>`).join("")}</div>` : `<div class="muted">Todavía no hay cierres registrados.</div>`;
-  }
 
 
   if(!totals.entries.length){
@@ -8678,13 +8697,6 @@ function importData(input) {
               imported.cash
             )
               ? imported.cash
-              : [],
-
-          cashClosings:
-            Array.isArray(
-              imported.cashClosings
-            )
-              ? imported.cashClosings
               : []
 
         };
@@ -8823,6 +8835,9 @@ function exposeFunctions() {
   window.openSale =
     openSale;
 
+  window.deleteSale =
+    deleteSale;
+
 
   window.addSaleRow =
     addSaleRow;
@@ -8957,18 +8972,6 @@ function exposeFunctions() {
 
   window.setReportPeriod =
     setReportPeriod;
-
-  window.setReportCustomStart =
-    setReportCustomStart;
-
-  window.setReportCustomEnd =
-    setReportCustomEnd;
-
-  window.printReport =
-    printReport;
-
-  window.exportReportCSV =
-    exportReportCSV;
 
 
   window.printSaleReceipt =
