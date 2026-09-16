@@ -2152,19 +2152,10 @@ function formatReceiptDate(value) {
 
 function receiptNumber(index) {
 
-  const sale = db.sales[index];
-  const id = String(sale?.id || "").trim();
-
-  // El número se basa en el ID real de la venta para que no cambie
-  // cuando posteriormente se elimine otra venta.
-  const match = id.match(/(?:V-|VENTA-)?(\d+)/i);
-  if(match){
-    return String(Number(match[1]) || 0).padStart(5,"0");
-  }
-
   return String(
     Math.max(0, Number(index) || 0) + 1
   ).padStart(5,"0");
+
 }
 
 
@@ -3392,11 +3383,158 @@ function shareSavedQuoteWhatsApp(quoteId){
 function printQuote(quoteId){
   const q=findQuoteById(quoteId);
   if(!q){ alert("No se encontró la cotización."); return; }
-  const rows=(q.items||[]).map(item=>{ const qty=Math.max(1,Number(item.qty)||1); const price=Math.max(0,Number(item.unitPrice)||0); return `<tr><td>${esc(item.name||"Producto")}</td><td>${qty}</td><td>${money(price)}</td><td>${money(qty*price)}</td></tr>`; }).join("");
+
+  const rows=(q.items||[]).map((item,index)=>{
+    const qty=Math.max(1,Number(item.qty)||1);
+    const price=Math.max(0,Number(item.unitPrice)||0);
+    return `<tr>
+      <td class="num">${index+1}</td>
+      <td><strong>${esc(item.name||"Producto")}</strong></td>
+      <td class="right">${qty}</td>
+      <td class="right">${money(price)}</td>
+      <td class="right"><strong>${money(qty*price)}</strong></td>
+    </tr>`;
+  }).join("");
+
+  const created = q.createdAt ? new Date(q.createdAt) : null;
+  const dateText = created && !Number.isNaN(created.getTime())
+    ? created.toLocaleString("es-CO", {dateStyle:"long", timeStyle:"short"})
+    : "";
+  const subtotal = Number(q.subtotal || 0);
+  const discount = Number(q.discount || 0);
+  const total = Number(q.total || 0);
+
   const win=window.open("","_blank");
-  if(!win){ alert("El navegador bloqueó la ventana de impresión. Permite ventanas emergentes para esta app."); return; }
-  win.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${esc(q.id)}</title><style>body{font-family:Arial,sans-serif;padding:30px;color:#172024;max-width:800px;margin:auto}h1{margin-bottom:4px}table{width:100%;border-collapse:collapse;margin-top:20px}th,td{padding:9px;border-bottom:1px solid #ddd;text-align:left}th:nth-child(n+2),td:nth-child(n+2){text-align:right}.total{font-size:20px;font-weight:700;text-align:right;margin-top:18px}.muted{color:#68777b}</style></head><body><h1>🐠 AQUARIUM FISH</h1><div>COTIZACIÓN <strong>${esc(q.id)}</strong></div><p class="muted">${q.createdAt?esc(new Date(q.createdAt).toLocaleString("es-CO")):""}</p><p><strong>Cliente:</strong> ${esc(q.customer||"Cliente general")}<br>${q.phone?`<strong>Teléfono:</strong> ${esc(q.phone)}`:""}</p><table><thead><tr><th>Producto</th><th>Cant.</th><th>Precio</th><th>Importe</th></tr></thead><tbody>${rows}</tbody></table><p style="text-align:right">Subtotal: <strong>${money(Number(q.subtotal||0))}</strong><br>${Number(q.discount||0)>0?`Descuento: <strong>-${money(Number(q.discount||0))}</strong><br>`:""}<span class="total">TOTAL: ${money(Number(q.total||0))}</span></p>${q.note?`<p><strong>Nota:</strong><br>${esc(q.note)}</p>`:""}<p style="margin-top:30px;text-align:center" class="muted">Gracias por elegir Aquarium Fish 🐠</p><script>window.onload=()=>window.print()<\/script></body></html>`);
+  if(!win){
+    alert("El navegador bloqueó la ventana de impresión. Permite ventanas emergentes para esta app.");
+    return;
+  }
+
+  win.document.write(`<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Cotización ${esc(q.id)}</title>
+<style>
+  @page{size:A4;margin:14mm}
+  *{box-sizing:border-box}
+  body{font-family:Arial,Helvetica,sans-serif;color:#172024;background:#fff;margin:0;font-size:12px;line-height:1.45}
+  .page{max-width:790px;margin:0 auto}
+  .top{display:flex;justify-content:space-between;align-items:flex-start;gap:24px;padding-bottom:18px;border-bottom:3px solid #172024}
+  .brand{font-size:25px;font-weight:800;letter-spacing:.4px}
+  .subtitle{font-size:12px;color:#66757a;margin-top:3px}
+  .doc{text-align:right}
+  .doc-title{font-size:18px;font-weight:800;letter-spacing:.8px}
+  .doc-id{font-size:14px;font-weight:700;margin-top:2px}
+  .date{color:#66757a;margin-top:4px}
+  .client{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:18px 0}
+  .box{border:1px solid #dce3e5;border-radius:10px;padding:11px 13px;background:#fafcfc}
+  .label{text-transform:uppercase;font-size:9px;font-weight:700;color:#6b7b80;letter-spacing:.7px;margin-bottom:3px}
+  .value{font-size:12px;font-weight:700}
+  table{width:100%;border-collapse:collapse;margin-top:8px}
+  thead th{background:#172024;color:#fff;padding:9px 8px;font-size:10px;text-transform:uppercase;letter-spacing:.4px}
+  tbody td{padding:9px 8px;border-bottom:1px solid #e4e9ea;vertical-align:top}
+  .num{width:32px;text-align:center;color:#718086}
+  .right{text-align:right}
+  .summary{width:330px;margin:18px 0 0 auto;border-top:1px solid #dce3e5}
+  .sumrow{display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid #edf0f1}
+  .sumrow.total{font-size:17px;font-weight:800;border-bottom:3px solid #172024;padding:11px 0}
+  .note{margin-top:18px;border-left:4px solid #172024;padding:10px 12px;background:#f6f8f8}
+  .footer{margin-top:34px;padding-top:13px;border-top:1px solid #dce3e5;text-align:center;color:#68777b;font-size:10px}
+  .thanks{font-weight:700;color:#172024;margin-bottom:3px}
+  .signature{display:grid;grid-template-columns:1fr 1fr;gap:60px;margin-top:48px}
+  .line{border-top:1px solid #9aa7ab;padding-top:6px;color:#68777b;font-size:10px}
+  @media print{body{print-color-adjust:exact;-webkit-print-color-adjust:exact}.page{max-width:none}}
+</style>
+</head>
+<body>
+<div class="page">
+  <header class="top">
+    <div>
+      <div class="brand">🐠 AQUARIUM FISH</div>
+      <div class="subtitle">Catálogo, ventas y atención al cliente</div>
+    </div>
+    <div class="doc">
+      <div class="doc-title">COTIZACIÓN</div>
+      <div class="doc-id">N.º ${esc(q.id)}</div>
+      ${dateText ? `<div class="date">${esc(dateText)}</div>` : ""}
+    </div>
+  </header>
+
+  <section class="client">
+    <div class="box">
+      <div class="label">Cliente</div>
+      <div class="value">${esc(q.customer||"Cliente general")}</div>
+    </div>
+    <div class="box">
+      <div class="label">Teléfono / WhatsApp</div>
+      <div class="value">${esc(q.phone||"No registrado")}</div>
+    </div>
+  </section>
+
+  <table>
+    <thead><tr><th>#</th><th>Producto</th><th class="right">Cant.</th><th class="right">Precio unit.</th><th class="right">Importe</th></tr></thead>
+    <tbody>${rows || `<tr><td colspan="5" style="text-align:center;padding:20px">Sin productos</td></tr>`}</tbody>
+  </table>
+
+  <div class="summary">
+    <div class="sumrow"><span>Subtotal</span><strong>${money(subtotal)}</strong></div>
+    ${discount>0 ? `<div class="sumrow"><span>Descuento</span><strong>-${money(discount)}</strong></div>` : ""}
+    <div class="sumrow total"><span>TOTAL</span><span>${money(total)}</span></div>
+  </div>
+
+  ${q.note ? `<div class="note"><strong>Nota / condiciones</strong><br>${esc(q.note)}</div>` : ""}
+
+  <div class="signature">
+    <div class="line">Elaboró / Aquarium Fish</div>
+    <div class="line">Cliente</div>
+  </div>
+
+  <footer class="footer">
+    <div class="thanks">Gracias por elegir Aquarium Fish 🐠</div>
+    Cotización informativa. Precios y disponibilidad sujetos a confirmación al momento de la compra.
+  </footer>
+</div>
+<script>window.onload=()=>setTimeout(()=>window.print(),250)<\/script>
+</body></html>`);
   win.document.close();
+}
+
+function printCurrentQuote(){
+  if(!quoteItems.length){
+    alert("Agrega al menos un producto a la cotización.");
+    return;
+  }
+
+  const temp = {
+    id: quoteEditingId || "BORRADOR",
+    customer: quoteCustomer.trim() || "Cliente general",
+    phone: quotePhone.trim(),
+    createdAt: new Date().toISOString(),
+    items: quoteItems.map(item => ({
+      name: item.name,
+      qty: Math.max(1, Number(item.qty)||1),
+      unitPrice: Math.max(0, Number(item.unitPrice)||0)
+    })),
+    subtotal: quoteSubtotal(),
+    discount: quoteDiscountAmount(),
+    total: quoteTotal(),
+    note: quoteNote.trim()
+  };
+
+  const original = findQuoteById;
+  // Reutilizamos el mismo diseño de impresión sin guardar un borrador en Firebase.
+  const index = db.quotes.findIndex(q => q && q.id === temp.id);
+  if(index >= 0){
+    printQuote(temp.id);
+    return;
+  }
+
+  const previous = db.quotes;
+  db.quotes = previous.concat(temp);
+  printQuote(temp.id);
+  db.quotes = previous;
 }
 
 function quoteItemKey(index){
@@ -3986,6 +4124,7 @@ function renderCotizador(){
         </button>
         <button type="button" onclick="copyQuote()">📋 Copiar</button>
         <button type="button" class="primary" onclick="shareQuoteWhatsApp()">📲 WhatsApp</button>
+        <button type="button" onclick="printCurrentQuote()">🖨️ Imprimir</button>
       </div>
 
       <p class="muted" style="margin-top:10px;">
@@ -9032,3 +9171,5 @@ if(
   iniciarApp();
 
 }
+
+window.printCurrentQuote = printCurrentQuote;
