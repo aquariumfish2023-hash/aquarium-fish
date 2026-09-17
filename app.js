@@ -9030,6 +9030,101 @@ function importData(input){
 
 
 /* =========================================================
+   AJUSTE RESPONSIVO PARA CELULAR Y TABLET
+   ========================================================= */
+
+function applyMobileLayout(){
+  if(document.getElementById("aquariumMobileLayout")) return;
+
+  const style=document.createElement("style");
+  style.id="aquariumMobileLayout";
+  style.textContent=`
+    @media (max-width: 700px){
+      html, body{width:100%;max-width:100%;overflow-x:hidden;}
+      main{width:100%;max-width:100%;box-sizing:border-box;}
+      .screen,.panel,.item,.cards{max-width:100%;box-sizing:border-box;}
+      .section-head{flex-wrap:wrap;}
+      .cards{grid-template-columns:repeat(2,minmax(0,1fr)) !important;}
+      [style*="grid-template-columns"]{grid-template-columns:1fr !important;}
+      input,select,textarea,button{max-width:100%;box-sizing:border-box;}
+      .list{max-width:100%;overflow-x:hidden;}
+      .item{min-width:0;flex-wrap:wrap;}
+      nav{width:100%;max-width:100%;overflow-x:auto;box-sizing:border-box;}
+    }
+    @media (min-width: 701px) and (max-width: 1100px){
+      main{max-width:100%;box-sizing:border-box;}
+      .panel,.screen{max-width:100%;box-sizing:border-box;}
+    }
+  `;
+  document.head.appendChild(style);
+}
+
+
+/* =========================================================
+   HACER FUNCIONES GLOBALES
+   IMPORTANTE PARA LOS onclick DEL HTML
+   ========================================================= */
+function exposeFunctions(){
+  window.editQuote=editQuote;
+  window.viewQuote=viewQuote;
+  window.deleteQuote=deleteQuote;
+  window.convertQuoteToSale=convertQuoteToSale;
+  window.show=show;
+  window.openProduct=openProduct;
+  window.editProduct=editProduct;
+  window.deleteProduct=deleteProduct;
+  window.openSale=openSale;
+  window.deleteSale=deleteSale;
+  window.addSaleRow=addSaleRow;
+  window.updateSalePreview=updateSalePreview;
+  window.openCustomer=openCustomer;
+  window.editCustomer=editCustomer;
+  window.deleteCustomer=deleteCustomer;
+  window.openOrder=openOrder;
+  window.editOrder=editOrder;
+  window.deleteOrder=deleteOrder;
+  window.toggleOrder=toggleOrder;
+  window.advanceOrderStatus=advanceOrderStatus;
+  window.openMove=openMove;
+  window.toggleDateGroup=toggleDateGroup;
+  window.closeModal=closeModal;
+  window.openInternal=openInternal;
+  window.closeInternal=closeInternal;
+  window.exportData=exportData;
+  window.importData=importData;
+  window.setInventoryCategory=setInventoryCategory;
+  window.setInventorySort=setInventorySort;
+  window.openCashMovement=openCashMovement;
+  window.editCashMovement=editCashMovement;
+  window.deleteCashMovement=deleteCashMovement;
+  window.setCashPeriod=setCashPeriod;
+  window.addQuoteItem=addQuoteItem;
+  window.updateQuoteItem=updateQuoteItem;
+  window.removeQuoteItem=removeQuoteItem;
+  window.clearQuote=clearQuote;
+  window.copyQuote=copyQuote;
+  window.shareQuoteWhatsApp=shareQuoteWhatsApp;
+  window.saveQuote=saveQuote;
+  window.openReceipt=openReceipt;
+
+  // Etapa B: filtros y acciones dinámicas
+  window.clearInventorySearch=clearInventorySearch;
+  window.clearSalesSearch=clearSalesSearch;
+  window.setInventoryStatusFilter=setInventoryStatusFilter;
+  window.setSalesStatusFilter=setSalesStatusFilter;
+  window.setSalesPeriodFilter=setSalesPeriodFilter;
+  window.setSalesPaymentFilter=setSalesPaymentFilter;
+
+  // Etapa D: movimientos, respaldo y herramientas
+  window.clearMovesSearch=clearMovesSearch;
+  window.showBackupCenter=showBackupCenter;
+  window.setupStageDUI=setupStageDUI;
+  window.renderMoves=renderMoves;
+  window.renderMore=renderMore;
+  window.applyMobileLayout=applyMobileLayout;
+}
+
+/* =========================================================
    INICIAR APLICACIÓN
    ========================================================= */
 
