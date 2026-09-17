@@ -9030,6 +9030,28 @@ function importData(input){
 
 
 /* =========================================================
+   BÚSQUEDAS
+   ========================================================= */
+
+function bindSearches(){
+  const search=document.getElementById("search");
+  if(search){
+    search.oninput=function(){ renderInventory(); };
+  }
+
+  const salesSearch=document.getElementById("salesSearch");
+  if(salesSearch){
+    salesSearch.oninput=function(){ renderSales(); };
+  }
+
+  const customerSearch=document.getElementById("customerSearch");
+  if(customerSearch){
+    customerSearch.oninput=function(){ renderCustomers(); };
+  }
+}
+
+
+/* =========================================================
    AJUSTE RESPONSIVO PARA CELULAR Y TABLET
    ========================================================= */
 
