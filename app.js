@@ -9711,3 +9711,124 @@ function renderSales(){
       }).join("")}</div></div>`;
   }).join("");
 }
+
+/* =========================================================
+   ETAPA C — CLIENTES · CAJA · REPORTES
+========================================================= */
+
+
+/* =========================================================
+   ETAPA C — CLIENTES · CAJA · REPORTES
+   Mejora de operación diaria sin cambiar el modelo de datos.
+========================================================= */
+(function stageCEnhancements(){
+  const originalRenderCustomers = window.renderCustomers || renderCustomers;
+  const originalRenderCash = window.renderCash || renderCash;
+  const originalRenderReports = window.renderReports || renderReports;
+
+  function ensureCustomerSummary(){
+    const search = document.getElementById('customerSearch');
+    if(!search) return;
+    let box = document.getElementById('stageCCustomerSummary');
+    if(!box){
+      box = document.createElement('div');
+      box.id = 'stageCCustomerSummary';
+      box.className = 'stagec-summary';
+      search.parentNode.insertBefore(box, search);
+    }
+    const customers = Array.isArray(db.customers) ? db.customers : [];
+    let active = 0, bought = 0, paid = 0, balance = 0;
+    customers.forEach(c=>{
+      const s = customerStats(c.name);
+      if(s.sales.length) active++;
+      bought += s.bought;
+      paid += s.paid;
+      balance += s.balance;
+    });
+    box.innerHTML = `
+      <div class="stagec-mini-card"><span>👥 Clientes</span><b>${customers.length}</b><small>registrados</small></div>
+      <div class="stagec-mini-card"><span>🛒 Activos</span><b>${active}</b><small>con compras</small></div>
+      <div class="stagec-mini-card"><span>💰 Comprado</span><b>${money(bought)}</b><small>ventas asociadas</small></div>
+      <div class="stagec-mini-card ${balance>0?'attention':''}"><span>💳 Por cobrar</span><b>${money(balance)}</b><small>saldo de clientes</small></div>
+    `;
+    search.placeholder = '🔎 Buscar por nombre o teléfono...';
+  }
+
+  function renderCustomersStageC(){
+    originalRenderCustomers();
+    ensureCustomerSummary();
+  }
+
+  function ensureCashHeader(){
+    const summary = document.getElementById('cashSummary');
+    if(!summary) return;
+    const period = document.getElementById('cashPeriod');
+    let box = document.getElementById('stageCCashQuick');
+    if(!box){
+      box = document.createElement('div');
+      box.id = 'stageCCashQuick';
+      box.className = 'stagec-cash-quick';
+      summary.parentNode.insertBefore(box, summary);
+    }
+    const totals = calculateCashTotals(cashPeriod);
+    const label = period?.selectedOptions?.[0]?.textContent?.trim() || 'Periodo seleccionado';
+    box.innerHTML = `
+      <div><span>CAJA OPERATIVA</span><strong>${money(totals.balance)}</strong><small>${label}</small></div>
+      <button type="button" class="primary" onclick="openCashMovement()">＋ Registrar movimiento</button>
+    `;
+  }
+
+  function renderCashStageC(){
+    originalRenderCash();
+    ensureCashHeader();
+  }
+
+  function customerReportRows(){
+    const map = {};
+    reportSales().forEach(s=>{
+      const name = String(s.client||'Sin cliente').trim() || 'Sin cliente';
+      if(!map[name]) map[name] = {name, total:0, paid:0, count:0};
+      map[name].total += (+s.total||0);
+      map[name].paid += salePaid(s);
+      map[name].count += 1;
+    });
+    return Object.values(map).sort((a,b)=>b.total-a.total).slice(0,8);
+  }
+
+  function ensureReportCustomerPanel(){
+    const section = document.getElementById('reports');
+    if(!section) return;
+    let panel = document.getElementById('stageCReportCustomers');
+    if(!panel){
+      panel = document.createElement('div');
+      panel.id = 'stageCReportCustomers';
+      panel.className = 'panel';
+      section.appendChild(panel);
+    }
+    const rows = customerReportRows();
+    const expenses = reportExpenseTotal();
+    const revenue = reportRevenue();
+    const profit = reportProfit();
+    const margin = revenue ? (profit/revenue)*100 : 0;
+    panel.innerHTML = `
+      <div class="section-head stagec-report-head">
+        <div><h2>👥 Clientes y rentabilidad</h2><p class="muted">Lectura rápida del periodo seleccionado. No modifica ningún dato.</p></div>
+      </div>
+      <div class="stagec-report-grid">
+        <div class="stagec-report-highlight"><span>Margen sobre ventas</span><b>${margin.toFixed(1)}%</b><small>ganancia antes de gastos</small></div>
+        <div class="stagec-report-highlight"><span>Resultado después de gastos</span><b>${money(profit-expenses)}</b><small>ganancia − gastos</small></div>
+      </div>
+      <h3 class="stagec-subtitle">Clientes con mayor volumen de compra</h3>
+      ${rows.length ? rows.map((r,i)=>`<div class="item"><div><b>${i+1}. ${esc(r.name)}</b><small>${r.count} venta${r.count===1?'':'s'} · Pagado ${money(r.paid)}</small></div><div class="right"><b>${money(r.total)}</b>${r.total-r.paid>0?`<small>Debe ${money(r.total-r.paid)}</small>`:''}</div></div>`).join('') : '<div class="empty">No hay ventas con cliente en este periodo.</div>'}
+    `;
+  }
+
+  function renderReportsStageC(){
+    originalRenderReports();
+    ensureReportCustomerPanel();
+  }
+
+  window.renderCustomers = renderCustomersStageC;
+  window.renderCash = renderCashStageC;
+  window.renderReports = renderReportsStageC;
+})();

@@ -377,3 +377,56 @@ nav button[data-tab="reports"],nav button[data-tab="cotizador"]{display:none!imp
 .stageb-date-group{box-shadow:0 4px 16px rgba(15,35,42,.04)}.stageb-sale-card{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:14px;padding:13px 14px;border-bottom:1px solid #edf1f2;background:#fff}.stageb-sale-card:last-child{border-bottom:0}.stageb-sale-info{min-width:0}.stageb-sale-top{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}.stageb-sale-top b{display:block;font-size:14px}.stageb-sale-top small{display:block;color:#758286;font-size:11px;margin-top:3px}.stageb-sale-info p{margin:8px 0;color:#4e5d61;font-size:12px;line-height:1.45;overflow-wrap:anywhere}.stageb-sale-bottom{display:flex;justify-content:space-between;gap:10px;align-items:center;color:#7a878a;font-size:11px}.stageb-sale-bottom strong{color:#087f8c}.stageb-sale-side{text-align:right;min-width:118px}.stageb-sale-side>b{display:block;font-size:16px;margin-bottom:7px}.stageb-sale-side button{display:block;width:100%;margin-top:5px}.stageb-sale-side .danger-text{color:#a84a43}
 @media(max-width:699px){.stageb-toolbar{grid-template-columns:1fr 1fr}.stageb-toolbar .stageb-filter-group:last-child{grid-column:1/-1}.stageb-inventory-summary{gap:7px}.stageb-inventory-summary span+span{padding-left:7px}.stageb-product-title-row{align-items:flex-start}.stageb-product-title-row .stageb-status{font-size:10px;padding:5px 7px}.stageb-product-metrics{gap:6px}.stageb-product-metrics span{padding:7px}.stageb-product-metrics b{font-size:12px}.stageb-sales-kpi{grid-template-columns:1fr 1fr}.stageb-sale-card{grid-template-columns:1fr;gap:9px}.stageb-sale-side{display:grid;grid-template-columns:1fr 1fr;gap:6px;text-align:left}.stageb-sale-side>b{grid-column:1/-1;margin:0}.stageb-sale-side button{margin:0}.stageb-sale-bottom{align-items:flex-start;flex-direction:column;gap:3px}}
 @media(max-width:380px){.stageb-toolbar{grid-template-columns:1fr}.stageb-toolbar .stageb-filter-group:last-child{grid-column:auto}.stageb-inventory-summary span+span{border-left:0;padding-left:0}.stageb-product-title-row{flex-direction:column}.stageb-product-title-row .stageb-status{align-self:flex-start}}
+
+/* ETAPA C */
+
+
+/* ETAPA C — Clientes, Caja y Reportes */
+.stagec-summary{
+  display:grid;
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:10px;
+  margin:0 0 12px;
+}
+.stagec-mini-card{
+  background:var(--panel,#fff);
+  border:1px solid var(--border,#e1e7eb);
+  border-radius:14px;
+  padding:13px 14px;
+  display:flex;
+  flex-direction:column;
+  gap:3px;
+  min-width:0;
+}
+.stagec-mini-card span{font-size:.82rem;font-weight:600;opacity:.8}
+.stagec-mini-card b{font-size:1.15rem;line-height:1.2}
+.stagec-mini-card small{opacity:.68}
+.stagec-mini-card.attention{border-color:#e6b85c}
+.stagec-cash-quick{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:14px;
+  margin:0 0 14px;
+  padding:15px 16px;
+  border:1px solid var(--border,#e1e7eb);
+  border-radius:16px;
+  background:var(--panel,#fff);
+}
+.stagec-cash-quick div{display:flex;flex-direction:column;gap:2px}
+.stagec-cash-quick span{font-size:.74rem;font-weight:700;letter-spacing:.08em;opacity:.65}
+.stagec-cash-quick strong{font-size:1.55rem;line-height:1.1}
+.stagec-cash-quick small{opacity:.7}
+.stagec-report-head{margin-bottom:8px}
+.stagec-report-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-bottom:16px}
+.stagec-report-highlight{border:1px solid var(--border,#e1e7eb);border-radius:14px;padding:14px;background:var(--panel,#fff);display:flex;flex-direction:column;gap:4px}
+.stagec-report-highlight span{font-weight:600;opacity:.8}
+.stagec-report-highlight b{font-size:1.35rem}
+.stagec-report-highlight small{opacity:.68}
+.stagec-subtitle{font-size:1rem;margin:16px 0 8px}
+@media (max-width:760px){
+  .stagec-summary{grid-template-columns:repeat(2,minmax(0,1fr));}
+  .stagec-cash-quick{align-items:stretch;flex-direction:column;}
+  .stagec-cash-quick button{width:100%;}
+  .stagec-report-grid{grid-template-columns:1fr;}
+}
