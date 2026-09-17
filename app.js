@@ -8888,6 +8888,7 @@ function exposeFunctions(){
   window.renderMoves=renderMoves;
   window.renderMore=renderMore;
   window.applyMobileLayout=applyMobileLayout;
+  window.runSystemAudit=runSystemAudit;
 }
 
 /* =========================================================
@@ -8911,6 +8912,7 @@ function iniciarApp() {
   bindSearches();
 
   renderAll();
+  setTimeout(()=>{ if(typeof runSystemAudit==="function") runSystemAudit(); }, 250);
   setTimeout(maybeNotifyQuoteFollowups, 700);
 
   show("portada");
@@ -9147,6 +9149,33 @@ function renderSales(){
 
 let movesSearch = "";
 let movesTypeFilter = "Todos";
+
+function runSystemAudit(){
+  const out=document.getElementById("stageFAudit");
+  const time=document.getElementById("stageFAuditTime");
+  if(!out) return;
+  const checks=[];
+  const add=(label,ok,detail)=>checks.push({label,ok,detail});
+  const requiredFunctions=["show","save","renderAll","renderHome","renderInventory","renderSales","renderCash","renderCustomers","renderOrders","renderMoves","renderReports","exportData","importData","applyMobileLayout","exposeFunctions","bindSearches"];
+  const missing=requiredFunctions.filter(name=>typeof window[name]!=="function");
+  add("Funciones principales",missing.length===0,missing.length?`Faltan: ${missing.join(", ")}`:"Todas las funciones críticas están disponibles.");
+  const ids=["home","inventory","sales","cash","customers","cotizador","orders","moves","reports","more","modal","form","importFile"];
+  const missingIds=ids.filter(id=>!document.getElementById(id));
+  add("Pantallas y controles",missingIds.length===0,missingIds.length?`Elementos faltantes: ${missingIds.join(", ")}`:"Pantallas y controles principales presentes.");
+  const collections=["products","sales","customers","quotes","orders","moves","cash"];
+  const badData=collections.filter(k=>!Array.isArray(db[k]));
+  const records=collections.reduce((n,k)=>n+(Array.isArray(db[k])?db[k].length:0),0);
+  add("Datos locales",badData.length===0,badData.length?`Colecciones inválidas: ${badData.join(", ")}`:`${records} registros disponibles.`);
+  let storageOk=true;
+  try{ const k="__af_stagef_test"; localStorage.setItem(k,"1"); localStorage.removeItem(k); }catch(_){ storageOk=false; }
+  add("Almacenamiento",storageOk,storageOk?"El navegador permite guardar datos locales.":"El almacenamiento local no está disponible.");
+  const swSupported="serviceWorker" in navigator;
+  add("PWA",swSupported,swSupported?"El navegador soporta Service Worker.":"Este navegador no soporta Service Worker.");
+  const authReady=typeof auth!=="undefined";
+  add("Firebase",authReady,authReady?"La configuración de autenticación está disponible.":"No se detectó el objeto de autenticación.");
+  out.innerHTML=checks.map(c=>`<div class="stagef-audit-item ${c.ok?"ok":"bad"}"><span class="stagef-audit-icon">${c.ok?"✓":"!"}</span><div><b>${esc(c.label)}</b><small>${esc(c.detail)}</small></div></div>`).join("");
+  if(time) time.textContent=`Última revisión: ${new Date().toLocaleString("es-CO")}`;
+}
 
 function setupStageDUI(){
   const search = document.getElementById("movesSearch");

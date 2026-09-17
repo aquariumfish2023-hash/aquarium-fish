@@ -436,3 +436,17 @@ nav button[data-tab="reports"],nav button[data-tab="cotizador"]{display:none!imp
 /* ETAPA E — indicadores y seguimiento */
 .dashboard-bar-col{display:flex;flex-direction:column;align-items:center;gap:5px;min-width:0;flex:1;height:190px}.dashboard-bar-col>span{font-size:.72rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}.dashboard-bar-track{height:130px;width:100%;max-width:34px;display:flex;align-items:flex-end;border-radius:10px;background:rgba(0,0,0,.04);overflow:hidden}.dashboard-bar{width:100%;border-radius:10px 10px 4px 4px;background:var(--primary,#1976d2);min-height:4px}.dashboard-bar-col small{font-size:.72rem;text-transform:capitalize}.dashboard-hbar-row{margin-bottom:12px}.dashboard-hbar-row>div:first-child{display:flex;justify-content:space-between;gap:10px;font-size:.85rem}.dashboard-hbar-track{height:8px;border-radius:99px;background:rgba(0,0,0,.06);overflow:hidden;margin-top:5px}.dashboard-hbar{height:100%;border-radius:99px;background:var(--primary,#1976d2)}.dashboard-insight{padding:10px 12px;border:1px solid rgba(0,0,0,.07);border-radius:12px;margin-bottom:8px;background:rgba(255,255,255,.5)}.dashboard-change{display:inline-flex;align-items:center;font-size:.8rem;font-weight:700;margin-top:5px}.dashboard-change.positive{color:#16803c}.dashboard-change.negative{color:#b42318}.dashboard-change.neutral{color:#667781}
 @media (max-width:700px){.dashboard-bar-col{height:155px}.dashboard-bar-track{height:105px;max-width:28px}.dashboard-bar-col>span{font-size:.65rem}.dashboard-grid{grid-template-columns:1fr}.dashboard-period-grid{grid-template-columns:1fr}.dashboard-kpis{grid-template-columns:1fr 1fr}.dashboard-kpis .dash-main-card{grid-column:1/-1}}
+
+
+/* ETAPA F — OPTIMIZACION, SEGURIDAD Y EXPERIENCIA */
+.stagef-audit-panel{margin-top:12px}
+.stagef-audit-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}
+.stagef-audit-head h2{margin:0 0 4px}.stagef-audit-head button{min-height:42px;border:1px solid var(--af-border);background:#fff;border-radius:11px;padding:9px 13px;font-weight:800;cursor:pointer}
+.stagef-audit-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.stagef-audit-item{display:flex;gap:10px;align-items:flex-start;padding:11px 12px;border:1px solid var(--af-border);border-radius:12px;background:#fff}
+.stagef-audit-item.ok{border-color:#d6eadc;background:#fbfefc}.stagef-audit-item.bad{border-color:#efd4d1;background:#fffafa}
+.stagef-audit-icon{width:24px;height:24px;display:grid;place-items:center;border-radius:50%;font-weight:900;flex:0 0 24px;background:#e8f5ec;color:#257344}.stagef-audit-item.bad .stagef-audit-icon{background:#fde9e6;color:#ad4038}
+.stagef-audit-item b{display:block;font-size:12px}.stagef-audit-item small{display:block;margin-top:3px;color:var(--af-muted);line-height:1.35;font-size:11px}
+.stagef-audit-empty{grid-column:1/-1;padding:14px;border:1px dashed var(--af-border);border-radius:12px;color:var(--af-muted);text-align:center}
+.stagef-audit-time{margin-top:9px;font-size:11px}
+@media(max-width:699px){.stagef-audit-head{align-items:stretch;flex-direction:column}.stagef-audit-head button{width:100%}.stagef-audit-grid{grid-template-columns:1fr}}
