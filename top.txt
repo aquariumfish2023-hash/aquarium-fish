@@ -1,0 +1,750 @@
+const KEY = "aquarium_fish_data_v5";
+
+/* =========================================================
+   DATOS
+   ========================================================= */
+
+let db =
+  JSON.parse(localStorage.getItem(KEY) || "null") ||
+  JSON.parse(localStorage.getItem("aquarium_fish_data_v4") || "null") ||
+  JSON.parse(localStorage.getItem("aquarium_fish_data_v3") || "null") ||
+  JSON.parse(localStorage.getItem("aquarium_fish_data_v2") || "null") ||
+  JSON.parse(localStorage.getItem("aquarium_fish_data_v1") || "null") ||
+  {
+    products: [],
+    sales: [],
+    moves: [],
+    customers: [],
+    orders: [],
+    cash: [],
+    quotes: []
+  };
+
+db.products =
+  Array.isArray(db.products)
+    ? db.products
+    : [];
+
+db.sales =
+  Array.isArray(db.sales)
+    ? db.sales
+    : [];
+
+db.moves =
+  Array.isArray(db.moves)
+    ? db.moves
+    : [];
+
+db.customers =
+  Array.isArray(db.customers)
+    ? db.customers
+    : [];
+
+db.orders =
+  Array.isArray(db.orders)
+    ? db.orders
+    : [];
+
+db.orders.forEach(order => {
+
+  if(!order || typeof order !== "object"){
+    return;
+  }
+
+  if(!order.status){
+    order.status = "Pendiente";
+  }
+
+  if(order.qty == null){
+    order.qty = 1;
+  }
+
+  if(order.price == null){
+    order.price = 0;
+  }
+
+  if(order.note == null){
+    order.note = "";
+  }
+
+});
+
+db.cash =
+  Array.isArray(db.cash)
+    ? db.cash
+    : [];
+
+db.quotes = Array.isArray(db.quotes) ? db.quotes : [];
+
+db.quotes.forEach(quote => {
+  if(!quote || typeof quote !== "object") return;
+  if(!quote.id) quote.id = `COT-${String(db.quotes.indexOf(quote)+1).padStart(4,"0")}`;
+  if(!quote.status) quote.status = "Pendiente";
+  if(!Array.isArray(quote.items)) quote.items = [];
+  if(quote.discount == null) quote.discount = 0;
+});
+
+/* =========================================================
+   CLIENTES - CUENTAS PENDIENTES
+   ========================================================= */
+
+db.customers.forEach(customer => {
+
+  if(!Array.isArray(customer.payments)){
+    customer.payments = [];
+  }
+
+});
+
+
+/* =========================================================
+   UTILIDADES
+   ========================================================= */
+
+const money = n =>
+  new Intl.NumberFormat("es-CO", {
+    style: "currency",
+    currency: "COP",
+    maximumFractionDigits: 0
+  }).format(Number(n) || 0);
+
+
+const now = () =>
+  new Date().toLocaleString("es-CO");
+
+
+const esc = s =>
+  String(s ?? "").replace(
+    /[&<>"']/g,
+    m => ({
+      "&": "&amp;",
+      "<": "&lt;",
+      ">": "&gt;",
+      '"': "&quot;",
+      "'": "&#39;"
+    }[m])
+  );
+
+
+function parseLocalDate(value) {
+
+  if (
+    value instanceof Date
+  ) {
+
+    return isNaN(
+      value.getTime()
+    )
+      ? null
+      : value;
+
+  }
+
+
+  const text =
+    String(value || "").trim();
+
+
+  if(!text){
+    return null;
+  }
+
+
+  /*
+     Primero intentamos el formato que utiliza
+     Aquarium Fish:
+
+     d/m/yyyy, hh:mm:ss
+  */
+
+  const match =
+    text.match(
+      /^(\d{1,2})\/(\d{1,2})\/(\d{4})(?:,\s*(\d{1,2}):(\d{2})(?::(\d{2}))?)?/
+    );
+
+
+  if(match){
+
+    const day =
+      Number(match[1]);
+
+    const month =
+      Number(match[2]);
+
+    const year =
+      Number(match[3]);
+
+    const hour =
+      Number(match[4] || 0);
+
+    const minute =
+      Number(match[5] || 0);
+
+    const second =
+      Number(match[6] || 0);
+
+
+    const date =
+      new Date(
+        year,
+        month - 1,
+        day,
+        hour,
+        minute,
+        second
+      );
+
+
+    if(
+      !isNaN(
+        date.getTime()
+      )
+    ){
+
+      return date;
+
+    }
+
+  }
+
+
+  const fallback =
+    new Date(text);
+
+
+  return isNaN(
+    fallback.getTime()
+  )
+    ? null
+    : fallback;
+
+}
+
+
+function startOfDay(date) {
+
+  const d =
+    new Date(date);
+
+  d.setHours(
+    0,
+    0,
+    0,
+    0
+  );
+
+  return d;
+
+}
+
+
+function endOfDay(date) {
+
+  const d =
+    new Date(date);
+
+  d.setHours(
+    23,
+    59,
+    59,
+    999
+  );
+
+  return d;
+
+}
+
+
+function sameDay(a,b){
+
+  return (
+    a.getFullYear() ===
+      b.getFullYear() &&
+
+    a.getMonth() ===
+      b.getMonth() &&
+
+    a.getDate() ===
+      b.getDate()
+  );
+
+}
+
+
+/* =========================================================
+   GUARDAR
+   ========================================================= */
+
+function save() {
+
+  if (typeof window.aquariumPersistData === "function") {
+    window.aquariumPersistData(db);
+  } else {
+    localStorage.setItem(
+      KEY,
+      JSON.stringify(db)
+    );
+  }
+
+  renderAll();
+
+}
+
+
+/* =========================================================
+   NAVEGACIÓN
+   ========================================================= */
+
+function show(tab) {
+
+  document
+    .querySelectorAll(".screen")
+    .forEach(screen => {
+
+      screen.classList.remove(
+        "active"
+      );
+
+    });
+
+
+  const screen =
+    document.getElementById(tab);
+
+
+  if(screen){
+
+    screen.classList.add(
+      "active"
+    );
+
+  }
+
+  // La portada funciona como presentación para clientes:
+  // mientras está activa no mostramos datos del negocio ni navegación.
+  const isPortada = tab === "portada";
+  document.body.classList.toggle("portada-mode", isPortada);
+
+  const header = document.getElementById("appHeader");
+  if(header && window.AQ_AUTH_USER){
+    header.classList.toggle("hidden", isPortada);
+  }
+
+  const nav = document.querySelector("nav");
+  if(nav){
+    nav.classList.toggle("portada-hidden", isPortada);
+  }
+
+  document
+    .querySelectorAll(
+      "nav button[data-tab]"
+    )
+    .forEach(button => {
+
+      button.classList.toggle(
+        "active",
+        button.dataset.tab === tab
+      );
+
+    });
+
+}
+
+
+function bindNavigation() {
+
+  document
+    .querySelectorAll(
+      "nav button[data-tab]"
+    )
+    .forEach(button => {
+
+      button.onclick =
+        function(){
+
+          show(
+            this.dataset.tab
+          );
+
+        };
+
+    });
+
+}
+
+
+/* =========================================================
+   INVENTARIO
+   ========================================================= */
+
+let inventoryCategory =
+  "Todas";
+
+let inventorySort =
+  "name-asc";
+
+
+function inventoryCategories() {
+
+  const base = [
+
+    "Peces",
+    "Acuarios",
+    "Filtros",
+    "Iluminación",
+    "Sustratos",
+    "Decoración",
+    "Alimentos",
+    "Accesorios",
+    "Otros"
+
+  ];
+
+
+  const existing =
+    db.products
+      .map(
+        p =>
+          String(
+            p.category || ""
+          ).trim()
+      )
+      .filter(Boolean);
+
+
+  return [
+    ...new Set([
+      ...base,
+      ...existing
+    ])
+  ].sort(
+    (a,b) =>
+      a.localeCompare(
+        b,
+        "es",
+        {
+          sensitivity:
+            "base"
+        }
+      )
+  );
+
+}
+
+
+function setInventoryCategory(
+  value
+){
+
+  inventoryCategory =
+    value;
+
+  renderInventory();
+
+}
+
+
+function setInventorySort(
+  value
+){
+
+  inventorySort =
+    value;
+
+  renderInventory();
+
+}
+
+
+
+
+/* =========================================================
+   REPORTES
+   ========================================================= */
+
+let reportPeriod = "today";
+
+function reportRange(period = reportPeriod){
+  const nowDate = new Date();
+  let start = null;
+  let end = new Date(nowDate);
+  end.setHours(23,59,59,999);
+
+  if(period === "today"){
+    start = new Date(nowDate);
+    start.setHours(0,0,0,0);
+  }else if(period === "7days"){
+    start = new Date(nowDate);
+    start.setDate(start.getDate()-6);
+    start.setHours(0,0,0,0);
+  }else if(period === "month"){
+    start = new Date(nowDate.getFullYear(), nowDate.getMonth(), 1);
+    start.setHours(0,0,0,0);
+  }else{
+    start = null;
+  }
+  return {start,end};
+}
+
+function inReportRange(value, range){
+  const d = parseLocalDate(value);
+  if(!d) return false;
+  if(range.start && d < range.start) return false;
+  if(range.end && d > range.end) return false;
+  return true;
+}
+
+function reportSales(){
+  const range = reportRange();
+  return db.sales.filter(s => reportPeriod === "all" ? !!parseLocalDate(s.date) : inReportRange(s.date, range));
+}
+
+function saleCost(sale){
+  if(Array.isArray(sale.items)){
+    return sale.items.reduce((sum,item)=>sum + ((+item.cost||0) * (+item.qty||0)),0);
+  }
+  return (+sale.cost||0) * (+sale.qty||0);
+}
+
+function reportExpenses(){
+  const range = reportRange();
+  return db.cash.filter(m => {
+    if(String(m.type||"").toLowerCase() !== "gasto") return false;
+    return reportPeriod === "all" ? !!parseLocalDate(m.date) : inReportRange(m.date, range);
+  });
+}
+
+function reportPayments(){
+  return reportSales().reduce((sum,sale)=>sum + salePaid(sale),0);
+}
+
+function reportRevenue(){
+  return reportSales().reduce((sum,sale)=>sum + (+sale.total||0),0);
+}
+
+function reportPending(){
+  return reportSales().reduce((sum,sale)=>sum + Math.max(0,(+sale.total||0)-salePaid(sale)),0);
+}
+
+function reportProfit(){
+  return reportSales().reduce((sum,sale)=>sum + ((+sale.total||0)-saleCost(sale)),0);
+}
+
+function reportExpenseTotal(){
+  return reportExpenses().reduce((sum,m)=>sum + (+m.amount||0),0);
+}
+
+function reportAverageTicket(){
+  const sales = reportSales();
+  return sales.length ? reportRevenue()/sales.length : 0;
+}
+
+function reportProductRanking(){
+  const map = {};
+  reportSales().forEach(sale => {
+    if(Array.isArray(sale.items) && sale.items.length){
+      sale.items.forEach(item => {
+        const name = String(item.product||"Producto");
+        map[name] = (map[name]||0) + (+item.qty||0);
+      });
+    }else if(sale.product){
+      const name = String(sale.product);
+      map[name] = (map[name]||0) + (+sale.qty||0);
+    }
+  });
+  return Object.entries(map).sort((a,b)=>b[1]-a[1]).slice(0,10);
+}
+
+function reportPaymentMethods(){
+  const map = {};
+  reportSales().forEach(sale => {
+    const method = String(sale.pay || "Otro");
+    map[method] = (map[method]||0) + salePaid(sale);
+  });
+  return Object.entries(map).sort((a,b)=>b[1]-a[1]);
+}
+
+function reportDaily(){
+  const map = {};
+  reportSales().forEach(sale => {
+    const d = parseLocalDate(sale.date);
+    if(!d) return;
+    const key = d.toISOString().slice(0,10);
+    if(!map[key]) map[key] = {date:d,total:0,count:0};
+    map[key].total += (+sale.total||0);
+    map[key].count += 1;
+  });
+  return Object.values(map).sort((a,b)=>b.date-a.date);
+}
+
+function setupReportsUI(){
+  const main = document.querySelector("main");
+  const nav = document.querySelector("nav");
+  if(!main || !nav) return;
+
+  let section = document.getElementById("reports");
+  if(!section){
+    section = document.createElement("section");
+    section.id = "reports";
+    section.className = "screen";
+    main.appendChild(section);
+  }
+
+  let navButton = nav.querySelector('button[data-tab="reports"]');
+  if(!navButton){
+    navButton = document.createElement("button");
+    navButton.type = "button";
+    navButton.dataset.tab = "reports";
+    navButton.innerHTML = `📊<span>Reportes</span>`;
+    nav.appendChild(navButton);
+  }
+
+  renderReports();
+}
+
+function renderReports(){
+  const section = document.getElementById("reports");
+  if(!section) return;
+
+  const sales = reportSales();
+  const expenses = reportExpenseTotal();
+  const revenue = reportRevenue();
+  const payments = reportPayments();
+  const pending = reportPending();
+  const profit = reportProfit();
+  const net = profit - expenses;
+  const ticket = reportAverageTicket();
+  const ranking = reportProductRanking();
+  const methods = reportPaymentMethods();
+  const daily = reportDaily();
+
+  section.innerHTML = `
+    <div class="section-head">
+      <h1>📊 Reportes</h1>
+    </div>
+
+    <div class="panel">
+      <h2>Periodo</h2>
+      <select class="search" onchange="setReportPeriod(this.value)">
+        <option value="today" ${reportPeriod==='today'?'selected':''}>📅 Hoy</option>
+        <option value="7days" ${reportPeriod==='7days'?'selected':''}>📆 Últimos 7 días</option>
+        <option value="month" ${reportPeriod==='month'?'selected':''}>🗓️ Este mes</option>
+        <option value="all" ${reportPeriod==='all'?'selected':''}>📚 Todo</option>
+      </select>
+    </div>
+
+    <div class="cards">
+      <div class="card"><span>Ventas</span><b>${money(revenue)}</b><small>${sales.length} transacciones</small></div>
+      <div class="card"><span>Pagado</span><b>${money(payments)}</b><small>recibido</small></div>
+      <div class="card"><span>Pendiente</span><b>${money(pending)}</b><small>por cobrar</small></div>
+      <div class="card"><span>Ganancia</span><b>${money(profit)}</b><small>antes de gastos</small></div>
+      <div class="card"><span>Gastos</span><b>${money(expenses)}</b><small>registrados en caja</small></div>
+      <div class="card"><span>Resultado</span><b>${money(net)}</b><small>ganancia − gastos</small></div>
+      <div class="card"><span>Ticket promedio</span><b>${money(ticket)}</b><small>por venta</small></div>
+    </div>
+
+    <div class="panel">
+      <h2>🏆 Productos más vendidos</h2>
+      ${ranking.length ? ranking.map((r,i)=>`<div class="item"><div><b>${i+1}. ${esc(r[0])}</b></div><div class="right"><b>${r[1]}</b><small>unidades</small></div></div>`).join('') : '<div class="empty">No hay ventas en este periodo.</div>'}
+    </div>
+
+    <div class="panel">
+      <h2>💳 Ventas por forma de pago</h2>
+      ${methods.length ? methods.map(r=>`<div class="item"><div><b>${esc(r[0])}</b></div><div class="right"><b>${money(r[1])}</b></div></div>`).join('') : '<div class="empty">No hay pagos en este periodo.</div>'}
+    </div>
+
+    <div class="panel">
+      <h2>📅 Ventas por día</h2>
+      ${daily.length ? daily.map(r=>`<div class="item"><div><b>${esc(r.date.toLocaleDateString('es-CO',{weekday:'short',day:'numeric',month:'short'}))}</b><small>${r.count} venta${r.count===1?'':'s'}</small></div><div class="right"><b>${money(r.total)}</b></div></div>`).join('') : '<div class="empty">No hay ventas en este periodo.</div>'}
+    </div>
+  `;
+}
+
+function setReportPeriod(value){
+  reportPeriod = ["today","7days","month","all"].includes(value) ? value : "today";
+  renderReports();
+}
+
+
+/* =========================================================
+   RENDER GENERAL
+   ========================================================= */
+
+function renderAll() {
+
+  // La interfaz de reportes se prepara por separado para evitar detener el resto de la aplicación.
+  setupReportsUI();
+  renderHome();
+  if(document.getElementById("quoteAutomationAlerts")) renderQuoteAutomationAlerts();
+
+  renderInventory();
+
+  renderSales();
+
+  renderCash();
+
+  renderCustomers();
+
+  renderMoves();
+
+  renderOrders();
+
+  renderInternal();
+
+  if(document.getElementById("reports")) renderReports();
+
+}
+
+
+/* =========================================================
+   INICIO
+   ========================================================= */
+
+function renderHome() {
+
+  const total =
+    db.sales.reduce(
+      (sum,sale) =>
+        sum +
+        (+sale.total || 0),
+      0
+    );
+
+  const today = new Date();
+  const todaySales = db.sales.filter(sale => {
+    const d = parseLocalDate(sale.date || sale.createdAt);
+    return d ? sameDay(d, today) : false;
+  });
+
+  const todayTotal = todaySales.reduce(
+    (sum, sale) => sum + (+sale.total || 0),
+    0
+  );
+
+  const pendingQuotes = (db.quotes || []).filter(q => !q.convertedSaleId);
+
+
+  const salesTotal =
+    document.getElementById(
+      "salesTotal"
+    );
+
+
+  const salesCount =
+    document.getElementById(
+      "salesCount"
+    );
+
+  const todaySalesTotal = document.getElementById("todaySalesTotal");
+  const todaySalesCount = document.getElementById("todaySalesCount");
+  const pendingQuotesCount = document.getElementById("pendingQuotesCount");
+
+
+  const productCount =
+    document.getElementById(
+      "productCount"
+    );
+
+
+  const customerCount =
+    document.getElementById(
