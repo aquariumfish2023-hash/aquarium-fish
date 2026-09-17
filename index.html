@@ -152,9 +152,12 @@
       <button type="button" class="primary" onclick="openSale()">🛒 Nueva venta</button>
       <button type="button" onclick="show('cotizador')">🧾 Nueva cotización</button>
       <button type="button" onclick="openCustomer()">👤 Nuevo cliente</button>
-      <button type="button" onclick="show('inventory')">📦 Inventario</button>
       <button type="button" onclick="show('cash')">💰 Caja</button>
-      <button type="button" onclick="show('more')">☰ Más opciones</button>
+      <button type="button" onclick="show('inventory')">📦 Inventario</button>
+      <button type="button" onclick="show('customers')">👥 Clientes</button>
+      <button type="button" onclick="show('reports')">📊 Reportes</button>
+      <button type="button" onclick="show('moves')">🔄 Movimientos</button>
+      <button type="button" onclick="show('home')">🏠 Actualizar panel</button>
     </div>
   </div>
 
@@ -174,36 +177,66 @@
      INVENTARIO
 ===================================================== -->
 
+<section id="more" class="screen">
+  <div class="section-head">
+    <div>
+      <h1>➕ Más</h1>
+      <p class="muted">Herramientas y funciones adicionales</p>
+    </div>
+  </div>
+
+  <div class="cards" style="grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;">
+    <button type="button" class="panel" style="text-align:left;border:0;cursor:pointer;min-height:90px;" onclick="show('sales')">
+      <b style="font-size:17px;">🛒 Ventas</b><br><span class="muted">Registrar y consultar ventas</span>
+    </button>
+    <button type="button" class="panel" style="text-align:left;border:0;cursor:pointer;min-height:90px;" onclick="show('cash')">
+      <b style="font-size:17px;">💰 Caja</b><br><span class="muted">Movimientos y cierres de caja</span>
+    </button>
+    <button type="button" class="panel" style="text-align:left;border:0;cursor:pointer;min-height:90px;" onclick="show('customers')">
+      <b style="font-size:17px;">👥 Clientes</b><br><span class="muted">Clientes y datos de contacto</span>
+    </button>
+    <button type="button" class="panel" style="text-align:left;border:0;cursor:pointer;min-height:90px;" onclick="show('reports')">
+      <b style="font-size:17px;">📊 Reportes</b><br><span class="muted">Estadísticas y análisis</span>
+    </button>
+    <button type="button" class="panel" style="text-align:left;border:0;cursor:pointer;min-height:90px;" onclick="show('orders')">
+      <b style="font-size:17px;">📝 Encargos</b><br><span class="muted">Pedidos y encargos</span>
+    </button>
+    <button type="button" class="panel" style="text-align:left;border:0;cursor:pointer;min-height:90px;" onclick="show('moves')">
+      <b style="font-size:17px;">⇅ Movimientos</b><br><span class="muted">Entradas y salidas</span>
+    </button>
+  </div>
+
+  <div class="panel" style="margin-top:14px;">
+    <b>💡 Accesos rápidos</b>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;">
+      <button type="button" onclick="show('cotizador')">🧾 Nueva cotización</button>
+      <button type="button" onclick="show('inventory')">📦 Inventario</button>
+      <button type="button" onclick="show('home')">⌂ Inicio</button>
+    </div>
+  </div>
+</section>
+
 <section id="inventory" class="screen">
 
   <div class="section-head">
 
-    <div><span class="page-kicker">PRODUCTOS</span><h1>Inventario</h1><p class="muted page-subtitle">Controla existencias y precios desde un solo lugar.</p></div>
+    <h1>Inventario</h1>
 
-    <div class="inventory-head-actions">
-      <button type="button" onclick="toggleAvailabilityList()">📋 Lista para clientes</button>
-      <button
-        class="primary"
-        type="button"
-        onclick="openProduct()"
-      >
-        + Producto
-      </button>
-    </div>
-
-  </div>
-
-  <div class="stageb-search-wrap">
-    <input
-      id="search"
-      class="search"
-      placeholder="🔎 Buscar por nombre o categoría..."
-      autocomplete="off"
+    <button
+      class="primary"
+      type="button"
+      onclick="openProduct()"
     >
-    <button type="button" class="stageb-clear-search" onclick="clearInventorySearch()" aria-label="Limpiar búsqueda">×</button>
+      + Producto
+    </button>
+
   </div>
 
-  <div id="availabilityPanel" class="availability-panel" style="display:none"></div>
+  <input
+    id="search"
+    class="search"
+    placeholder="Buscar producto..."
+  >
 
   <div id="inventoryList" class="list"></div>
 
@@ -218,7 +251,7 @@
 
   <div class="section-head">
 
-    <div><span class="page-kicker">OPERACIÓN</span><h1>Ventas</h1><p class="muted page-subtitle">Consulta y registra las ventas de tu negocio.</p></div>
+    <h1>Ventas</h1>
 
     <button
       class="primary"
@@ -230,18 +263,13 @@
 
   </div>
 
-  <div class="stageb-search-wrap">
-    <input
-      id="salesSearch"
-      class="search"
-      placeholder="🔎 Buscar cliente, producto o número..."
-      autocomplete="off"
-    >
-    <button type="button" class="stageb-clear-search" onclick="clearSalesSearch()" aria-label="Limpiar búsqueda">×</button>
-  </div>
+  <input
+    id="salesSearch"
+    class="search"
+    placeholder="🔎 Buscar venta por cliente, producto o número..."
+    autocomplete="off"
+  >
 
-  <div id="salesControls" class="stageb-controls"></div>
-  <div id="salesSummary" class="stageb-summary"></div>
   <div id="salesList" class="list"></div>
 
 </section>
@@ -405,7 +433,7 @@
 
   <div class="section-head">
 
-    <div><span class="page-kicker">CONTROL DE STOCK</span><h1>Movimientos</h1><p class="muted page-subtitle">Consulta entradas y salidas de inventario sin perder el historial.</p></div>
+    <h1>Movimientos</h1>
 
     <button
       class="primary"
@@ -417,11 +445,6 @@
 
   </div>
 
-  <div class="stageb-controls stage-d-move-controls">
-    <div class="stageb-filter-group"><label>Buscar</label><div class="stageb-search-wrap"><input id="movesSearch" class="search" placeholder="🔎 Producto, motivo o responsable..." autocomplete="off"><button type="button" class="stageb-clear-search" onclick="clearMovesSearch()" aria-label="Limpiar búsqueda">×</button></div></div>
-    <div class="stageb-filter-group"><label>Tipo</label><select id="movesTypeFilter" class="stageb-select"><option value="Todos">Todos</option><option value="Entrada">🟢 Entradas</option><option value="Salida">🔴 Salidas</option></select></div>
-  </div>
-  <div id="movesSummary" class="stageb-inventory-summary"></div>
   <div id="movesList" class="list"></div>
 
 </section>
@@ -430,72 +453,14 @@
 
 
 <!-- =====================================================
-     MÁS / HERRAMIENTAS
-===================================================== -->
-
-<section id="more" class="screen more-screen">
-  <div class="page-hero">
-    <div>
-      <span class="page-kicker">HERRAMIENTAS</span>
-      <h1>Más opciones</h1>
-      <p class="muted">Accede a las funciones de gestión que usas con menos frecuencia.</p>
-    </div>
-  </div>
-
-  <div class="more-overview" id="moreOverview"></div>
-
-  <div class="more-grid">
-    <button type="button" class="more-card" onclick="show('customers')">
-      <span class="more-icon">👥</span><span><b>Clientes</b><small>Contactos, compras y saldos</small></span><strong id="moreCustomersCount">›</strong>
-    </button>
-    <button type="button" class="more-card" onclick="show('cotizador')">
-      <span class="more-icon">🧾</span><span><b>Cotizador</b><small>Crear, editar y dar seguimiento</small></span><strong>›</strong>
-    </button>
-    <button type="button" class="more-card" onclick="show('orders')">
-      <span class="more-icon">📝</span><span><b>Encargos</b><small>Pedidos y trabajos pendientes</small></span><strong>›</strong>
-    </button>
-    <button type="button" class="more-card" onclick="show('moves')">
-      <span class="more-icon">⇅</span><span><b>Movimientos</b><small>Entradas y salidas de inventario</small></span><strong>›</strong>
-    </button>
-    <button type="button" class="more-card" onclick="show('reports')">
-      <span class="more-icon">📊</span><span><b>Reportes</b><small>Resumen y análisis del negocio</small></span><strong>›</strong>
-    </button>
-    <button type="button" class="more-card" onclick="openInternal()">
-      <span class="more-icon">🔒</span><span><b>Resumen interno</b><small>Indicadores del negocio</small></span><strong>›</strong>
-    </button>
-    <button type="button" class="more-card" onclick="showBackupCenter()">
-      <span class="more-icon">💾</span><span><b>Respaldo</b><small>Exportar, restaurar y proteger tus datos</small></span><strong>›</strong>
-    </button>
-  </div>
-
-  <div class="panel stagef-audit-panel">
-    <div class="stagef-audit-head">
-      <div><h2>🛡️ Estado del sistema</h2><p class="muted">Revisión rápida de funcionamiento y protección.</p></div>
-      <button type="button" onclick="runSystemAudit()">🔍 Revisar ahora</button>
-    </div>
-    <div id="stageFAudit" class="stagef-audit-grid">
-      <div class="stagef-audit-empty">Pulsa <b>Revisar ahora</b> para comprobar el sistema.</div>
-    </div>
-    <div id="stageFAuditTime" class="muted stagef-audit-time"></div>
-  </div>
-
-  <div class="panel more-backup-panel" id="moreBackupPanel" style="display:none"></div>
-
-  <div class="panel more-tip">
-    <span>💡</span><div><b>Consejo</b><p>Las operaciones diarias están en la barra inferior. Las herramientas adicionales quedan aquí para mantener la aplicación limpia y fácil de manejar.</p></div>
-  </div>
-</section>
-
-<!-- =====================================================
      NAVEGACIÓN
 ===================================================== -->
 
-<nav aria-label="Navegación principal">
-  <button type="button" data-tab="home" class="active" aria-label="Inicio">🏠<span>Inicio</span></button>
-  <button type="button" data-tab="inventory" aria-label="Inventario">📦<span>Inventario</span></button>
-  <button type="button" data-tab="sales" aria-label="Ventas">🛒<span>Ventas</span></button>
-  <button type="button" data-tab="cash" aria-label="Caja">💰<span>Caja</span></button>
-  <button type="button" data-tab="more" aria-label="Más opciones">☰<span>Más</span></button>
+<nav>
+  <button type="button" data-tab="home">⌂<span>Inicio</span></button>
+  <button type="button" data-tab="cotizador">🧾<span>Cotizador</span></button>
+  <button type="button" data-tab="inventory">▣<span>Inventario</span></button>
+  <button type="button" data-tab="more">➕<span>Más</span></button>
 </nav>
 
 
