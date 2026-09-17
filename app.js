@@ -8965,504 +8965,67 @@ function closeInternal() {
    RESPALDO
    ========================================================= */
 
-function exportData() {
+function backupPayload(){
+  return {
+    app: "Aquarium Fish",
+    backupVersion: 2,
+    createdAt: new Date().toISOString(),
+    data: db
+  };
+}
 
-  const blob =
-    new Blob(
-      [
-        JSON.stringify(
-          db,
-          null,
-          2
-        )
-      ],
-      {
-        type:
-          "application/json"
-      }
-    );
-
-
-  const url =
-    URL.createObjectURL(
-      blob
-    );
-
-
-  const link =
-    document.createElement(
-      "a"
-    );
-
-
-  link.href =
-    url;
-
-
-  link.download =
-    "aquarium-fish-respaldo.json";
-
-
-  document.body.appendChild(
-    link
-  );
-
-
+function exportData(){
+  const payload = backupPayload();
+  const blob = new Blob([JSON.stringify(payload,null,2)],{type:"application/json"});
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  const stamp = new Date().toISOString().slice(0,10);
+  link.download = `aquarium-fish-respaldo-${stamp}.json`;
+  document.body.appendChild(link);
   link.click();
-
-
   link.remove();
-
-
-  URL.revokeObjectURL(
-    url
-  );
-
+  URL.revokeObjectURL(url);
+  try{ localStorage.setItem("aquariumFishLastBackup", payload.createdAt); }catch(_){ }
+  renderMore();
 }
 
-
-function importData(input) {
-
-  const file =
-    input?.files?.[0];
-
-
-  if(!file){
-
-    return;
-
-  }
-
-
-  const reader =
-    new FileReader();
-
-
-  reader.onload =
-    function(){
-
-      try{
-
-        const imported =
-          JSON.parse(
-            reader.result
-          );
-
-
-        if(
-          !imported ||
-          typeof imported !==
-          "object"
-        ){
-
-          throw new Error(
-            "Formato inválido"
-          );
-
-        }
-
-
-        db = {
-
-          products:
-            Array.isArray(
-              imported.products
-            )
-              ? imported.products
-              : [],
-
-          sales:
-            Array.isArray(
-              imported.sales
-            )
-              ? imported.sales
-              : [],
-
-          moves:
-            Array.isArray(
-              imported.moves
-            )
-              ? imported.moves
-              : [],
-
-          customers:
-            Array.isArray(
-              imported.customers
-            )
-              ? imported.customers
-              : [],
-
-          quotes:
-            Array.isArray(
-              imported.quotes
-            )
-              ? imported.quotes
-              : [],
-
-          orders:
-            Array.isArray(
-              imported.orders
-            )
-              ? imported.orders
-              : [],
-
-          cash:
-            Array.isArray(
-              imported.cash
-            )
-              ? imported.cash
-              : []
-
-        };
-
-
-        save();
-
-
-        alert(
-          "Respaldo restaurado correctamente."
-        );
-
-
-      }catch(error){
-
-        console.error(
-          error
-        );
-
-
-        alert(
-          "No se pudo restaurar el respaldo."
-        );
-
-      }
-
-    };
-
-
-  reader.readAsText(
-    file
-  );
-
+function normalizeImportedData(source){
+  if(!source || typeof source !== "object") throw new Error("Formato inválido");
+  const candidate = source.data && typeof source.data === "object" ? source.data : source;
+  const keys = ["products","sales","moves","customers","quotes","orders","cash"];
+  const recognized = keys.filter(k => Array.isArray(candidate[k]));
+  if(!recognized.length) throw new Error("El archivo no contiene datos de Aquarium Fish.");
+  const result = {};
+  keys.forEach(k => { result[k] = Array.isArray(candidate[k]) ? candidate[k] : []; });
+  return result;
 }
 
-
-/* =========================================================
-   BÚSQUEDAS
-   ========================================================= */
-
-function bindSearches() {
-
-  const search =
-    document.getElementById(
-      "search"
-    );
-
-
-  if(search){
-
-    search.oninput =
-      function(){
-
-        renderInventory();
-
-      };
-
-  }
-
-
-  const salesSearch =
-    document.getElementById(
-      "salesSearch"
-    );
-
-
-  if(salesSearch){
-
-    salesSearch.oninput =
-      function(){
-
-        renderSales();
-
-      };
-
-  }
-
-
-  const customerSearch =
-    document.getElementById(
-      "customerSearch"
-    );
-
-
-  if(customerSearch){
-
-    customerSearch.oninput =
-      function(){
-
-        renderCustomers();
-
-      };
-
-  }
-
-}
-
-
-/* =========================================================
-   HACER FUNCIONES GLOBALES
-   IMPORTANTE PARA LOS onclick DEL HTML
-   ========================================================= */
-
-function exposeFunctions() {
-
-  window.editQuote =
-    editQuote;
-
-  window.viewQuote =
-    viewQuote;
-
-  window.deleteQuote =
-    deleteQuote;
-
-  window.convertQuoteToSale =
-    convertQuoteToSale;
-
-
-
-  window.show =
-    show;
-
-
-  window.openProduct =
-    openProduct;
-
-
-  window.editProduct =
-    editProduct;
-
-
-  window.deleteProduct =
-    deleteProduct;
-
-
-  window.openSale =
-    openSale;
-
-  window.deleteSale =
-    deleteSale;
-
-
-  window.addSaleRow =
-    addSaleRow;
-
-
-  window.updateSalePreview =
-    updateSalePreview;
-
-
-  window.openCustomer =
-    openCustomer;
-
-
-  window.editCustomer =
-    editCustomer;
-
-
-  window.deleteCustomer =
-    deleteCustomer;
-
-
-  window.openOrder =
-    openOrder;
-
-
-  window.editOrder =
-    editOrder;
-
-
-  window.deleteOrder =
-    deleteOrder;
-
-
-  window.toggleOrder =
-    toggleOrder;
-
-
-  window.advanceOrderStatus =
-    advanceOrderStatus;
-
-
-  window.openMove =
-    openMove;
-
-
-  window.toggleDateGroup =
-    toggleDateGroup;
-
-
-  window.closeModal =
-    closeModal;
-
-
-  window.openInternal =
-    openInternal;
-
-
-  window.closeInternal =
-    closeInternal;
-
-
-  window.exportData =
-    exportData;
-
-
-  window.importData =
-    importData;
-
-
-  window.setInventoryCategory =
-    setInventoryCategory;
-
-
-  window.setInventorySort =
-    setInventorySort;
-
-
-  /* =====================================================
-     FUNCIONES DE CAJA
-  ===================================================== */
-
-  window.openCashMovement =
-    openCashMovement;
-
-
-  window.editCashMovement =
-    editCashMovement;
-
-
-  window.deleteCashMovement =
-    deleteCashMovement;
-
-
-  window.setCashPeriod =
-    setCashPeriod;
-
-
-  window.addQuoteItem =
-    addQuoteItem;
-
-
-  window.updateQuoteItem =
-    updateQuoteItem;
-
-
-  window.removeQuoteItem =
-    removeQuoteItem;
-
-
-  window.clearQuote =
-    clearQuote;
-
-
-  window.copyQuote =
-    copyQuote;
-
-
-  window.shareQuoteWhatsApp =
-    shareQuoteWhatsApp;
-
-  window.saveQuote =
-    saveQuote;
-
-  window.openReceipt =
-    openReceipt;
-
-  window.copySaleReceipt =
-    copySaleReceipt;
-
-  window.shareSaleReceiptWhatsApp =
-    shareSaleReceiptWhatsApp;
-
-  window.setReportPeriod =
-    setReportPeriod;
-
-
-  window.printSaleReceipt =
-    printSaleReceipt;
-
-}
-
-
-/* =========================================================
-   AJUSTE RESPONSIVO PARA CELULAR
-   ========================================================= */
-
-function applyMobileLayout(){
-
-  if(document.getElementById("aquariumMobileLayout")){
-    return;
-  }
-
-  const style = document.createElement("style");
-  style.id = "aquariumMobileLayout";
-  style.textContent = `
-    @media (max-width: 700px){
-      html, body{
-        width:100%;
-        max-width:100%;
-        overflow-x:hidden;
+function importData(input){
+  const file = input?.files?.[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = function(){
+    try{
+      const imported = JSON.parse(reader.result);
+      const nextDb = normalizeImportedData(imported);
+      const totalRecords = Object.values(nextDb).reduce((sum,value)=>sum+value.length,0);
+      if(!confirm(`Se encontraron ${totalRecords} registros en el respaldo.\n\nAntes de restaurarlo se descargará una copia de seguridad de los datos actuales.\n\n¿Continuar?`)){
+        input.value = "";
+        return;
       }
-
-      main{
-        width:100%;
-        max-width:100%;
-        box-sizing:border-box;
-      }
-
-      .screen, .panel, .item, .cards{
-        max-width:100%;
-        box-sizing:border-box;
-      }
-
-      .section-head{
-        flex-wrap:wrap;
-      }
-
-      .cards{
-        grid-template-columns:repeat(2,minmax(0,1fr)) !important;
-      }
-
-      [style*="grid-template-columns"]{
-        grid-template-columns:1fr !important;
-      }
-
-      input, select, textarea, button{
-        max-width:100%;
-        box-sizing:border-box;
-      }
-
-      .list{
-        max-width:100%;
-        overflow-x:hidden;
-      }
-
-      .item{
-        min-width:0;
-        flex-wrap:wrap;
-      }
-
-      nav{
-        width:100%;
-        max-width:100%;
-        overflow-x:auto;
-        box-sizing:border-box;
-      }
+      exportData();
+      db = nextDb;
+      save();
+      alert("Respaldo restaurado correctamente.");
+    }catch(error){
+      console.error("Error restaurando respaldo:",error);
+      alert("No se pudo restaurar el respaldo. El archivo no tiene un formato válido de Aquarium Fish.");
+    }finally{
+      input.value = "";
     }
-  `;
-
-  document.head.appendChild(style);
-
+  };
+  reader.readAsText(file);
 }
 
 
@@ -9479,6 +9042,8 @@ function iniciarApp() {
   setupReportsUI();
 
   setupCotizadorUI();
+
+  setupStageDUI();
 
   bindNavigation();
 
@@ -9712,123 +9277,74 @@ function renderSales(){
   }).join("");
 }
 
-/* =========================================================
-   ETAPA C — CLIENTES · CAJA · REPORTES
-========================================================= */
-
 
 /* =========================================================
-   ETAPA C — CLIENTES · CAJA · REPORTES
-   Mejora de operación diaria sin cambiar el modelo de datos.
-========================================================= */
-(function stageCEnhancements(){
-  const originalRenderCustomers = window.renderCustomers || renderCustomers;
-  const originalRenderCash = window.renderCash || renderCash;
-  const originalRenderReports = window.renderReports || renderReports;
+   ETAPA D — HERRAMIENTAS Y CONTROL PROFESIONAL
+   Cotizador, encargos, movimientos, respaldo y resumen.
+   Sin cambios de estructura Firebase.
+   ========================================================= */
 
-  function ensureCustomerSummary(){
-    const search = document.getElementById('customerSearch');
-    if(!search) return;
-    let box = document.getElementById('stageCCustomerSummary');
-    if(!box){
-      box = document.createElement('div');
-      box.id = 'stageCCustomerSummary';
-      box.className = 'stagec-summary';
-      search.parentNode.insertBefore(box, search);
-    }
-    const customers = Array.isArray(db.customers) ? db.customers : [];
-    let active = 0, bought = 0, paid = 0, balance = 0;
-    customers.forEach(c=>{
-      const s = customerStats(c.name);
-      if(s.sales.length) active++;
-      bought += s.bought;
-      paid += s.paid;
-      balance += s.balance;
-    });
-    box.innerHTML = `
-      <div class="stagec-mini-card"><span>👥 Clientes</span><b>${customers.length}</b><small>registrados</small></div>
-      <div class="stagec-mini-card"><span>🛒 Activos</span><b>${active}</b><small>con compras</small></div>
-      <div class="stagec-mini-card"><span>💰 Comprado</span><b>${money(bought)}</b><small>ventas asociadas</small></div>
-      <div class="stagec-mini-card ${balance>0?'attention':''}"><span>💳 Por cobrar</span><b>${money(balance)}</b><small>saldo de clientes</small></div>
-    `;
-    search.placeholder = '🔎 Buscar por nombre o teléfono...';
+let movesSearch = "";
+let movesTypeFilter = "Todos";
+
+function setupStageDUI(){
+  const search = document.getElementById("movesSearch");
+  const type = document.getElementById("movesTypeFilter");
+  if(search){
+    search.value = movesSearch;
+    search.oninput = function(){ movesSearch=this.value; renderMoves(); };
   }
-
-  function renderCustomersStageC(){
-    originalRenderCustomers();
-    ensureCustomerSummary();
+  if(type){
+    type.value = movesTypeFilter;
+    type.onchange = function(){ movesTypeFilter=this.value; renderMoves(); };
   }
+  renderMore();
+  renderMoves();
+}
 
-  function ensureCashHeader(){
-    const summary = document.getElementById('cashSummary');
-    if(!summary) return;
-    const period = document.getElementById('cashPeriod');
-    let box = document.getElementById('stageCCashQuick');
-    if(!box){
-      box = document.createElement('div');
-      box.id = 'stageCCashQuick';
-      box.className = 'stagec-cash-quick';
-      summary.parentNode.insertBefore(box, summary);
-    }
-    const totals = calculateCashTotals(cashPeriod);
-    const label = period?.selectedOptions?.[0]?.textContent?.trim() || 'Periodo seleccionado';
-    box.innerHTML = `
-      <div><span>CAJA OPERATIVA</span><strong>${money(totals.balance)}</strong><small>${label}</small></div>
-      <button type="button" class="primary" onclick="openCashMovement()">＋ Registrar movimiento</button>
-    `;
-  }
+function clearMovesSearch(){
+  movesSearch="";
+  const el=document.getElementById("movesSearch");
+  if(el){el.value="";renderMoves();el.focus();}
+}
 
-  function renderCashStageC(){
-    originalRenderCash();
-    ensureCashHeader();
-  }
+function renderMoves(){
+  const list=document.getElementById("movesList");
+  const summary=document.getElementById("movesSummary");
+  if(!list) return;
+  const q=String(movesSearch||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").trim();
+  const rows=(Array.isArray(db.moves)?db.moves:[]).map((move,index)=>({move,index})).filter(({move})=>{
+    const type=String(move.type||"");
+    if(movesTypeFilter!=="Todos" && type!==movesTypeFilter) return false;
+    if(!q) return true;
+    const hay=`${move.product||""} ${move.reason||""} ${move.responsible||""} ${move.date||""}`.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"");
+    return hay.includes(q);
+  }).reverse();
+  const entries=Array.isArray(db.moves)?db.moves:[];
+  const entradas=entries.filter(m=>String(m.type||"")==="Entrada").reduce((s,m)=>s+(+m.qty||0),0);
+  const salidas=entries.filter(m=>String(m.type||"")==="Salida").reduce((s,m)=>s+(+m.qty||0),0);
+  summary.innerHTML=`<span>Movimientos <b>${entries.length}</b></span><span>🟢 Entradas <b>${entradas}</b></span><span>🔴 Salidas <b>${salidas}</b></span><span>Mostrando <b>${rows.length}</b></span>`;
+  list.innerHTML=rows.length ? rows.map(({move,index})=>`<div class="item stage-d-move-item"><div><b>${esc(move.product||"Producto")}</b><div class="muted">${move.source==="Venta"?"Venta automática":esc(move.reason||"Sin motivo")} · ${esc(move.responsible||"Sin responsable")} · ${esc(move.date||"")}</div></div><span class="badge ${String(move.type||"")==="Salida"?"low":""}">${String(move.type||"Entrada")==="Salida"?"🔴":"🟢"} ${esc(move.type||"")} ${esc(move.qty||0)}</span></div>`).join(""):`<div class="empty">${entries.length?"No hay movimientos que coincidan con el filtro.":"No hay movimientos registrados."}</div>`;
+}
 
-  function customerReportRows(){
-    const map = {};
-    reportSales().forEach(s=>{
-      const name = String(s.client||'Sin cliente').trim() || 'Sin cliente';
-      if(!map[name]) map[name] = {name, total:0, paid:0, count:0};
-      map[name].total += (+s.total||0);
-      map[name].paid += salePaid(s);
-      map[name].count += 1;
-    });
-    return Object.values(map).sort((a,b)=>b.total-a.total).slice(0,8);
-  }
+function renderMore(){
+  const overview=document.getElementById("moreOverview");
+  if(!overview) return;
+  const lastBackup = (()=>{try{return localStorage.getItem("aquariumFishLastBackup")}catch(_){return null}})();
+  const backupText=lastBackup ? new Date(lastBackup).toLocaleString("es-CO") : "Aún no registrado en este dispositivo";
+  const activeOrders=(db.orders||[]).filter(o=>!['Entregado','Cancelado'].includes(String(o.status||'Pendiente'))).length;
+  const pendingQuotes=(db.quotes||[]).filter(q=>!q.convertedSaleId && !['Rechazada','Cancelada'].includes(String(q.status||''))).length;
+  const pendingReceivable=typeof calculateReceivable==='function'?calculateReceivable():0;
+  overview.innerHTML=`<div class="more-status-grid"><div><span>👥 Clientes</span><b>${db.customers.length}</b></div><div><span>📝 Encargos activos</span><b>${activeOrders}</b></div><div><span>🧾 Cotizaciones activas</span><b>${pendingQuotes}</b></div><div><span>💳 Por cobrar</span><b>${money(pendingReceivable)}</b></div></div><div class="more-backup-line">💾 Último respaldo descargado: <b>${esc(backupText)}</b></div>`;
+  const count=document.getElementById("moreCustomersCount");
+  if(count) count.textContent=String(db.customers.length);
+}
 
-  function ensureReportCustomerPanel(){
-    const section = document.getElementById('reports');
-    if(!section) return;
-    let panel = document.getElementById('stageCReportCustomers');
-    if(!panel){
-      panel = document.createElement('div');
-      panel.id = 'stageCReportCustomers';
-      panel.className = 'panel';
-      section.appendChild(panel);
-    }
-    const rows = customerReportRows();
-    const expenses = reportExpenseTotal();
-    const revenue = reportRevenue();
-    const profit = reportProfit();
-    const margin = revenue ? (profit/revenue)*100 : 0;
-    panel.innerHTML = `
-      <div class="section-head stagec-report-head">
-        <div><h2>👥 Clientes y rentabilidad</h2><p class="muted">Lectura rápida del periodo seleccionado. No modifica ningún dato.</p></div>
-      </div>
-      <div class="stagec-report-grid">
-        <div class="stagec-report-highlight"><span>Margen sobre ventas</span><b>${margin.toFixed(1)}%</b><small>ganancia antes de gastos</small></div>
-        <div class="stagec-report-highlight"><span>Resultado después de gastos</span><b>${money(profit-expenses)}</b><small>ganancia − gastos</small></div>
-      </div>
-      <h3 class="stagec-subtitle">Clientes con mayor volumen de compra</h3>
-      ${rows.length ? rows.map((r,i)=>`<div class="item"><div><b>${i+1}. ${esc(r.name)}</b><small>${r.count} venta${r.count===1?'':'s'} · Pagado ${money(r.paid)}</small></div><div class="right"><b>${money(r.total)}</b>${r.total-r.paid>0?`<small>Debe ${money(r.total-r.paid)}</small>`:''}</div></div>`).join('') : '<div class="empty">No hay ventas con cliente en este periodo.</div>'}
-    `;
-  }
-
-  function renderReportsStageC(){
-    originalRenderReports();
-    ensureReportCustomerPanel();
-  }
-
-  window.renderCustomers = renderCustomersStageC;
-  window.renderCash = renderCashStageC;
-  window.renderReports = renderReportsStageC;
-})();
+function showBackupCenter(){
+  const panel=document.getElementById("moreBackupPanel");
+  if(!panel) return;
+  const last=(()=>{try{return localStorage.getItem("aquariumFishLastBackup")}catch(_){return null}})();
+  panel.style.display="block";
+  panel.innerHTML=`<div class="more-backup-head"><div><h2>💾 Centro de respaldo</h2><p class="muted">Protege tus datos antes de restaurar o cambiar información.</p></div><button type="button" onclick="document.getElementById('moreBackupPanel').style.display='none'">×</button></div><div class="more-backup-actions"><button class="primary" type="button" onclick="exportData()">⬇️ Descargar respaldo</button><button type="button" onclick="document.getElementById('importFile').click()">⬆️ Restaurar respaldo</button></div><p class="muted">Registros actuales: <b>${Object.values(db).reduce((s,v)=>s+(Array.isArray(v)?v.length:0),0)}</b> · Último respaldo desde este dispositivo: <b>${last?new Date(last).toLocaleString('es-CO'):"no registrado"}</b></p><div class="more-safety-note">🛡️ Al restaurar, la aplicación descarga primero una copia de los datos actuales. Los respaldos antiguos de Aquarium Fish siguen siendo compatibles.</div>`;
+  panel.scrollIntoView({behavior:"smooth",block:"nearest"});
+}

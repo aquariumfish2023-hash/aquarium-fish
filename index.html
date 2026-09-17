@@ -400,7 +400,7 @@
 
   <div class="section-head">
 
-    <h1>Movimientos</h1>
+    <div><span class="page-kicker">CONTROL DE STOCK</span><h1>Movimientos</h1><p class="muted page-subtitle">Consulta entradas y salidas de inventario sin perder el historial.</p></div>
 
     <button
       class="primary"
@@ -412,6 +412,11 @@
 
   </div>
 
+  <div class="stageb-controls stage-d-move-controls">
+    <div class="stageb-filter-group"><label>Buscar</label><div class="stageb-search-wrap"><input id="movesSearch" class="search" placeholder="🔎 Producto, motivo o responsable..." autocomplete="off"><button type="button" class="stageb-clear-search" onclick="clearMovesSearch()" aria-label="Limpiar búsqueda">×</button></div></div>
+    <div class="stageb-filter-group"><label>Tipo</label><select id="movesTypeFilter" class="stageb-select"><option value="Todos">Todos</option><option value="Entrada">🟢 Entradas</option><option value="Salida">🔴 Salidas</option></select></div>
+  </div>
+  <div id="movesSummary" class="stageb-inventory-summary"></div>
   <div id="movesList" class="list"></div>
 
 </section>
@@ -432,9 +437,11 @@
     </div>
   </div>
 
+  <div class="more-overview" id="moreOverview"></div>
+
   <div class="more-grid">
     <button type="button" class="more-card" onclick="show('customers')">
-      <span class="more-icon">👥</span><span><b>Clientes</b><small>Contactos, compras y saldos</small></span><strong>›</strong>
+      <span class="more-icon">👥</span><span><b>Clientes</b><small>Contactos, compras y saldos</small></span><strong id="moreCustomersCount">›</strong>
     </button>
     <button type="button" class="more-card" onclick="show('cotizador')">
       <span class="more-icon">🧾</span><span><b>Cotizador</b><small>Crear, editar y dar seguimiento</small></span><strong>›</strong>
@@ -448,10 +455,15 @@
     <button type="button" class="more-card" onclick="show('reports')">
       <span class="more-icon">📊</span><span><b>Reportes</b><small>Resumen y análisis del negocio</small></span><strong>›</strong>
     </button>
-    <button type="button" class="more-card" onclick="document.getElementById('importFile').click()">
-      <span class="more-icon">💾</span><span><b>Respaldo</b><small>Importar o exportar tus datos</small></span><strong>›</strong>
+    <button type="button" class="more-card" onclick="openInternal()">
+      <span class="more-icon">🔒</span><span><b>Resumen interno</b><small>Indicadores del negocio</small></span><strong>›</strong>
+    </button>
+    <button type="button" class="more-card" onclick="showBackupCenter()">
+      <span class="more-icon">💾</span><span><b>Respaldo</b><small>Exportar, restaurar y proteger tus datos</small></span><strong>›</strong>
     </button>
   </div>
+
+  <div class="panel more-backup-panel" id="moreBackupPanel" style="display:none"></div>
 
   <div class="panel more-tip">
     <span>💡</span><div><b>Consejo</b><p>Las operaciones diarias están en la barra inferior. Las herramientas adicionales quedan aquí para mantener la aplicación limpia y fácil de manejar.</p></div>

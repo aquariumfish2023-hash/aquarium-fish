@@ -378,55 +378,35 @@ nav button[data-tab="reports"],nav button[data-tab="cotizador"]{display:none!imp
 @media(max-width:699px){.stageb-toolbar{grid-template-columns:1fr 1fr}.stageb-toolbar .stageb-filter-group:last-child{grid-column:1/-1}.stageb-inventory-summary{gap:7px}.stageb-inventory-summary span+span{padding-left:7px}.stageb-product-title-row{align-items:flex-start}.stageb-product-title-row .stageb-status{font-size:10px;padding:5px 7px}.stageb-product-metrics{gap:6px}.stageb-product-metrics span{padding:7px}.stageb-product-metrics b{font-size:12px}.stageb-sales-kpi{grid-template-columns:1fr 1fr}.stageb-sale-card{grid-template-columns:1fr;gap:9px}.stageb-sale-side{display:grid;grid-template-columns:1fr 1fr;gap:6px;text-align:left}.stageb-sale-side>b{grid-column:1/-1;margin:0}.stageb-sale-side button{margin:0}.stageb-sale-bottom{align-items:flex-start;flex-direction:column;gap:3px}}
 @media(max-width:380px){.stageb-toolbar{grid-template-columns:1fr}.stageb-toolbar .stageb-filter-group:last-child{grid-column:auto}.stageb-inventory-summary span+span{border-left:0;padding-left:0}.stageb-product-title-row{flex-direction:column}.stageb-product-title-row .stageb-status{align-self:flex-start}}
 
-/* ETAPA C */
-
-
-/* ETAPA C — Clientes, Caja y Reportes */
-.stagec-summary{
-  display:grid;
-  grid-template-columns:repeat(4,minmax(0,1fr));
-  gap:10px;
-  margin:0 0 12px;
+/* =====================================================
+   ETAPA D — CENTRO DE HERRAMIENTAS Y CONTROL
+   ===================================================== */
+.more-overview{margin:0 0 12px}
+.more-status-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px}
+.more-status-grid>div{background:#fff;border:1px solid var(--af-border);border-radius:14px;padding:11px 12px;box-shadow:var(--af-shadow)}
+.more-status-grid span{display:block;color:var(--af-muted);font-size:10px;font-weight:700}
+.more-status-grid b{display:block;margin-top:4px;font-size:17px}
+.more-backup-line{margin-top:8px;padding:9px 12px;border-radius:11px;background:#f7fafb;color:#6b797d;font-size:11px;border:1px solid #e3eaeb}
+.more-backup-line b{color:#273438}
+.more-backup-panel{border:1px solid #cfe3e5;background:linear-gradient(135deg,#f3fbfb,#fff)}
+.more-backup-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+.more-backup-head h2{margin-bottom:4px}
+.more-backup-head button{width:34px;height:34px;border:0;border-radius:50%;background:#eaf1f2;font-size:21px;cursor:pointer}
+.more-backup-actions{display:flex;gap:8px;flex-wrap:wrap;margin:14px 0 10px}
+.more-backup-actions button{min-height:44px}
+.more-safety-note{padding:11px 12px;border-radius:12px;background:#fff;border:1px dashed #cbdfe1;color:#536367;font-size:12px;line-height:1.45}
+.stage-d-move-controls{display:grid!important;grid-template-columns:2fr 1fr!important;gap:9px!important}
+.stage-d-move-controls .stageb-search-wrap{margin-bottom:0}
+.stage-d-move-controls .search{margin-bottom:0}
+.stage-d-move-item{align-items:center}
+.stage-d-move-item .badge{font-weight:800}
+@media(max-width:699px){
+  .more-status-grid{grid-template-columns:1fr 1fr}
+  .stage-d-move-controls{grid-template-columns:1fr!important}
+  .more-backup-actions button{flex:1;min-width:150px}
 }
-.stagec-mini-card{
-  background:var(--panel,#fff);
-  border:1px solid var(--border,#e1e7eb);
-  border-radius:14px;
-  padding:13px 14px;
-  display:flex;
-  flex-direction:column;
-  gap:3px;
-  min-width:0;
-}
-.stagec-mini-card span{font-size:.82rem;font-weight:600;opacity:.8}
-.stagec-mini-card b{font-size:1.15rem;line-height:1.2}
-.stagec-mini-card small{opacity:.68}
-.stagec-mini-card.attention{border-color:#e6b85c}
-.stagec-cash-quick{
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  gap:14px;
-  margin:0 0 14px;
-  padding:15px 16px;
-  border:1px solid var(--border,#e1e7eb);
-  border-radius:16px;
-  background:var(--panel,#fff);
-}
-.stagec-cash-quick div{display:flex;flex-direction:column;gap:2px}
-.stagec-cash-quick span{font-size:.74rem;font-weight:700;letter-spacing:.08em;opacity:.65}
-.stagec-cash-quick strong{font-size:1.55rem;line-height:1.1}
-.stagec-cash-quick small{opacity:.7}
-.stagec-report-head{margin-bottom:8px}
-.stagec-report-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-bottom:16px}
-.stagec-report-highlight{border:1px solid var(--border,#e1e7eb);border-radius:14px;padding:14px;background:var(--panel,#fff);display:flex;flex-direction:column;gap:4px}
-.stagec-report-highlight span{font-weight:600;opacity:.8}
-.stagec-report-highlight b{font-size:1.35rem}
-.stagec-report-highlight small{opacity:.68}
-.stagec-subtitle{font-size:1rem;margin:16px 0 8px}
-@media (max-width:760px){
-  .stagec-summary{grid-template-columns:repeat(2,minmax(0,1fr));}
-  .stagec-cash-quick{align-items:stretch;flex-direction:column;}
-  .stagec-cash-quick button{width:100%;}
-  .stagec-report-grid{grid-template-columns:1fr;}
+@media(max-width:380px){
+  .more-status-grid{grid-template-columns:1fr 1fr}
+  .more-status-grid>div{padding:10px}
+  .more-status-grid b{font-size:15px}
 }
