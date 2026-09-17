@@ -9507,3 +9507,207 @@ if(
   iniciarApp();
 
 }
+
+
+/* =========================================================
+   ETAPA B — OPERACIÓN DIARIA PROFESIONAL
+   Inventario + Ventas: mejora de lectura y rapidez sin
+   modificar la estructura de datos ni Firebase.
+   ========================================================= */
+
+let inventoryStatusFilter = "Todos";
+let salesStatusFilter = "Todos";
+let salesPeriodFilter = "Todos";
+let salesPaymentFilter = "Todos";
+
+function clearInventorySearch(){
+  const el=document.getElementById("search");
+  if(el){ el.value=""; renderInventory(); el.focus(); }
+}
+
+function clearSalesSearch(){
+  const el=document.getElementById("salesSearch");
+  if(el){ el.value=""; renderSales(); el.focus(); }
+}
+
+function inventoryStockState(product){
+  const stock=Math.max(0,+product.stock||0);
+  const min=Math.max(0,+product.min||0);
+  if(stock<=0) return {key:"Agotado", cls:"stageb-danger", icon:"🔴"};
+  if(stock<=min) return {key:"Stock bajo", cls:"stageb-warning", icon:"🟠"};
+  return {key:"Disponible", cls:"stageb-good", icon:"🟢"};
+}
+
+function setInventoryStatusFilter(value){
+  inventoryStatusFilter=value||"Todos";
+  renderInventory();
+}
+
+function setSalesStatusFilter(value){
+  salesStatusFilter=value||"Todos";
+  renderSales();
+}
+
+function setSalesPeriodFilter(value){
+  salesPeriodFilter=value||"Todos";
+  renderSales();
+}
+
+function setSalesPaymentFilter(value){
+  salesPaymentFilter=value||"Todos";
+  renderSales();
+}
+
+function saleStatusClass(status){
+  const s=String(status||"Pagada").toLowerCase();
+  if(s.includes("pendiente")) return "stageb-warning";
+  if(s.includes("abono")) return "stageb-info";
+  if(s.includes("cancel")) return "stageb-danger";
+  return "stageb-good";
+}
+
+function salesPeriodMatch(sale){
+  if(salesPeriodFilter==="Todos") return true;
+  const d=new Date(sale.date);
+  if(Number.isNaN(d.getTime())) return true;
+  const nowDate=new Date();
+  if(salesPeriodFilter==="Hoy") return sameDay(d,nowDate);
+  const start=new Date(nowDate);
+  start.setHours(0,0,0,0);
+  start.setDate(start.getDate()-(salesPeriodFilter==="7 días"?6:29));
+  return d>=start;
+}
+
+function renderInventory(){
+  const search=document.getElementById("search");
+  const list=document.getElementById("inventoryList");
+  if(!search||!list) return;
+
+  const q=String(search.value||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").trim();
+  let rows=(Array.isArray(db.products)?db.products:[]).filter(p=>{
+    const hay=`${p.name||""} ${p.category||""}`.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"");
+    if(q && !hay.includes(q)) return false;
+    if(inventoryCategory!=="Todas" && String(p.category||"").trim().toLowerCase()!==inventoryCategory.toLowerCase()) return false;
+    if(inventoryStatusFilter!=="Todos" && inventoryStockState(p).key!==inventoryStatusFilter) return false;
+    return true;
+  });
+
+  if(inventorySort==="name-asc") rows.sort((a,b)=>String(a.name||"").localeCompare(String(b.name||""),"es"));
+  if(inventorySort==="name-desc") rows.sort((a,b)=>String(b.name||"").localeCompare(String(a.name||""),"es"));
+  if(inventorySort==="stock-desc") rows.sort((a,b)=>(+b.stock||0)-(+a.stock||0));
+  if(inventorySort==="stock-asc") rows.sort((a,b)=>(+a.stock||0)-(+b.stock||0));
+
+  const stats=inventoryStats();
+  const low=stats.lowStock;
+  const zero=stats.zeroStock;
+  const controls=document.getElementById("inventoryControls") || document.createElement("div");
+  controls.id="inventoryControls";
+  if(!controls.parentElement) search.insertAdjacentElement("afterend",controls);
+
+  controls.innerHTML=`
+    <div class="stageb-toolbar">
+      <div class="stageb-filter-group">
+        <label>Estado</label>
+        <select id="inventoryStatus" class="stageb-select">
+          ${["Todos","Disponible","Stock bajo","Agotado"].map(v=>`<option value="${esc(v)}" ${inventoryStatusFilter===v?"selected":""}>${v==="Todos"?"📋 Todos":v==="Disponible"?"🟢 Disponible":v==="Stock bajo"?"🟠 Stock bajo":"🔴 Agotado"}</option>`).join("")}
+        </select>
+      </div>
+      <div class="stageb-filter-group">
+        <label>Categoría</label>
+        <select id="inventoryCategory" class="stageb-select">
+          <option value="Todas">📂 Todas</option>
+          ${inventoryCategories().map(c=>`<option value="${esc(c)}" ${c.toLowerCase()===inventoryCategory.toLowerCase()?"selected":""}>${esc(c)}</option>`).join("")}
+        </select>
+      </div>
+      <div class="stageb-filter-group">
+        <label>Ordenar</label>
+        <select id="inventorySort" class="stageb-select">
+          <option value="name-asc" ${inventorySort==="name-asc"?"selected":""}>🔤 A-Z</option>
+          <option value="name-desc" ${inventorySort==="name-desc"?"selected":""}>🔤 Z-A</option>
+          <option value="stock-desc" ${inventorySort==="stock-desc"?"selected":""}>📈 Mayor stock</option>
+          <option value="stock-asc" ${inventorySort==="stock-asc"?"selected":""}>📉 Menor stock</option>
+        </select>
+      </div>
+    </div>
+    <div class="stageb-inventory-summary">
+      <span><b>${rows.length}</b> mostrados de ${db.products.length}</span>
+      <span>🟠 ${low} bajo</span>
+      <span>🔴 ${zero} agotados</span>
+      <span>💰 ${money(stats.saleValue)} en stock</span>
+    </div>`;
+
+  document.getElementById("inventoryStatus").onchange=e=>setInventoryStatusFilter(e.target.value);
+  document.getElementById("inventoryCategory").onchange=e=>setInventoryCategory(e.target.value);
+  document.getElementById("inventorySort").onchange=e=>setInventorySort(e.target.value);
+
+  list.innerHTML=rows.length?rows.map(product=>{
+    const state=inventoryStockState(product);
+    const idx=db.products.indexOf(product);
+    const margin=(+product.price||0)-(+product.cost||0);
+    return `<article class="stageb-product-card">
+      <button type="button" class="stageb-product-main" onclick="editProduct(${idx})">
+        <div class="stageb-product-title-row"><div><b>${esc(product.name||"Sin nombre")}</b><small>${esc(product.category||"Sin categoría")}</small></div><span class="stageb-status ${state.cls}">${state.icon} ${state.key}</span></div>
+        <div class="stageb-product-metrics">
+          <span><small>Stock</small><b>${+product.stock||0}</b></span>
+          <span><small>Venta</small><b>${money(product.price)}</b></span>
+          <span><small>Ganancia/u</small><b>${money(margin)}</b></span>
+        </div>
+      </button>
+      <div class="stageb-product-actions"><button type="button" onclick="editProduct(${idx})">✏️ Editar</button></div>
+    </article>`;
+  }).join(""):`<div class="empty"><b>No encontramos productos</b><div class="muted">Prueba otro término o cambia los filtros.</div></div>`;
+}
+
+function renderSales(){
+  const list=document.getElementById("salesList");
+  const search=document.getElementById("salesSearch");
+  if(!list) return;
+  const sales=Array.isArray(db.sales)?db.sales:[];
+  const q=String(search?.value||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").trim();
+  const filtered=sales.filter(sale=>{
+    const items=Array.isArray(sale.items)?sale.items.map(i=>i.product||"").join(" "):(sale.product||"");
+    const hay=[sale.id,sale.client,sale.phone,sale.date,sale.pay,sale.status,items].join(" ").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"");
+    if(q&&!hay.includes(q)) return false;
+    if(salesStatusFilter!=="Todos" && String(sale.status||"Pagada")!==salesStatusFilter) return false;
+    if(salesPaymentFilter!=="Todos" && String(sale.pay||"")!==salesPaymentFilter) return false;
+    if(!salesPeriodMatch(sale)) return false;
+    return true;
+  });
+
+  const controls=document.getElementById("salesControls");
+  if(controls){
+    const pays=[...new Set(sales.map(s=>String(s.pay||"").trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,"es"));
+    controls.innerHTML=`<div class="stageb-toolbar">
+      <div class="stageb-filter-group"><label>Periodo</label><select class="stageb-select" onchange="setSalesPeriodFilter(this.value)"><option>Todos</option><option ${salesPeriodFilter==="Hoy"?"selected":""}>Hoy</option><option ${salesPeriodFilter==="7 días"?"selected":""}>7 días</option><option ${salesPeriodFilter==="30 días"?"selected":""}>30 días</option></select></div>
+      <div class="stageb-filter-group"><label>Estado</label><select class="stageb-select" onchange="setSalesStatusFilter(this.value)"><option>Todos</option><option ${salesStatusFilter==="Pagada"?"selected":""}>Pagada</option><option ${salesStatusFilter==="Abono"?"selected":""}>Abono</option><option ${salesStatusFilter==="Pendiente"?"selected":""}>Pendiente</option></select></div>
+      <div class="stageb-filter-group"><label>Pago</label><select class="stageb-select" onchange="setSalesPaymentFilter(this.value)"><option>Todos</option>${pays.map(v=>`<option value="${esc(v)}" ${salesPaymentFilter===v?"selected":""}>${esc(v)}</option>`).join("")}</select></div>
+    </div>`;
+  }
+
+  const total=filtered.reduce((sum,s)=>sum+(+s.total||0),0);
+  const received=filtered.reduce((sum,s)=>sum+salePaid(s),0);
+  const pending=filtered.reduce((sum,s)=>sum+Math.max(0,(+s.total||0)-salePaid(s)),0);
+  const summary=document.getElementById("salesSummary");
+  if(summary) summary.innerHTML=`<div class="stageb-sales-kpi"><span><small>Ventas</small><b>${filtered.length}</b></span><span><small>Total</small><b>${money(total)}</b></span><span><small>Recibido</small><b>${money(received)}</b></span><span><small>Por cobrar</small><b>${money(pending)}</b></span></div>`;
+
+  if(!sales.length){list.innerHTML=`<div class="empty"><b>No hay ventas registradas</b><div class="muted">Las nuevas ventas aparecerán aquí.</div></div>`;return;}
+  if(!filtered.length){list.innerHTML=`<div class="empty"><b>No encontramos ventas</b><div class="muted">Prueba otros filtros o limpia la búsqueda.</div></div>`;return;}
+
+  const groups={};
+  filtered.forEach(s=>{const key=dateKey(s.date);(groups[key] ||= []).push(s);});
+  const keys=Object.keys(groups).sort((a,b)=>b.localeCompare(a));
+  list.innerHTML=keys.map((key,gi)=>{
+    const group=groups[key].slice().reverse();
+    const groupTotal=group.reduce((sum,s)=>sum+(+s.total||0),0);
+    return `<div class="date-group stageb-date-group">
+      <button class="date-group-head" type="button" onclick="toggleDateGroup(this)"><span><b>${esc(dateLabel(key))}</b><small>${group.length} ${group.length===1?"venta":"ventas"} · ${money(groupTotal)}</small></span><span class="date-chevron">${gi===0?"▲":"▼"}</span></button>
+      <div class="date-group-body ${gi===0?"open":""}">${group.map(sale=>{
+        const idx=db.sales.indexOf(sale); const status=sale.status||"Pagada"; const paid=salePaid(sale); const due=Math.max(0,(+sale.total||0)-paid);
+        const itemText=Array.isArray(sale.items)&&sale.items.length?sale.items.map(i=>`${esc(i.product||"Producto")} × ${i.qty||0}`).join(" · "):`${esc(sale.product||"Producto")} × ${sale.qty||0}`;
+        return `<article class="stageb-sale-card">
+          <div class="stageb-sale-info"><div class="stageb-sale-top"><div><b>${esc(sale.client||"Sin cliente")}</b><small>${esc(sale.id||"")} · ${esc(sale.pay||"")}</small></div><span class="stageb-status ${saleStatusClass(status)}">${status==="Pagada"?"🟢":"🟠"} ${esc(status)}</span></div><p>${itemText}</p><div class="stageb-sale-bottom"><span>${esc(sale.date||"")}</span>${due>0?`<strong>Por cobrar ${money(due)}</strong>`:`<strong>Recibido ${money(paid)}</strong>`}</div></div>
+          <div class="stageb-sale-side"><b>${money(sale.total)}</b><button type="button" onclick="openReceipt(${idx})">🧾 Ver comprobante</button><button type="button" class="danger-text" onclick="deleteSale(${idx})">🗑️ Eliminar</button></div>
+        </article>`;
+      }).join("")}</div></div>`;
+  }).join("");
+}

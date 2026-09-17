@@ -190,11 +190,15 @@
 
   </div>
 
-  <input
-    id="search"
-    class="search"
-    placeholder="Buscar producto..."
-  >
+  <div class="stageb-search-wrap">
+    <input
+      id="search"
+      class="search"
+      placeholder="🔎 Buscar por nombre o categoría..."
+      autocomplete="off"
+    >
+    <button type="button" class="stageb-clear-search" onclick="clearInventorySearch()" aria-label="Limpiar búsqueda">×</button>
+  </div>
 
   <div id="inventoryList" class="list"></div>
 
@@ -221,13 +225,18 @@
 
   </div>
 
-  <input
-    id="salesSearch"
-    class="search"
-    placeholder="🔎 Buscar venta por cliente, producto o número..."
-    autocomplete="off"
-  >
+  <div class="stageb-search-wrap">
+    <input
+      id="salesSearch"
+      class="search"
+      placeholder="🔎 Buscar cliente, producto o número..."
+      autocomplete="off"
+    >
+    <button type="button" class="stageb-clear-search" onclick="clearSalesSearch()" aria-label="Limpiar búsqueda">×</button>
+  </div>
 
+  <div id="salesControls" class="stageb-controls"></div>
+  <div id="salesSummary" class="stageb-summary"></div>
   <div id="salesList" class="list"></div>
 
 </section>
