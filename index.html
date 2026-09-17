@@ -180,13 +180,16 @@
 
     <div><span class="page-kicker">PRODUCTOS</span><h1>Inventario</h1><p class="muted page-subtitle">Controla existencias y precios desde un solo lugar.</p></div>
 
-    <button
-      class="primary"
-      type="button"
-      onclick="openProduct()"
-    >
-      + Producto
-    </button>
+    <div class="inventory-head-actions">
+      <button type="button" onclick="toggleAvailabilityList()">📋 Lista para clientes</button>
+      <button
+        class="primary"
+        type="button"
+        onclick="openProduct()"
+      >
+        + Producto
+      </button>
+    </div>
 
   </div>
 
@@ -199,6 +202,8 @@
     >
     <button type="button" class="stageb-clear-search" onclick="clearInventorySearch()" aria-label="Limpiar búsqueda">×</button>
   </div>
+
+  <div id="availabilityPanel" class="availability-panel" style="display:none"></div>
 
   <div id="inventoryList" class="list"></div>
 

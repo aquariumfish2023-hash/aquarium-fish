@@ -450,3 +450,35 @@ nav button[data-tab="reports"],nav button[data-tab="cotizador"]{display:none!imp
 .stagef-audit-empty{grid-column:1/-1;padding:14px;border:1px dashed var(--af-border);border-radius:12px;color:var(--af-muted);text-align:center}
 .stagef-audit-time{margin-top:9px;font-size:11px}
 @media(max-width:699px){.stagef-audit-head{align-items:stretch;flex-direction:column}.stagef-audit-head button{width:100%}.stagef-audit-grid{grid-template-columns:1fr}}
+
+
+/* =========================================================
+   ETAPA G — LISTA COMERCIAL DE DISPONIBILIDAD
+   ========================================================= */
+.inventory-head-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:flex-end}
+.availability-panel{margin:12px 0 16px;padding:14px;border:1px solid rgba(23,111,126,.16);border-radius:16px;background:linear-gradient(180deg,#ffffff,#f7fbfc);box-shadow:0 6px 18px rgba(20,70,80,.06)}
+.availability-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}
+.availability-head h2{margin:2px 0 4px;font-size:1.1rem}
+.availability-close{font-size:1.25rem;line-height:1;min-width:38px}
+.availability-controls{display:grid;grid-template-columns:minmax(180px,1fr) auto;gap:10px;align-items:end;margin:12px 0}
+.availability-controls label{display:grid;gap:5px;font-weight:700;font-size:.85rem}
+.availability-controls select{width:100%;box-sizing:border-box}
+.availability-check{display:flex !important;grid-template-columns:none !important;align-items:center;gap:8px !important;padding:10px 12px;border:1px solid rgba(0,0,0,.08);border-radius:10px;background:#fff;white-space:nowrap;height:42px}
+.availability-check input{width:auto;max-width:none}
+.availability-preview{background:#fff;border:1px solid #dce8ea;border-radius:14px;padding:14px}
+.availability-preview-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;border-bottom:1px solid #e4edef;padding-bottom:10px}
+.availability-preview-head h3{margin:4px 0;font-size:1rem}
+.availability-preview-head small{color:#6d8085}
+.availability-items{margin-top:6px}
+.availability-item{display:flex;justify-content:space-between;gap:12px;padding:9px 3px;border-bottom:1px solid #edf2f3}
+.availability-item:last-child{border-bottom:0}
+.availability-item b{min-width:28px;text-align:right}
+.availability-note{margin-top:10px;padding-top:10px;border-top:1px solid #e4edef;color:#64797e;font-size:.8rem}
+.availability-actions{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:10px}
+@media (max-width:700px){
+  .inventory-head-actions{width:100%;justify-content:stretch}
+  .inventory-head-actions button{flex:1;min-width:0}
+  .availability-controls{grid-template-columns:1fr}
+  .availability-actions{grid-template-columns:1fr}
+  .availability-preview-head{align-items:center}
+}

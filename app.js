@@ -678,6 +678,7 @@ function renderAll() {
   if(document.getElementById("quoteAutomationAlerts")) renderQuoteAutomationAlerts();
 
   renderInventory();
+  if(document.getElementById("availabilityPanel") && document.getElementById("availabilityPanel").style.display !== "none") renderAvailabilityList();
 
   renderSales();
 
@@ -8858,6 +8859,11 @@ function exposeFunctions(){
   window.closeInternal=closeInternal;
   window.exportData=exportData;
   window.importData=importData;
+  window.toggleAvailabilityList=toggleAvailabilityList;
+  window.renderAvailabilityList=renderAvailabilityList;
+  window.shareAvailabilityWhatsApp=shareAvailabilityWhatsApp;
+  window.printAvailabilityList=printAvailabilityList;
+  window.copyAvailabilityList=copyAvailabilityList;
   window.setInventoryCategory=setInventoryCategory;
   window.setInventorySort=setInventorySort;
   window.openCashMovement=openCashMovement;
@@ -8934,6 +8940,171 @@ if(
 
   iniciarApp();
 
+}
+
+
+/* =========================================================
+   ETAPA G — LISTA COMERCIAL DE DISPONIBILIDAD
+   Usa el inventario existente. No modifica stock, precios,
+   Firebase ni la estructura de datos.
+   ========================================================= */
+
+let availabilityCategory = "Todas";
+let availabilityShowStock = false;
+
+function availabilityProducts(){
+  const products = Array.isArray(db.products) ? db.products : [];
+  const selected = String(availabilityCategory || "Todas").trim();
+  return products
+    .filter(product => {
+      const stock = Math.max(0, +product.stock || 0);
+      if(stock <= 0) return false;
+      if(selected !== "Todas" && String(product.category || "").trim().toLowerCase() !== selected.toLowerCase()) return false;
+      return true;
+    })
+    .slice()
+    .sort((a,b) => String(a.name || "").localeCompare(String(b.name || ""), "es", {sensitivity:"base"}));
+}
+
+function availabilityLabel(){
+  return availabilityCategory === "Todas" ? "Productos disponibles" : `${availabilityCategory} disponibles`;
+}
+
+function availabilityMessage(){
+  const rows = availabilityProducts();
+  const date = new Date().toLocaleDateString("es-CO", {day:"2-digit", month:"2-digit", year:"numeric"});
+  const lines = [
+    "🐠 AQUARIUM FISH",
+    `📋 ${availabilityLabel()}`,
+    `📅 Actualizado: ${date}`,
+    ""
+  ];
+  if(!rows.length){
+    lines.push("En este momento no hay productos disponibles en esta categoría.");
+  }else{
+    rows.forEach(product => {
+      const name = String(product.name || "Producto").trim();
+      const stock = Math.max(0, +product.stock || 0);
+      lines.push(availabilityShowStock ? `• ${name} — ${stock} disponible${stock === 1 ? "" : "s"}` : `• ${name}`);
+    });
+  }
+  lines.push("", "*Consulta disponibilidad antes de realizar tu pedido.*");
+  return lines.join("\n");
+}
+
+function toggleAvailabilityList(){
+  const panel = document.getElementById("availabilityPanel");
+  if(!panel) return;
+  const open = panel.style.display !== "none";
+  panel.style.display = open ? "none" : "block";
+  if(!open){
+    renderAvailabilityList();
+    panel.scrollIntoView({behavior:"smooth", block:"nearest"});
+  }
+}
+
+function renderAvailabilityList(){
+  const panel = document.getElementById("availabilityPanel");
+  if(!panel) return;
+  const categories = inventoryCategories();
+  if(availabilityCategory !== "Todas" && !categories.some(c => c.toLowerCase() === availabilityCategory.toLowerCase())){
+    availabilityCategory = "Todas";
+  }
+  const rows = availabilityProducts();
+  const date = new Date().toLocaleDateString("es-CO", {day:"2-digit", month:"2-digit", year:"numeric"});
+  panel.innerHTML = `
+    <div class="availability-head">
+      <div>
+        <span class="page-kicker">LISTADO COMERCIAL</span>
+        <h2>📋 Lista para clientes</h2>
+        <p class="muted">Genera en segundos una lista usando únicamente productos con stock.</p>
+      </div>
+      <button type="button" class="availability-close" onclick="toggleAvailabilityList()" aria-label="Cerrar lista">×</button>
+    </div>
+
+    <div class="availability-controls">
+      <label>
+        Categoría
+        <select id="availabilityCategory" class="search">
+          <option value="Todas">📂 Todas las categorías</option>
+          ${categories.map(category => `<option value="${esc(category)}" ${category.toLowerCase() === availabilityCategory.toLowerCase() ? "selected" : ""}>${esc(category)}</option>`).join("")}
+        </select>
+      </label>
+      <label class="availability-check">
+        <input id="availabilityShowStock" type="checkbox" ${availabilityShowStock ? "checked" : ""}>
+        <span>Mostrar cantidades</span>
+      </label>
+    </div>
+
+    <div class="availability-preview">
+      <div class="availability-preview-head">
+        <div>
+          <b>🐠 AQUARIUM FISH</b>
+          <h3>${esc(availabilityLabel())}</h3>
+          <small>Actualizado: ${date}</small>
+        </div>
+        <span class="badge">${rows.length} ${rows.length === 1 ? "producto" : "productos"}</span>
+      </div>
+      <div class="availability-items">
+        ${rows.length ? rows.map(product => {
+          const stock = Math.max(0, +product.stock || 0);
+          return `<div class="availability-item"><span>• ${esc(product.name || "Producto")}</span>${availabilityShowStock ? `<b>${stock}</b>` : ""}</div>`;
+        }).join("") : `<div class="empty"><b>No hay productos disponibles</b><div class="muted">Prueba otra categoría o revisa el stock del inventario.</div></div>`}
+      </div>
+      <div class="availability-note">*Consulta disponibilidad antes de realizar tu pedido.*</div>
+    </div>
+
+    <div class="availability-actions">
+      <button type="button" class="primary" onclick="shareAvailabilityWhatsApp()">📲 WhatsApp</button>
+      <button type="button" onclick="printAvailabilityList()">🖨️ Imprimir / PDF</button>
+      <button type="button" onclick="copyAvailabilityList()">📋 Copiar lista</button>
+    </div>
+  `;
+  const category = document.getElementById("availabilityCategory");
+  if(category) category.onchange = function(){ availabilityCategory = this.value; renderAvailabilityList(); };
+  const showStock = document.getElementById("availabilityShowStock");
+  if(showStock) showStock.onchange = function(){ availabilityShowStock = this.checked; renderAvailabilityList(); };
+}
+
+function shareAvailabilityWhatsApp(){
+  const text = availabilityMessage();
+  const url = `https://wa.me/?text=${encodeURIComponent(text)}`;
+  window.open(url, "_blank", "noopener,noreferrer");
+}
+
+function copyAvailabilityList(){
+  const text = availabilityMessage();
+  if(navigator.clipboard && window.isSecureContext){
+    navigator.clipboard.writeText(text).then(() => alert("Lista copiada. Ya puedes pegarla en WhatsApp u otro chat.")).catch(() => alert(text));
+    return;
+  }
+  const area = document.createElement("textarea");
+  area.value = text;
+  area.style.position = "fixed";
+  area.style.opacity = "0";
+  document.body.appendChild(area);
+  area.focus();
+  area.select();
+  try{ document.execCommand("copy"); alert("Lista copiada. Ya puedes pegarla en WhatsApp u otro chat."); }
+  catch(_){ alert(text); }
+  area.remove();
+}
+
+function printAvailabilityList(){
+  const rows = availabilityProducts();
+  const date = new Date().toLocaleDateString("es-CO", {day:"2-digit", month:"2-digit", year:"numeric"});
+  const items = rows.length ? rows.map(product => {
+    const stock = Math.max(0, +product.stock || 0);
+    return `<li><span>${esc(product.name || "Producto")}</span>${availabilityShowStock ? `<strong>${stock}</strong>` : ""}</li>`;
+  }).join("") : `<li><span>No hay productos disponibles en esta categoría.</span></li>`;
+  const title = esc(availabilityLabel());
+  const popup = window.open("", "_blank", "width=700,height=850");
+  if(!popup){ alert("El navegador bloqueó la ventana de impresión. Permite ventanas emergentes para este sitio e inténtalo de nuevo."); return; }
+  popup.document.open();
+  popup.document.write(`<!doctype html><html lang="es"><head><meta charset="utf-8"><title>${title} · Aquarium Fish</title><style>
+    *{box-sizing:border-box}body{font-family:Arial,Helvetica,sans-serif;margin:0;padding:34px;color:#17313a;background:#fff}main{max-width:680px;margin:auto;border:1px solid #d9e6e9;border-radius:18px;padding:28px}h1{margin:4px 0 6px;font-size:27px}p{color:#60777d;margin:0 0 22px}.brand{font-size:13px;font-weight:800;letter-spacing:.08em}.date{font-size:12px;color:#71858a}.list{margin:20px 0;border-top:1px solid #d9e6e9}li{list-style:none;display:flex;justify-content:space-between;gap:15px;padding:12px 4px;border-bottom:1px solid #e8eff0;font-size:16px}.note{margin-top:22px;padding:12px;border-radius:10px;background:#f3f8f9;color:#587077;font-size:12px}@media print{body{padding:0}main{border:0;max-width:none;padding:18px}}
+  </style></head><body><main><div class="brand">🐠 AQUARIUM FISH</div><h1>${title}</h1><p>Listado de productos disponibles · ${date}</p><ul class="list">${items}</ul><div class="note">Consulta disponibilidad antes de realizar tu pedido.</div></main><script>window.onload=function(){setTimeout(function(){window.print();},250)};<\/script></body></html>`);
+  popup.document.close();
 }
 
 
