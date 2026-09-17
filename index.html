@@ -26,11 +26,7 @@
 
 .dashboard-quote-alerts-panel button{font-size:.9rem}
 @media (max-width:700px){#quoteAutomationAlerts>div:first-child{grid-template-columns:repeat(2,minmax(0,1fr)) !important}.dashboard-quote-alerts-panel .dashboard-panel-head{gap:8px;flex-wrap:wrap}}
-
-/* Navegación principal: 4 accesos fijos */
-nav{grid-template-columns:repeat(4,1fr)!important}
-nav button[data-tab="cotizador"]{display:block!important}
-</style>
+.availability-panel{margin:12px 0;padding:14px;border:1px solid #d9e6e9;border-radius:16px;background:#fff}.availability-head,.availability-preview-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}.availability-controls{display:flex;gap:12px;flex-wrap:wrap;margin:14px 0}.availability-controls label{display:flex;flex-direction:column;gap:6px;font-size:13px;font-weight:700}.availability-check{flex-direction:row!important;align-items:center!important;margin-top:24px}.availability-preview{border:1px solid #e3ecee;border-radius:14px;padding:14px}.availability-preview h3{margin:4px 0}.availability-items{margin-top:10px}.availability-item{display:flex;justify-content:space-between;gap:12px;padding:9px 4px;border-bottom:1px solid #edf2f3}.availability-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}.availability-note{margin-top:12px;font-size:12px;color:#60777d}.availability-close{font-size:22px;line-height:1;min-width:38px}.inventory-head-actions{display:flex;gap:8px;flex-wrap:wrap}</style>
 </head>
 
 <body>
@@ -156,12 +152,9 @@ nav button[data-tab="cotizador"]{display:block!important}
       <button type="button" class="primary" onclick="openSale()">🛒 Nueva venta</button>
       <button type="button" onclick="show('cotizador')">🧾 Nueva cotización</button>
       <button type="button" onclick="openCustomer()">👤 Nuevo cliente</button>
-      <button type="button" onclick="show('cash')">💰 Caja</button>
       <button type="button" onclick="show('inventory')">📦 Inventario</button>
-      <button type="button" onclick="show('customers')">👥 Clientes</button>
-      <button type="button" onclick="show('reports')">📊 Reportes</button>
-      <button type="button" onclick="show('moves')">🔄 Movimientos</button>
-      <button type="button" onclick="show('home')">🏠 Actualizar panel</button>
+      <button type="button" onclick="show('cash')">💰 Caja</button>
+      <button type="button" onclick="show('more')">☰ Más opciones</button>
     </div>
   </div>
 
@@ -181,66 +174,38 @@ nav button[data-tab="cotizador"]{display:block!important}
      INVENTARIO
 ===================================================== -->
 
-<section id="more" class="screen">
-  <div class="section-head">
-    <div>
-      <h1>➕ Más</h1>
-      <p class="muted">Herramientas y funciones adicionales</p>
-    </div>
-  </div>
-
-  <div class="cards" style="grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;">
-    <button type="button" class="panel" style="text-align:left;border:0;cursor:pointer;min-height:90px;" onclick="show('sales')">
-      <b style="font-size:17px;">🛒 Ventas</b><br><span class="muted">Registrar y consultar ventas</span>
-    </button>
-    <button type="button" class="panel" style="text-align:left;border:0;cursor:pointer;min-height:90px;" onclick="show('cash')">
-      <b style="font-size:17px;">💰 Caja</b><br><span class="muted">Movimientos y cierres de caja</span>
-    </button>
-    <button type="button" class="panel" style="text-align:left;border:0;cursor:pointer;min-height:90px;" onclick="show('customers')">
-      <b style="font-size:17px;">👥 Clientes</b><br><span class="muted">Clientes y datos de contacto</span>
-    </button>
-    <button type="button" class="panel" style="text-align:left;border:0;cursor:pointer;min-height:90px;" onclick="show('reports')">
-      <b style="font-size:17px;">📊 Reportes</b><br><span class="muted">Estadísticas y análisis</span>
-    </button>
-    <button type="button" class="panel" style="text-align:left;border:0;cursor:pointer;min-height:90px;" onclick="show('orders')">
-      <b style="font-size:17px;">📝 Encargos</b><br><span class="muted">Pedidos y encargos</span>
-    </button>
-    <button type="button" class="panel" style="text-align:left;border:0;cursor:pointer;min-height:90px;" onclick="show('moves')">
-      <b style="font-size:17px;">⇅ Movimientos</b><br><span class="muted">Entradas y salidas</span>
-    </button>
-  </div>
-
-  <div class="panel" style="margin-top:14px;">
-    <b>💡 Accesos rápidos</b>
-    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;">
-      <button type="button" onclick="show('cotizador')">🧾 Nueva cotización</button>
-      <button type="button" onclick="show('inventory')">📦 Inventario</button>
-      <button type="button" onclick="show('home')">⌂ Inicio</button>
-    </div>
-  </div>
-</section>
-
 <section id="inventory" class="screen">
 
   <div class="section-head">
 
-    <h1>Inventario</h1>
+    <div><span class="page-kicker">PRODUCTOS</span><h1>Inventario</h1><p class="muted page-subtitle">Controla existencias y precios desde un solo lugar.</p></div>
 
-    <button
-      class="primary"
-      type="button"
-      onclick="openProduct()"
-    >
-      + Producto
-    </button>
+    <div class="inventory-head-actions">
+      <button type="button" onclick="toggleAvailabilityList()">📋 Lista para clientes</button>
+      <button
+        class="primary"
+        type="button"
+        onclick="openProduct()"
+      >
+        + Producto
+      </button>
+    </div>
 
   </div>
 
-  <input
-    id="search"
-    class="search"
-    placeholder="Buscar producto..."
-  >
+  <div class="stageb-search-wrap">
+    <input
+      id="search"
+      class="search"
+      placeholder="🔎 Buscar por nombre o categoría..."
+      autocomplete="off"
+    >
+    <button type="button" class="stageb-clear-search" onclick="clearInventorySearch()" aria-label="Limpiar búsqueda">×</button>
+  </div>
+
+  <div id="availabilityPanel" class="availability-panel" style="display:none"></div>
+
+  <div id="availabilityPanel" class="availability-panel" style="display:none"></div>
 
   <div id="inventoryList" class="list"></div>
 
@@ -255,7 +220,7 @@ nav button[data-tab="cotizador"]{display:block!important}
 
   <div class="section-head">
 
-    <h1>Ventas</h1>
+    <div><span class="page-kicker">OPERACIÓN</span><h1>Ventas</h1><p class="muted page-subtitle">Consulta y registra las ventas de tu negocio.</p></div>
 
     <button
       class="primary"
@@ -267,13 +232,18 @@ nav button[data-tab="cotizador"]{display:block!important}
 
   </div>
 
-  <input
-    id="salesSearch"
-    class="search"
-    placeholder="🔎 Buscar venta por cliente, producto o número..."
-    autocomplete="off"
-  >
+  <div class="stageb-search-wrap">
+    <input
+      id="salesSearch"
+      class="search"
+      placeholder="🔎 Buscar cliente, producto o número..."
+      autocomplete="off"
+    >
+    <button type="button" class="stageb-clear-search" onclick="clearSalesSearch()" aria-label="Limpiar búsqueda">×</button>
+  </div>
 
+  <div id="salesControls" class="stageb-controls"></div>
+  <div id="salesSummary" class="stageb-summary"></div>
   <div id="salesList" class="list"></div>
 
 </section>
@@ -437,7 +407,7 @@ nav button[data-tab="cotizador"]{display:block!important}
 
   <div class="section-head">
 
-    <h1>Movimientos</h1>
+    <div><span class="page-kicker">CONTROL DE STOCK</span><h1>Movimientos</h1><p class="muted page-subtitle">Consulta entradas y salidas de inventario sin perder el historial.</p></div>
 
     <button
       class="primary"
@@ -449,6 +419,11 @@ nav button[data-tab="cotizador"]{display:block!important}
 
   </div>
 
+  <div class="stageb-controls stage-d-move-controls">
+    <div class="stageb-filter-group"><label>Buscar</label><div class="stageb-search-wrap"><input id="movesSearch" class="search" placeholder="🔎 Producto, motivo o responsable..." autocomplete="off"><button type="button" class="stageb-clear-search" onclick="clearMovesSearch()" aria-label="Limpiar búsqueda">×</button></div></div>
+    <div class="stageb-filter-group"><label>Tipo</label><select id="movesTypeFilter" class="stageb-select"><option value="Todos">Todos</option><option value="Entrada">🟢 Entradas</option><option value="Salida">🔴 Salidas</option></select></div>
+  </div>
+  <div id="movesSummary" class="stageb-inventory-summary"></div>
   <div id="movesList" class="list"></div>
 
 </section>
@@ -457,14 +432,57 @@ nav button[data-tab="cotizador"]{display:block!important}
 
 
 <!-- =====================================================
+     MÁS / HERRAMIENTAS
+===================================================== -->
+
+<section id="more" class="screen">
+  <div class="section-head">
+    <div>
+      <h1>➕ Más</h1>
+      <p class="muted">Herramientas y funciones adicionales</p>
+    </div>
+  </div>
+
+  <div class="cards" style="grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;">
+    <button type="button" class="panel" style="text-align:left;border:0;cursor:pointer;min-height:90px;" onclick="show('sales')">
+      <b style="font-size:17px;">🛒 Ventas</b><br><span class="muted">Registrar y consultar ventas</span>
+    </button>
+    <button type="button" class="panel" style="text-align:left;border:0;cursor:pointer;min-height:90px;" onclick="show('cash')">
+      <b style="font-size:17px;">💰 Caja</b><br><span class="muted">Movimientos y cierres de caja</span>
+    </button>
+    <button type="button" class="panel" style="text-align:left;border:0;cursor:pointer;min-height:90px;" onclick="show('customers')">
+      <b style="font-size:17px;">👥 Clientes</b><br><span class="muted">Clientes y datos de contacto</span>
+    </button>
+    <button type="button" class="panel" style="text-align:left;border:0;cursor:pointer;min-height:90px;" onclick="show('reports')">
+      <b style="font-size:17px;">📊 Reportes</b><br><span class="muted">Estadísticas y análisis</span>
+    </button>
+    <button type="button" class="panel" style="text-align:left;border:0;cursor:pointer;min-height:90px;" onclick="show('orders')">
+      <b style="font-size:17px;">📝 Encargos</b><br><span class="muted">Pedidos y encargos</span>
+    </button>
+    <button type="button" class="panel" style="text-align:left;border:0;cursor:pointer;min-height:90px;" onclick="show('moves')">
+      <b style="font-size:17px;">⇅ Movimientos</b><br><span class="muted">Entradas y salidas</span>
+    </button>
+  </div>
+
+  <div class="panel" style="margin-top:14px;">
+    <b>💡 Accesos rápidos</b>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;">
+      <button type="button" onclick="show('cotizador')">🧾 Nueva cotización</button>
+      <button type="button" onclick="show('inventory')">📦 Inventario</button>
+      <button type="button" onclick="show('home')">⌂ Inicio</button>
+    </div>
+  </div>
+</section>
+
+<!-- =====================================================
      NAVEGACIÓN
 ===================================================== -->
 
-<nav>
-  <button type="button" data-tab="home">⌂<span>Inicio</span></button>
-  <button type="button" data-tab="cotizador">🧾<span>Cotizador</span></button>
-  <button type="button" data-tab="inventory">▣<span>Inventario</span></button>
-  <button type="button" data-tab="more">➕<span>Más</span></button>
+<nav aria-label="Navegación principal">
+  <button type="button" data-tab="home" class="active" aria-label="Inicio">🏠<span>Inicio</span></button>
+  <button type="button" data-tab="cotizador" aria-label="Cotizador">🧾<span>Cotizador</span></button>
+  <button type="button" data-tab="inventory" aria-label="Inventario">📦<span>Inventario</span></button>
+  <button type="button" data-tab="more" aria-label="Más opciones">☰<span>Más</span></button>
 </nav>
 
 

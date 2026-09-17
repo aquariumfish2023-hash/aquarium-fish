@@ -590,8 +590,15 @@ function setupReportsUI(){
     main.appendChild(section);
   }
 
-  // Reportes queda dentro de "Más" para mantener la navegación principal limpia.
-  // El acceso desde el panel Más usa show("reports").
+  let navButton = nav.querySelector('button[data-tab="reports"]');
+  if(!navButton){
+    navButton = document.createElement("button");
+    navButton.type = "button";
+    navButton.dataset.tab = "reports";
+    navButton.innerHTML = `📊<span>Reportes</span>`;
+    nav.appendChild(navButton);
+  }
+
   renderReports();
 }
 
@@ -671,6 +678,7 @@ function renderAll() {
   if(document.getElementById("quoteAutomationAlerts")) renderQuoteAutomationAlerts();
 
   renderInventory();
+  if(document.getElementById("availabilityPanel") && document.getElementById("availabilityPanel").style.display !== "none") renderAvailabilityList();
 
   renderSales();
 
@@ -694,244 +702,119 @@ function renderAll() {
    ========================================================= */
 
 function renderHome() {
+  const sales = Array.isArray(db.sales) ? db.sales : [];
+  const products = Array.isArray(db.products) ? db.products : [];
+  const customers = Array.isArray(db.customers) ? db.customers : [];
+  const quotes = Array.isArray(db.quotes) ? db.quotes : [];
+  const orders = Array.isArray(db.orders) ? db.orders : [];
+  const cash = Array.isArray(db.cash) ? db.cash : [];
+  const now = new Date();
 
-  const total =
-    db.sales.reduce(
-      (sum,sale) =>
-        sum +
-        (+sale.total || 0),
-      0
-    );
+  const dayRange = (offsetStart, offsetEnd = offsetStart) => {
+    const a = new Date(now); a.setDate(a.getDate() - offsetStart); a.setHours(0,0,0,0);
+    const b = new Date(now); b.setDate(b.getDate() - offsetEnd); b.setHours(23,59,59,999);
+    return {start:a,end:b};
+  };
+  const inRange = (value, range) => {
+    const d = parseLocalDate(value);
+    return !!d && d >= range.start && d <= range.end;
+  };
+  const today = dayRange(0);
+  const week = dayRange(0,6);
+  const prevWeek = dayRange(7,13);
+  const month = {start:new Date(now.getFullYear(),now.getMonth(),1),end:new Date(now)};
+  month.start.setHours(0,0,0,0); month.end.setHours(23,59,59,999);
+  const prevMonth = {start:new Date(now.getFullYear(),now.getMonth()-1,1),end:new Date(now.getFullYear(),now.getMonth(),0)};
+  prevMonth.start.setHours(0,0,0,0); prevMonth.end.setHours(23,59,59,999);
 
-  const today = new Date();
-  const todaySales = db.sales.filter(sale => {
-    const d = parseLocalDate(sale.date || sale.createdAt);
-    return d ? sameDay(d, today) : false;
+  const salesIn = range => sales.filter(s => inRange(s.date || s.createdAt, range));
+  const totalOf = rows => rows.reduce((sum,s) => sum + (+s.total || 0),0);
+  const paidOf = rows => rows.reduce((sum,s) => sum + salePaid(s),0);
+  const todaySales = salesIn(today), weekSales = salesIn(week), prevWeekSales = salesIn(prevWeek), monthSales = salesIn(month), prevMonthSales = salesIn(prevMonth);
+  const todayTotal = totalOf(todaySales), weekTotal = totalOf(weekSales), prevWeekTotal = totalOf(prevWeekSales), monthTotal = totalOf(monthSales), prevMonthTotal = totalOf(prevMonthSales);
+  const todayReceived = paidOf(todaySales);
+  const receivable = sales.reduce((sum,s) => sum + Math.max(0,(+s.total||0)-salePaid(s)),0);
+  const todayExpenses = cash.filter(m => String(m.type||'').toLowerCase()==='gasto' && inRange(m.date,today)).reduce((sum,m)=>sum+(+m.amount||0),0);
+  const inventoryCost = products.reduce((sum,p)=>sum + Math.max(0,+p.stock||0)*(+p.cost||0),0);
+  const inventorySale = products.reduce((sum,p)=>sum + Math.max(0,+p.stock||0)*(+p.price||0),0);
+  const inventoryUnits = products.reduce((sum,p)=>sum + Math.max(0,+p.stock||0),0);
+  const low = products.filter(p => (+p.stock||0) <= (+p.min||0));
+  const zero = products.filter(p => (+p.stock||0) <= 0);
+  const pendingQuotes = quotes.filter(q => !q.convertedSaleId && !['Rechazada','Cancelada'].includes(String(q.status||'')));
+  const activeOrders = orders.filter(o => !['Entregado','Cancelado'].includes(String(o.status||'Pendiente')));
+  const netToday = todayReceived - todayExpenses;
+
+  const set = (id,value) => { const el=document.getElementById(id); if(el) el.textContent=value; };
+  set('salesTotal',money(totalOf(sales))); set('salesCount',`${sales.length} transacciones en total`);
+  set('todaySalesTotal',money(todayTotal)); set('todaySalesCount',`${todaySales.length} venta${todaySales.length===1?'':'s'} hoy`);
+  set('todayReceived',money(todayReceived)); set('dashboardReceivable',money(receivable)); set('todayExpenses',money(todayExpenses));
+  set('dashboardNetToday',money(netToday)); set('dashboardInventoryValue',money(inventoryCost)); set('dashboardUnits',inventoryUnits);
+  set('lowStock',low.length); set('customerCount',customers.length); set('pendingQuotesCount',pendingQuotes.length);
+  set('dashboardWeekTotal',money(weekTotal)); set('dashboardWeekTotalCopy',money(weekTotal)); set('dashboardWeekCount',`${weekSales.length} venta${weekSales.length===1?'':'s'}`);
+  set('dashboardMonthTotal',money(monthTotal)); set('dashboardMonthCount',`${monthSales.length} venta${monthSales.length===1?'':'s'}`);
+  set('dashboardZeroStock',zero.length); set('dashboardInventorySaleValue',money(inventorySale));
+  const dateEl=document.getElementById('dashboardDate'); if(dateEl) dateEl.textContent=now.toLocaleDateString('es-CO',{weekday:'long',day:'numeric',month:'long'});
+
+  const pctChange = (current,previous) => previous ? ((current-previous)/previous)*100 : (current ? 100 : 0);
+  const changeHtml = (current,previous) => { const p=pctChange(current,previous); return `${p>0?'↗':p<0?'↘':'→'} ${Math.abs(p).toFixed(0)}%`; };
+  const changeClass = (current,previous) => current>previous?'positive':current<previous?'negative':'neutral';
+  ['todaySalesChange','weekSalesChange','monthSalesChange'].forEach((id,i)=>{
+    const el=document.getElementById(id); if(!el) return;
+    const pair=i===0?[todayTotal,prevWeekTotal]:i===1?[weekTotal,prevWeekTotal]:[monthTotal,prevMonthTotal];
+    el.textContent=changeHtml(pair[0],pair[1]); el.className=`dashboard-change ${changeClass(pair[0],pair[1])}`;
   });
 
-  const todayTotal = todaySales.reduce(
-    (sum, sale) => sum + (+sale.total || 0),
-    0
-  );
-
-  const pendingQuotes = (db.quotes || []).filter(q => !q.convertedSaleId);
-
-
-  const salesTotal =
-    document.getElementById(
-      "salesTotal"
-    );
-
-
-  const salesCount =
-    document.getElementById(
-      "salesCount"
-    );
-
-  const todaySalesTotal = document.getElementById("todaySalesTotal");
-  const todaySalesCount = document.getElementById("todaySalesCount");
-  const pendingQuotesCount = document.getElementById("pendingQuotesCount");
-
-
-  const productCount =
-    document.getElementById(
-      "productCount"
-    );
-
-
-  const customerCount =
-    document.getElementById(
-      "customerCount"
-    );
-
-
-  const lowStock =
-    document.getElementById(
-      "lowStock"
-    );
-
-
-  const cashBalance =
-    document.getElementById(
-      "cashBalance"
-    );
-
-
-  const recentSales =
-    document.getElementById(
-      "recentSales"
-    );
-
-
-  if(salesTotal){
-
-    salesTotal.textContent =
-      money(total);
-
+  const paymentEl=document.getElementById('dashboardPayments');
+  if(paymentEl){
+    const methods={}; todaySales.forEach(s=>{const k=String(s.pay||'Otro'); methods[k]=(methods[k]||0)+salePaid(s);});
+    const rows=Object.entries(methods).sort((a,b)=>b[1]-a[1]);
+    paymentEl.innerHTML=rows.length ? rows.map(([k,v])=>`<div class="item"><div><b>${esc(k)}</b></div><strong>${money(v)}</strong></div>`).join('') : '<div class="empty">No hay cobros registrados hoy.</div>';
   }
 
-
-  if(salesCount){
-
-    salesCount.textContent =
-      `${db.sales.length} transacciones en total`;
-
+  const customerEl=document.getElementById('dashboardCustomers');
+  if(customerEl){
+    const map={}; sales.forEach(s=>{const k=String(s.client||'').trim(); if(!k)return; map[k]=(map[k]||0)+(+s.total||0);});
+    const rows=Object.entries(map).sort((a,b)=>b[1]-a[1]).slice(0,5);
+    customerEl.innerHTML=rows.length ? rows.map(([k,v])=>`<div class="item"><div><b>${esc(k)}</b></div><strong>${money(v)}</strong></div>`).join('') : '<div class="empty">Aún no hay clientes con compras.</div>';
   }
 
-  if(todaySalesTotal){
-    todaySalesTotal.textContent = money(todayTotal);
+  const invEl=document.getElementById('dashboardInventoryAlerts');
+  if(invEl){
+    const rows=low.slice().sort((a,b)=>(+a.stock||0)-(+b.stock||0)).slice(0,6);
+    invEl.innerHTML=rows.length ? rows.map(p=>`<div class="item"><div><b>${esc(p.name||'Producto')}</b><small>${(+p.stock||0)<=0?'Agotado':`Stock ${+p.stock||0} · mínimo ${+p.min||0}`}</small></div><span class="badge ${(+p.stock||0)<=0?'low':''}">${(+p.stock||0)<=0?'🔴':'🟠'}</span></div>`).join('') : '<div class="empty">✅ No hay productos en alerta.</div>';
   }
 
-  if(todaySalesCount){
-    todaySalesCount.textContent = `${todaySales.length} venta${todaySales.length === 1 ? "" : "s"} hoy`;
+  const chart=document.getElementById('dashboardSalesChart');
+  if(chart){
+    const days=[]; for(let i=6;i>=0;i--){const d=new Date(now);d.setDate(d.getDate()-i);const key=d.toISOString().slice(0,10);const rows=sales.filter(s=>{const x=parseLocalDate(s.date||s.createdAt);return x && x.toISOString().slice(0,10)===key;});days.push({d,total:totalOf(rows)});}
+    const max=Math.max(1,...days.map(x=>x.total));
+    chart.innerHTML=days.map(x=>`<div class="dashboard-bar-col"><span>${money(x.total)}</span><div class="dashboard-bar-track"><div class="dashboard-bar" style="height:${Math.max(4,(x.total/max)*100)}%"></div></div><small>${x.d.toLocaleDateString('es-CO',{weekday:'short'}).replace('.','')}</small></div>`).join('');
   }
 
-  if(pendingQuotesCount){
-    pendingQuotesCount.textContent = pendingQuotes.length;
+  const productChart=document.getElementById('dashboardProductChart');
+  if(productChart){
+    const map={}; weekSales.forEach(s=>{if(Array.isArray(s.items)) s.items.forEach(i=>{const k=String(i.product||'Producto');map[k]=(map[k]||0)+(+i.qty||0);}); else if(s.product){const k=String(s.product);map[k]=(map[k]||0)+(+s.qty||0);}});
+    const rows=Object.entries(map).sort((a,b)=>b[1]-a[1]).slice(0,5); const max=Math.max(1,...rows.map(r=>r[1]));
+    productChart.innerHTML=rows.length ? rows.map(([k,v])=>`<div class="dashboard-hbar-row"><div><b>${esc(k)}</b><span>${v} und.</span></div><div class="dashboard-hbar-track"><div class="dashboard-hbar" style="width:${(v/max)*100}%"></div></div></div>`).join('') : '<div class="empty">No hay ventas en los últimos 7 días.</div>';
   }
 
-
-  if(productCount){
-
-    productCount.textContent =
-      db.products.length;
-
+  const insights=document.getElementById('dashboardInsights');
+  if(insights){
+    const items=[];
+    if(zero.length) items.push(`🔴 <b>${zero.length}</b> producto${zero.length===1?' está':'s están'} agotado${zero.length===1?'':'s'}.`);
+    else if(low.length) items.push(`🟠 <b>${low.length}</b> producto${low.length===1?' necesita':'s necesitan'} revisar stock.`);
+    if(receivable>0) items.push(`💳 Hay <b>${money(receivable)}</b> pendiente por cobrar.`);
+    if(pendingQuotes.length) items.push(`🧾 Tienes <b>${pendingQuotes.length}</b> cotización${pendingQuotes.length===1?' activa':'es activas'} para seguimiento.`);
+    if(activeOrders.length) items.push(`📦 Hay <b>${activeOrders.length}</b> encargo${activeOrders.length===1?' activo':'s activos'} por gestionar.`);
+    if(!items.length) items.push('✅ No hay alertas comerciales importantes en este momento.');
+    insights.innerHTML=items.slice(0,5).map(t=>`<div class="dashboard-insight">${t}</div>`).join('');
   }
 
-
-  if(customerCount){
-
-    customerCount.textContent =
-      db.customers.length;
-
+  const recentSales=document.getElementById('recentSales');
+  if(recentSales){
+    recentSales.innerHTML=sales.length ? sales.slice(-6).reverse().map(sale=>`<div class="item"><div><b>${esc(saleLabel(sale))}</b><div class="muted">${esc(sale.client||'Sin cliente')} · ${saleQty(sale)} und. · ${esc(sale.pay||'')}</div></div><div class="right"><strong>${money(sale.total)}</strong><small>${sale.status==='Pendiente'?'Pendiente de pago':sale.status==='Abono'?'Abono: '+money(salePaid(sale)):'Pagada'}</small></div></div>`).join('') : '<div class="empty">Todavía no hay ventas.</div>';
   }
-
-
-  if(lowStock){
-
-    lowStock.textContent =
-      db.products.filter(
-        p =>
-          (+p.stock || 0) <=
-          (+p.min || 0)
-      ).length;
-
-  }
-
-
-  if(cashBalance){
-
-    const totalCash =
-      calculateCashTotals(
-        "all"
-      );
-
-
-    cashBalance.textContent =
-      money(
-        totalCash.balance
-      );
-
-  }
-
-
-  if(!recentSales){
-
-    return;
-
-  }
-
-
-  recentSales.innerHTML =
-    db.sales.length
-
-      ? db.sales
-          .slice(-6)
-          .reverse()
-          .map(
-            sale => `
-
-              <div class="item">
-
-                <div>
-
-                  <b>
-                    ${esc(
-                      saleLabel(sale)
-                    )}
-                  </b>
-
-                  <div class="muted">
-
-                    ${esc(
-                      sale.client ||
-                      "Sin cliente"
-                    )}
-
-                    ·
-
-                    ${saleQty(sale)}
-                    und.
-
-                    ·
-
-                    ${esc(
-                      sale.pay || ""
-                    )}
-
-                  </div>
-
-                </div>
-
-                <div class="right">
-
-                  <strong>
-                    ${money(
-                      sale.total
-                    )}
-                  </strong>
-
-                  <small>
-
-                    ${
-                      sale.status ===
-                      "Pendiente"
-
-                        ? "Pendiente de pago"
-
-                        : sale.status ===
-                          "Abono"
-
-                        ? "Abono: " +
-                          money(
-                            salePaid(
-                              sale
-                            )
-                          )
-
-                        : "Pagada"
-                    }
-
-                  </small>
-
-                </div>
-
-              </div>
-
-            `
-          )
-          .join("")
-
-      : `
-
-        <div class="empty">
-          Todavía no hay ventas.
-        </div>
-
-      `;
-
 }
-
 
 /* =========================================================
    INVENTARIO
@@ -3200,8 +3083,6 @@ function setupCotizadorUI(){
     main.appendChild(section);
   }
 
-  // El botón del cotizador ya forma parte de la navegación principal.
-  // Si alguna versión antigua no lo tuviera, se crea como respaldo.
   let navButton = nav.querySelector('button[data-tab="cotizador"]');
   if(!navButton){
     navButton = document.createElement("button");
@@ -4120,267 +4001,183 @@ function maybeNotifyQuoteFollowups(){
 
 function renderCotizador(){
   const section = document.getElementById("cotizador");
-  if(!section){
-    return;
-  }
+  if(!section) return;
 
   const categories = quoteCategories();
   const q = quoteSearch.trim().toLowerCase();
-
   const products = db.products
     .map((product,index) => ({product,index}))
     .filter(({product}) => {
       const category = String(product.category || "").trim();
-      if(quoteCategory !== "Todas" && category !== quoteCategory){
-        return false;
-      }
-
-      if(!q){
-        return true;
-      }
-
-      return `${product.name || ""} ${category}`
-        .toLowerCase()
-        .includes(q);
+      if(quoteCategory !== "Todas" && category !== quoteCategory) return false;
+      if(!q) return true;
+      return `${product.name || ""} ${category}`.toLowerCase().includes(q);
     })
-    .sort((a,b) =>
-      String(a.product.name || "").localeCompare(
-        String(b.product.name || ""),
-        "es"
-      )
-    );
+    .sort((a,b) => String(a.product.name || "").localeCompare(String(b.product.name || ""),"es"));
+
+  const customerMatches = db.customers
+    .map((customer,index) => ({customer,index}))
+    .filter(({customer}) => customer && String(customer.name || "").trim())
+    .sort((a,b) => String(a.customer.name || "").localeCompare(String(b.customer.name || ""),"es"));
+  const registeredCustomer = customerMatches.some(({customer}) => String(customer.name || "").trim() === String(quoteCustomer || "").trim());
+  const hasExtra = !!(quoteFollowupDate || quoteFollowupNote || quoteNote || quoteDiscount);
 
   section.innerHTML = `
-    <div class="section-head">
-      <h1>🧾 Cotizador</h1>
-      <button type="button" onclick="clearQuote()">Limpiar</button>
+    <div class="section-head" style="margin-bottom:10px;">
+      <div>
+        <h1 style="margin-bottom:2px;">🧾 Cotizador</h1>
+        <div class="muted">${quoteEditingId ? `Editando ${esc(quoteEditingId)}` : "Crea una cotización rápida"}</div>
+      </div>
+      <button type="button" onclick="clearQuote()">🧹 Limpiar</button>
     </div>
 
-    <div class="panel">
-      <h2>Cliente</h2>
-
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
-        <select id="quoteCustomerSelect" class="search">
-          <option value="">Cliente general</option>
-          ${db.customers
-            .map((customer, index) => ({
-              customer,
-              index
-            }))
-            .filter(({customer}) => customer && String(customer.name || "").trim())
-            .sort((a,b) =>
-              String(a.customer.name || "").localeCompare(
-                String(b.customer.name || ""),
-                "es"
-              )
-            )
-            .map(({customer,index}) => `
-              <option
-                value="${index}"
-                ${String(customer.name || "").trim() === String(quoteCustomer || "").trim() ? "selected" : ""}
-              >
-                ${esc(customer.name)}
-              </option>
+    <div class="panel" style="padding:12px;">
+      <div style="display:grid;grid-template-columns:minmax(0,1.4fr) minmax(150px,.8fr);gap:8px;align-items:start;">
+        <div>
+          <label class="muted" style="display:block;margin-bottom:4px;">Cliente</label>
+          <select id="quoteCustomerSelect" class="search" style="width:100%;box-sizing:border-box;">
+            <option value="">Cliente general</option>
+            ${customerMatches.map(({customer,index}) => `
+              <option value="${index}" ${String(customer.name || "").trim() === String(quoteCustomer || "").trim() ? "selected" : ""}>${esc(customer.name)}</option>
             `).join("")}
-          <option value="__manual__" ${quoteCustomer && !db.customers.some(c => String(c?.name || "").trim() === String(quoteCustomer || "").trim()) ? "selected" : ""}>
-            ✏️ Escribir otro cliente
-          </option>
-        </select>
-
-        <input
-          id="quotePhone"
-          class="search"
-          type="tel"
-          placeholder="WhatsApp / teléfono"
-          value="${esc(quotePhone)}"
-        >
+            <option value="__manual__" ${quoteCustomer && !registeredCustomer ? "selected" : ""}>✏️ Otro cliente</option>
+          </select>
+          <input id="quoteCustomer" class="search" placeholder="Nombre del cliente" value="${esc(quoteCustomer)}" style="width:100%;box-sizing:border-box;margin-top:6px;${registeredCustomer ? "display:none;" : ""}">
+        </div>
+        <div>
+          <label class="muted" style="display:block;margin-bottom:4px;">WhatsApp / teléfono</label>
+          <input id="quotePhone" class="search" type="tel" placeholder="300 000 0000" value="${esc(quotePhone)}" style="width:100%;box-sizing:border-box;">
+        </div>
       </div>
-
-      <div style="margin-top:8px;">
-        <input
-          id="quoteCustomer"
-          class="search"
-          placeholder="Nombre del cliente"
-          value="${esc(quoteCustomer)}"
-          ${quoteCustomer && db.customers.some(c => String(c?.name || "").trim() === String(quoteCustomer || "").trim()) ? 'style="display:none;"' : ""}
-        >
-      </div>
-
-      <p class="muted" style="margin:8px 0 0;">
-        ${db.customers.length
-          ? "Selecciona un cliente registrado y sus datos se cargarán automáticamente."
-          : "No hay clientes registrados todavía. Puedes escribir el nombre manualmente."}
-      </p>
     </div>
 
-    <div class="panel">
-      <h2>Agregar productos</h2>
-      <p class="muted">
-        Selecciona varios productos. El cotizador usa el precio de venta del inventario y no modifica el stock.
-      </p>
+    <div class="panel" style="padding:12px;">
+      <div style="display:flex;justify-content:space-between;gap:8px;align-items:center;margin-bottom:8px;">
+        <div>
+          <h2 style="margin:0;">🛒 Productos</h2>
+          <div class="muted">Busca y toca <b>Agregar</b>. El stock no se modifica.</div>
+        </div>
+        <span class="badge">${quoteItems.length} ${quoteItems.length === 1 ? "producto" : "productos"}</span>
+      </div>
 
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:10px 0;">
-        <input
-          id="quoteSearch"
-          class="search"
-          placeholder="🔎 Buscar producto..."
-          value="${esc(quoteSearch)}"
-        >
-        <select id="quoteCategory" class="search">
-          ${categories.map(category => `
-            <option value="${esc(category)}" ${category === quoteCategory ? "selected" : ""}>
-              ${esc(category)}
-            </option>
-          `).join("")}
+      <div style="display:grid;grid-template-columns:minmax(0,1.4fr) minmax(130px,.7fr);gap:8px;margin-bottom:8px;">
+        <input id="quoteSearch" class="search" placeholder="🔎 Buscar producto..." value="${esc(quoteSearch)}" style="width:100%;box-sizing:border-box;">
+        <select id="quoteCategory" class="search" style="width:100%;box-sizing:border-box;">
+          ${categories.map(category => `<option value="${esc(category)}" ${category === quoteCategory ? "selected" : ""}>${esc(category)}</option>`).join("")}
         </select>
       </div>
 
-      <div class="list" style="max-height:360px;overflow:auto;">
+      <div class="list" style="max-height:250px;overflow:auto;">
         ${products.length ? products.map(({product,index}) => `
-          <div class="item" style="align-items:center;gap:8px;">
+          <div class="item" style="align-items:center;gap:8px;padding:8px 0;">
             <div style="flex:1;min-width:0;">
               <b>${esc(product.name || "Producto")}</b>
-              <div class="muted">
-                ${esc(product.category || "Sin categoría")} · ${money(product.price)}
-              </div>
+              <div class="muted">${esc(product.category || "Sin categoría")} · ${money(product.price)}</div>
             </div>
-            <button type="button" class="primary" onclick="addQuoteItem(${index})">
-              + Agregar
-            </button>
+            <button type="button" class="primary" onclick="addQuoteItem(${index})">+ Agregar</button>
           </div>
-        `).join("") : `
-          <div class="empty">No hay productos que coincidan.</div>
-        `}
+        `).join("") : `<div class="empty">No hay productos que coincidan.</div>`}
       </div>
     </div>
 
-    <div class="panel">
-      <h2>🛒 Cotización actual</h2>
+    <div class="panel" style="padding:12px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:8px;">
+        <h2 style="margin:0;">📋 Cotización</h2>
+        <strong>${money(quoteTotal())}</strong>
+      </div>
+
       ${quoteItems.length ? quoteItems.map(item => {
         const subtotal = (+item.qty || 0) * (+item.unitPrice || 0);
         return `
-          <div class="item" style="align-items:flex-start;gap:8px;">
-            <div style="flex:1;min-width:0;">
+          <div class="item" style="display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:center;padding:8px 0;">
+            <div style="min-width:0;">
               <b>${esc(item.name)}</b>
-              <div style="display:grid;grid-template-columns:90px 1fr;gap:8px;margin-top:6px;">
-                <input
-                  class="search"
-                  type="number"
-                  min="1"
-                  step="1"
-                  value="${+item.qty || 1}"
-                  aria-label="Cantidad"
-                  onchange="updateQuoteItem('${esc(item.key)}','qty',this.value)"
-                >
-                <input
-                  class="search"
-                  type="number"
-                  min="0"
-                  step="1"
-                  value="${+item.unitPrice || 0}"
-                  aria-label="Precio unitario"
-                  onchange="updateQuoteItem('${esc(item.key)}','unitPrice',this.value)"
-                >
-              </div>
-              <div class="muted" style="margin-top:5px;">
-                ${Number(item.qty) || 1} unidad(es) · Subtotal ${money(subtotal)}
+              <div style="display:grid;grid-template-columns:72px minmax(100px,150px);gap:6px;margin-top:5px;">
+                <input class="search" type="number" min="1" step="1" value="${+item.qty || 1}" aria-label="Cantidad" onchange="updateQuoteItem('${esc(item.key)}','qty',this.value)">
+                <input class="search" type="number" min="0" step="1" value="${+item.unitPrice || 0}" aria-label="Precio unitario" onchange="updateQuoteItem('${esc(item.key)}','unitPrice',this.value)">
               </div>
             </div>
-            <button type="button" onclick="removeQuoteItem('${esc(item.key)}')">🗑️</button>
+            <div style="text-align:right;white-space:nowrap;">
+              <b>${money(subtotal)}</b><br>
+              <button type="button" onclick="removeQuoteItem('${esc(item.key)}')" style="margin-top:4px;">🗑️</button>
+            </div>
+          </div>`;
+      }).join("") : `<div class="empty">Agrega productos para comenzar.</div>`}
+
+      <div style="margin-top:10px;padding-top:10px;border-top:1px solid rgba(0,0,0,.08);">
+        <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;">
+          <span class="muted">Subtotal</span><strong>${money(quoteSubtotal())}</strong>
+        </div>
+        ${quoteDiscountAmount() > 0 ? `<div style="display:flex;justify-content:space-between;gap:10px;margin-top:4px;"><span class="muted">Descuento</span><strong>-${money(quoteDiscountAmount())}</strong></div>` : ""}
+        <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;margin-top:6px;font-size:1.25rem;">
+          <b>Total</b><strong>${money(quoteTotal())}</strong>
+        </div>
+      </div>
+
+      <details ${hasExtra ? "open" : ""} style="margin-top:10px;">
+        <summary style="cursor:pointer;font-weight:700;padding:7px 0;">⚙️ Más opciones ${hasExtra ? "· configuradas" : ""}</summary>
+        <div style="display:grid;gap:8px;padding-top:8px;">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+            <label>Descuento
+              <input id="quoteDiscount" class="search" type="number" min="0" step="1" placeholder="0" value="${quoteDiscount || 0}" style="width:100%;box-sizing:border-box;">
+            </label>
+            <label>Seguimiento
+              <input id="quoteFollowupDate" class="search" type="date" value="${esc(quoteFollowupDate)}" style="width:100%;box-sizing:border-box;">
+            </label>
           </div>
-        `;
-      }).join("") : `
-        <div class="empty">Agrega productos para comenzar.</div>
-      `}
-
-      <div style="margin-top:12px;padding-top:12px;border-top:1px solid rgba(0,0,0,.08);">
-        <h3 style="margin:0 0 8px;">📌 Seguimiento comercial</h3>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
-          <label>Fecha de seguimiento
-            <input id="quoteFollowupDate" class="search" type="date" value="${esc(quoteFollowupDate)}">
+          <label>Nota interna de seguimiento
+            <input id="quoteFollowupNote" class="search" placeholder="Ej. llamar, confirmar pedido..." value="${esc(quoteFollowupNote)}" style="width:100%;box-sizing:border-box;">
           </label>
-          <label>Nota interna
-            <input id="quoteFollowupNote" class="search" placeholder="Ej. llamar, confirmar pedido..." value="${esc(quoteFollowupNote)}">
+          <label>Nota para el cliente
+            <textarea id="quoteNote" rows="2" placeholder="Ej. domicilio, instalación, disponibilidad...">${esc(quoteNote)}</textarea>
           </label>
+          <div class="muted">La nota interna no aparece en la cotización del cliente.</div>
         </div>
-        <p class="muted" style="margin:6px 0 10px;">La nota interna no se muestra al cliente.</p>
-        <label>
-          Nota para el cliente
-          <textarea
-            id="quoteNote"
-            rows="3"
-            placeholder="Ej. Instalación, domicilio, disponibilidad, etc."
-          >${esc(quoteNote)}</textarea>
-        </label>
-      </div>
+      </details>
 
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px;">
-        <label>Descuento
-          <input id="quoteDiscount" class="search" type="number" min="0" step="1" placeholder="0" value="${quoteDiscount || 0}">
-        </label>
-        <div style="background:#f5f8f9;border-radius:14px;padding:12px;margin-bottom:10px;">
-          <div class="muted">Subtotal</div><strong>${money(quoteSubtotal())}</strong>
-          <div class="muted" style="margin-top:5px;">Descuento</div><strong>-${money(quoteDiscountAmount())}</strong>
-        </div>
-      </div>
-
-      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:4px;padding-top:12px;border-top:1px solid rgba(0,0,0,.08);">
-        <span><b>Total</b></span>
-        <strong style="font-size:1.35rem;">${money(quoteTotal())}</strong>
-      </div>
-
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px;">
-        <button type="button" class="primary" onclick="saveQuote()">
-          ${quoteEditingId ? "💾 Guardar cambios" : "💾 Guardar cotización"}
-        </button>
+      <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:10px;">
+        <button type="button" class="primary" onclick="saveQuote()">${quoteEditingId ? "💾 Guardar cambios" : "💾 Guardar cotización"}</button>
         <button type="button" onclick="copyQuote()">📋 Copiar</button>
         <button type="button" class="primary" onclick="shareQuoteWhatsApp()">📲 WhatsApp</button>
+        <button type="button" onclick="window.scrollTo({top:document.body.scrollHeight,behavior:'smooth'})">📂 Ver guardadas</button>
       </div>
-
-      <p class="muted" style="margin-top:10px;">
-        El cotizador muestra precios de venta. La ganancia nunca se muestra al cliente.
-      </p>
+      <div class="muted" style="margin-top:8px;text-align:center;">Los precios y la ganancia interna no se muestran al cliente.</div>
     </div>
 
-    <div class="panel" style="margin-top:12px;">
-      <div class="section-head" style="margin-bottom:8px;">
-        <h2>📊 Resumen de cotizaciones</h2>
-        <span class="muted">Actualizado automáticamente</span>
-      </div>
-      <div id="quoteReports"></div>
+    <div class="panel" style="padding:0 12px;">
+      <details>
+        <summary style="cursor:pointer;font-weight:700;padding:12px 0;">📊 Resumen de cotizaciones</summary>
+        <div id="quoteReports" style="padding-bottom:12px;"></div>
+      </details>
     </div>
 
-    <div class="panel" style="margin-top:12px;">
-      <div class="section-head" style="margin-bottom:8px;">
-        <h2>🧠 Inteligencia comercial</h2>
-        <span class="muted">Oportunidades y prioridades del cotizador</span>
-      </div>
-      <div id="quoteIntelligence"></div>
+    <div class="panel" style="padding:0 12px;">
+      <details>
+        <summary style="cursor:pointer;font-weight:700;padding:12px 0;">🧠 Inteligencia comercial</summary>
+        <div id="quoteIntelligence" style="padding-bottom:12px;"></div>
+      </details>
     </div>
 
-    <div class="panel" style="margin-top:12px;">
-      <div class="section-head" style="margin-bottom:8px;">
-        <h2>📌 Seguimiento comercial</h2>
-        <span class="muted">Control de próximas llamadas y contactos</span>
-      </div>
-      <div id="quoteFollowupSummary" style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-bottom:12px;"></div>
-      <div id="quoteFollowupList"></div>
+    <div class="panel" style="padding:0 12px;">
+      <details>
+        <summary style="cursor:pointer;font-weight:700;padding:12px 0;">📌 Seguimiento comercial</summary>
+        <div id="quoteFollowupSummary" style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;margin-bottom:10px;"></div>
+        <div id="quoteFollowupList" style="padding-bottom:12px;"></div>
+      </details>
     </div>
 
-    <div class="panel" style="margin-top:12px;">
-      <div class="section-head" style="margin-bottom:8px;">
-        <h2>🔔 Automatización y alertas</h2>
-        <span class="muted">Control automático de seguimientos</span>
-      </div>
-      <div id="quoteAutomationAlerts"></div>
+    <div class="panel" style="padding:0 12px;">
+      <details>
+        <summary style="cursor:pointer;font-weight:700;padding:12px 0;">🔔 Automatización y alertas</summary>
+        <div id="quoteAutomationAlerts" style="padding-bottom:12px;"></div>
+      </details>
     </div>
 
-    <div class="panel" style="margin-top:12px;">
-      <div class="section-head" style="margin-bottom:8px;">
-        <h2>📋 Cotizaciones guardadas</h2>
-        <span class="muted">${Array.isArray(db.quotes) ? db.quotes.length : 0} guardadas</span>
-      </div>
-      <div id="quotesList"></div>
+    <div class="panel" style="padding:0 12px;">
+      <details>
+        <summary style="cursor:pointer;font-weight:700;padding:12px 0;">📋 Cotizaciones guardadas <span class="muted">· ${Array.isArray(db.quotes) ? db.quotes.length : 0}</span></summary>
+        <div id="quotesList" style="padding-bottom:12px;"></div>
+      </details>
     </div>
   `;
 
@@ -4397,78 +4194,39 @@ function renderCotizador(){
   if(customerSelect){
     customerSelect.onchange = function(){
       const value = this.value;
-
       if(value === "__manual__"){
         quoteCustomer = "";
-        if(customer){
-          customer.style.display = "";
-          customer.focus();
-        }
-        if(phone){
-          phone.value = "";
-        }
+        if(customer){ customer.style.display = ""; customer.focus(); }
         quotePhone = "";
+        if(phone) phone.value = "";
         return;
       }
-
       if(value === ""){
         quoteCustomer = "";
         quotePhone = "";
-        if(customer){
-          customer.value = "";
-          customer.style.display = "none";
-        }
-        if(phone){
-          phone.value = "";
-        }
+        if(customer){ customer.value = ""; customer.style.display = "none"; }
+        if(phone) phone.value = "";
         return;
       }
-
       const selectedCustomer = db.customers[Number(value)];
-
       if(selectedCustomer){
         quoteCustomer = String(selectedCustomer.name || "").trim();
         quotePhone = String(selectedCustomer.phone || "").trim();
-
-        if(customer){
-          customer.value = quoteCustomer;
-          customer.style.display = "none";
-        }
-
-        if(phone){
-          phone.value = quotePhone;
-        }
+        if(customer){ customer.value = quoteCustomer; customer.style.display = "none"; }
+        if(phone) phone.value = quotePhone;
       }
     };
   }
-
-  if(customer){
-    customer.oninput = function(){
-      quoteCustomer = this.value;
-    };
-  }
-
-  if(phone){
-    phone.oninput = function(){
-      quotePhone = this.value;
-    };
-  }
-
+  if(customer) customer.oninput = function(){ quoteCustomer = this.value; };
+  if(phone) phone.oninput = function(){ quotePhone = this.value; };
   const note = document.getElementById("quoteNote");
-  if(note){
-    note.oninput = function(){ quoteNote = this.value; };
-  }
-
+  if(note) note.oninput = function(){ quoteNote = this.value; };
   const followupDate = document.getElementById("quoteFollowupDate");
-  if(followupDate){ followupDate.oninput = function(){ quoteFollowupDate=this.value; }; }
+  if(followupDate) followupDate.oninput = function(){ quoteFollowupDate = this.value; };
   const followupNote = document.getElementById("quoteFollowupNote");
-  if(followupNote){ followupNote.oninput = function(){ quoteFollowupNote=this.value; }; }
-
+  if(followupNote) followupNote.oninput = function(){ quoteFollowupNote = this.value; };
   const discount = document.getElementById("quoteDiscount");
-  if(discount){
-    discount.oninput = function(){ quoteDiscount = Math.max(0, Number(this.value) || 0); renderCotizador(); };
-  }
-
+  if(discount) discount.oninput = function(){ quoteDiscount = Math.max(0, Number(this.value) || 0); renderCotizador(); };
   const search = document.getElementById("quoteSearch");
   if(search){
     search.oninput = function(){
@@ -4476,21 +4234,13 @@ function renderCotizador(){
       const cursor = this.value.length;
       renderCotizador();
       const next = document.getElementById("quoteSearch");
-      if(next){
-        next.focus();
-        try{ next.setSelectionRange(cursor,cursor); }catch(_){ }
-      }
+      if(next){ next.focus(); try{ next.setSelectionRange(cursor,cursor); }catch(_){} }
     };
   }
-
   const category = document.getElementById("quoteCategory");
-  if(category){
-    category.onchange = function(){
-      quoteCategory = this.value;
-      renderCotizador();
-    };
-  }
+  if(category) category.onchange = function(){ quoteCategory = this.value; renderCotizador(); };
 }
+
 
 /* =========================================================
    MOVIMIENTOS
@@ -8962,185 +8712,67 @@ function closeInternal() {
    RESPALDO
    ========================================================= */
 
-function exportData() {
-
-  const blob =
-    new Blob(
-      [
-        JSON.stringify(
-          db,
-          null,
-          2
-        )
-      ],
-      {
-        type:
-          "application/json"
-      }
-    );
-
-
-  const url =
-    URL.createObjectURL(
-      blob
-    );
-
-
-  const link =
-    document.createElement(
-      "a"
-    );
-
-
-  link.href =
-    url;
-
-
-  link.download =
-    "aquarium-fish-respaldo.json";
-
-
-  document.body.appendChild(
-    link
-  );
-
-
-  link.click();
-
-
-  link.remove();
-
-
-  URL.revokeObjectURL(
-    url
-  );
-
+function backupPayload(){
+  return {
+    app: "Aquarium Fish",
+    backupVersion: 2,
+    createdAt: new Date().toISOString(),
+    data: db
+  };
 }
 
+function exportData(){
+  const payload = backupPayload();
+  const blob = new Blob([JSON.stringify(payload,null,2)],{type:"application/json"});
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  const stamp = new Date().toISOString().slice(0,10);
+  link.download = `aquarium-fish-respaldo-${stamp}.json`;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+  try{ localStorage.setItem("aquariumFishLastBackup", payload.createdAt); }catch(_){ }
+  renderMore();
+}
 
-function importData(input) {
+function normalizeImportedData(source){
+  if(!source || typeof source !== "object") throw new Error("Formato inválido");
+  const candidate = source.data && typeof source.data === "object" ? source.data : source;
+  const keys = ["products","sales","moves","customers","quotes","orders","cash"];
+  const recognized = keys.filter(k => Array.isArray(candidate[k]));
+  if(!recognized.length) throw new Error("El archivo no contiene datos de Aquarium Fish.");
+  const result = {};
+  keys.forEach(k => { result[k] = Array.isArray(candidate[k]) ? candidate[k] : []; });
+  return result;
+}
 
-  const file =
-    input?.files?.[0];
-
-
-  if(!file){
-
-    return;
-
-  }
-
-
-  const reader =
-    new FileReader();
-
-
-  reader.onload =
-    function(){
-
-      try{
-
-        const imported =
-          JSON.parse(
-            reader.result
-          );
-
-
-        if(
-          !imported ||
-          typeof imported !==
-          "object"
-        ){
-
-          throw new Error(
-            "Formato inválido"
-          );
-
-        }
-
-
-        db = {
-
-          products:
-            Array.isArray(
-              imported.products
-            )
-              ? imported.products
-              : [],
-
-          sales:
-            Array.isArray(
-              imported.sales
-            )
-              ? imported.sales
-              : [],
-
-          moves:
-            Array.isArray(
-              imported.moves
-            )
-              ? imported.moves
-              : [],
-
-          customers:
-            Array.isArray(
-              imported.customers
-            )
-              ? imported.customers
-              : [],
-
-          quotes:
-            Array.isArray(
-              imported.quotes
-            )
-              ? imported.quotes
-              : [],
-
-          orders:
-            Array.isArray(
-              imported.orders
-            )
-              ? imported.orders
-              : [],
-
-          cash:
-            Array.isArray(
-              imported.cash
-            )
-              ? imported.cash
-              : []
-
-        };
-
-
-        save();
-
-
-        alert(
-          "Respaldo restaurado correctamente."
-        );
-
-
-      }catch(error){
-
-        console.error(
-          error
-        );
-
-
-        alert(
-          "No se pudo restaurar el respaldo."
-        );
-
+function importData(input){
+  const file = input?.files?.[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = function(){
+    try{
+      const imported = JSON.parse(reader.result);
+      const nextDb = normalizeImportedData(imported);
+      const totalRecords = Object.values(nextDb).reduce((sum,value)=>sum+value.length,0);
+      if(!confirm(`Se encontraron ${totalRecords} registros en el respaldo.\n\nAntes de restaurarlo se descargará una copia de seguridad de los datos actuales.\n\n¿Continuar?`)){
+        input.value = "";
+        return;
       }
-
-    };
-
-
-  reader.readAsText(
-    file
-  );
-
+      exportData();
+      db = nextDb;
+      save();
+      alert("Respaldo restaurado correctamente.");
+    }catch(error){
+      console.error("Error restaurando respaldo:",error);
+      alert("No se pudo restaurar el respaldo. El archivo no tiene un formato válido de Aquarium Fish.");
+    }finally{
+      input.value = "";
+    }
+  };
+  reader.readAsText(file);
 }
 
 
@@ -9148,61 +8780,52 @@ function importData(input) {
    BÚSQUEDAS
    ========================================================= */
 
-function bindSearches() {
-
-  const search =
-    document.getElementById(
-      "search"
-    );
-
-
+function bindSearches(){
+  const search=document.getElementById("search");
   if(search){
-
-    search.oninput =
-      function(){
-
-        renderInventory();
-
-      };
-
+    search.oninput=function(){ renderInventory(); };
   }
 
-
-  const salesSearch =
-    document.getElementById(
-      "salesSearch"
-    );
-
-
+  const salesSearch=document.getElementById("salesSearch");
   if(salesSearch){
-
-    salesSearch.oninput =
-      function(){
-
-        renderSales();
-
-      };
-
+    salesSearch.oninput=function(){ renderSales(); };
   }
 
-
-  const customerSearch =
-    document.getElementById(
-      "customerSearch"
-    );
-
-
+  const customerSearch=document.getElementById("customerSearch");
   if(customerSearch){
-
-    customerSearch.oninput =
-      function(){
-
-        renderCustomers();
-
-      };
-
+    customerSearch.oninput=function(){ renderCustomers(); };
   }
+}
 
+
+/* =========================================================
+   AJUSTE RESPONSIVO PARA CELULAR Y TABLET
+   ========================================================= */
+
+function applyMobileLayout(){
+  if(document.getElementById("aquariumMobileLayout")) return;
+
+  const style=document.createElement("style");
+  style.id="aquariumMobileLayout";
+  style.textContent=`
+    @media (max-width: 700px){
+      html, body{width:100%;max-width:100%;overflow-x:hidden;}
+      main{width:100%;max-width:100%;box-sizing:border-box;}
+      .screen,.panel,.item,.cards{max-width:100%;box-sizing:border-box;}
+      .section-head{flex-wrap:wrap;}
+      .cards{grid-template-columns:repeat(2,minmax(0,1fr)) !important;}
+      [style*="grid-template-columns"]{grid-template-columns:1fr !important;}
+      input,select,textarea,button{max-width:100%;box-sizing:border-box;}
+      .list{max-width:100%;overflow-x:hidden;}
+      .item{min-width:0;flex-wrap:wrap;}
+      nav{width:100%;max-width:100%;overflow-x:auto;box-sizing:border-box;}
+    }
+    @media (min-width: 701px) and (max-width: 1100px){
+      main{max-width:100%;box-sizing:border-box;}
+      .panel,.screen{max-width:100%;box-sizing:border-box;}
+    }
+  `;
+  document.head.appendChild(style);
 }
 
 
@@ -9210,258 +8833,71 @@ function bindSearches() {
    HACER FUNCIONES GLOBALES
    IMPORTANTE PARA LOS onclick DEL HTML
    ========================================================= */
-
-function exposeFunctions() {
-
-  window.editQuote =
-    editQuote;
-
-  window.viewQuote =
-    viewQuote;
-
-  window.deleteQuote =
-    deleteQuote;
-
-  window.convertQuoteToSale =
-    convertQuoteToSale;
-
-
-
-  window.show =
-    show;
-
-
-  window.openProduct =
-    openProduct;
-
-
-  window.editProduct =
-    editProduct;
-
-
-  window.deleteProduct =
-    deleteProduct;
-
-
-  window.openSale =
-    openSale;
-
-  window.deleteSale =
-    deleteSale;
-
-
-  window.addSaleRow =
-    addSaleRow;
-
-
-  window.updateSalePreview =
-    updateSalePreview;
-
-
-  window.openCustomer =
-    openCustomer;
-
-
-  window.editCustomer =
-    editCustomer;
-
-
-  window.deleteCustomer =
-    deleteCustomer;
-
-
-  window.openOrder =
-    openOrder;
-
-
-  window.editOrder =
-    editOrder;
-
-
-  window.deleteOrder =
-    deleteOrder;
-
-
-  window.toggleOrder =
-    toggleOrder;
-
-
-  window.advanceOrderStatus =
-    advanceOrderStatus;
-
-
-  window.openMove =
-    openMove;
-
-
-  window.toggleDateGroup =
-    toggleDateGroup;
-
-
-  window.closeModal =
-    closeModal;
-
-
-  window.openInternal =
-    openInternal;
-
-
-  window.closeInternal =
-    closeInternal;
-
-
-  window.exportData =
-    exportData;
-
-
-  window.importData =
-    importData;
-
-
-  window.setInventoryCategory =
-    setInventoryCategory;
-
-
-  window.setInventorySort =
-    setInventorySort;
-
-
-  /* =====================================================
-     FUNCIONES DE CAJA
-  ===================================================== */
-
-  window.openCashMovement =
-    openCashMovement;
-
-
-  window.editCashMovement =
-    editCashMovement;
-
-
-  window.deleteCashMovement =
-    deleteCashMovement;
-
-
-  window.setCashPeriod =
-    setCashPeriod;
-
-
-  window.addQuoteItem =
-    addQuoteItem;
-
-
-  window.updateQuoteItem =
-    updateQuoteItem;
-
-
-  window.removeQuoteItem =
-    removeQuoteItem;
-
-
-  window.clearQuote =
-    clearQuote;
-
-
-  window.copyQuote =
-    copyQuote;
-
-
-  window.shareQuoteWhatsApp =
-    shareQuoteWhatsApp;
-
-  window.saveQuote =
-    saveQuote;
-
-  window.openReceipt =
-    openReceipt;
-
-  window.copySaleReceipt =
-    copySaleReceipt;
-
-  window.shareSaleReceiptWhatsApp =
-    shareSaleReceiptWhatsApp;
-
-  window.setReportPeriod =
-    setReportPeriod;
-
-
-  window.printSaleReceipt =
-    printSaleReceipt;
-
+function exposeFunctions(){
+  window.editQuote=editQuote;
+  window.viewQuote=viewQuote;
+  window.deleteQuote=deleteQuote;
+  window.convertQuoteToSale=convertQuoteToSale;
+  window.show=show;
+  window.openProduct=openProduct;
+  window.editProduct=editProduct;
+  window.deleteProduct=deleteProduct;
+  window.openSale=openSale;
+  window.deleteSale=deleteSale;
+  window.addSaleRow=addSaleRow;
+  window.updateSalePreview=updateSalePreview;
+  window.openCustomer=openCustomer;
+  window.editCustomer=editCustomer;
+  window.deleteCustomer=deleteCustomer;
+  window.openOrder=openOrder;
+  window.editOrder=editOrder;
+  window.deleteOrder=deleteOrder;
+  window.toggleOrder=toggleOrder;
+  window.advanceOrderStatus=advanceOrderStatus;
+  window.openMove=openMove;
+  window.toggleDateGroup=toggleDateGroup;
+  window.closeModal=closeModal;
+  window.openInternal=openInternal;
+  window.closeInternal=closeInternal;
+  window.exportData=exportData;
+  window.importData=importData;
+  window.toggleAvailabilityList=toggleAvailabilityList;
+  window.renderAvailabilityList=renderAvailabilityList;
+  window.shareAvailabilityWhatsApp=shareAvailabilityWhatsApp;
+  window.printAvailabilityList=printAvailabilityList;
+  window.copyAvailabilityList=copyAvailabilityList;
+  window.setInventoryCategory=setInventoryCategory;
+  window.setInventorySort=setInventorySort;
+  window.openCashMovement=openCashMovement;
+  window.editCashMovement=editCashMovement;
+  window.deleteCashMovement=deleteCashMovement;
+  window.setCashPeriod=setCashPeriod;
+  window.addQuoteItem=addQuoteItem;
+  window.updateQuoteItem=updateQuoteItem;
+  window.removeQuoteItem=removeQuoteItem;
+  window.clearQuote=clearQuote;
+  window.copyQuote=copyQuote;
+  window.shareQuoteWhatsApp=shareQuoteWhatsApp;
+  window.saveQuote=saveQuote;
+  window.openReceipt=openReceipt;
+
+  // Etapa B: filtros y acciones dinámicas
+  window.clearInventorySearch=clearInventorySearch;
+  window.clearSalesSearch=clearSalesSearch;
+  window.setInventoryStatusFilter=setInventoryStatusFilter;
+  window.setSalesStatusFilter=setSalesStatusFilter;
+  window.setSalesPeriodFilter=setSalesPeriodFilter;
+  window.setSalesPaymentFilter=setSalesPaymentFilter;
+
+  // Etapa D: movimientos, respaldo y herramientas
+  window.clearMovesSearch=clearMovesSearch;
+  window.showBackupCenter=showBackupCenter;
+  window.setupStageDUI=setupStageDUI;
+  window.renderMoves=renderMoves;
+  window.renderMore=renderMore;
+  window.applyMobileLayout=applyMobileLayout;
+  window.runSystemAudit=runSystemAudit;
 }
-
-
-/* =========================================================
-   AJUSTE RESPONSIVO PARA CELULAR
-   ========================================================= */
-
-function applyMobileLayout(){
-
-  if(document.getElementById("aquariumMobileLayout")){
-    return;
-  }
-
-  const style = document.createElement("style");
-  style.id = "aquariumMobileLayout";
-  style.textContent = `
-    @media (max-width: 700px){
-      html, body{
-        width:100%;
-        max-width:100%;
-        overflow-x:hidden;
-      }
-
-      main{
-        width:100%;
-        max-width:100%;
-        box-sizing:border-box;
-      }
-
-      .screen, .panel, .item, .cards{
-        max-width:100%;
-        box-sizing:border-box;
-      }
-
-      .section-head{
-        flex-wrap:wrap;
-      }
-
-      .cards{
-        grid-template-columns:repeat(2,minmax(0,1fr)) !important;
-      }
-
-      [style*="grid-template-columns"]{
-        grid-template-columns:1fr !important;
-      }
-
-      input, select, textarea, button{
-        max-width:100%;
-        box-sizing:border-box;
-      }
-
-      .list{
-        max-width:100%;
-        overflow-x:hidden;
-      }
-
-      .item{
-        min-width:0;
-        flex-wrap:wrap;
-      }
-
-      nav{
-        width:100%;
-        max-width:100%;
-        overflow-x:auto;
-        box-sizing:border-box;
-      }
-    }
-  `;
-
-  document.head.appendChild(style);
-
-}
-
 
 /* =========================================================
    NAVEGACIÓN PRINCIPAL REORGANIZADA
@@ -9470,16 +8906,9 @@ function applyMainNavigationLayout(){
   if(document.getElementById("aquariumMainNavLayout")) return;
   const style=document.createElement("style");
   style.id="aquariumMainNavLayout";
-  style.textContent=`
-    #more .panel{transition:transform .15s ease,box-shadow .15s ease}
-    #more .panel:hover{transform:translateY(-1px);box-shadow:0 6px 18px rgba(0,0,0,.08)}
-    @media(max-width:700px){
-      #more .cards{grid-template-columns:1fr !important}
-    }
-  `;
+  style.textContent=`#more .panel{transition:transform .15s ease,box-shadow .15s ease}#more .panel:hover{transform:translateY(-1px);box-shadow:0 6px 18px rgba(0,0,0,.08)}@media(max-width:700px){#more .cards{grid-template-columns:1fr !important}}`;
   document.head.appendChild(style);
 }
-
 
 /* =========================================================
    INICIAR APLICACIÓN
@@ -9496,11 +8925,14 @@ function iniciarApp() {
 
   setupCotizadorUI();
 
+  setupStageDUI();
+
   bindNavigation();
 
   bindSearches();
 
   renderAll();
+  setTimeout(()=>{ if(typeof runSystemAudit==="function") runSystemAudit(); }, 250);
   setTimeout(maybeNotifyQuoteFollowups, 700);
 
   show("portada");
@@ -9522,4 +8954,472 @@ if(
 
   iniciarApp();
 
+}
+
+
+/* =========================================================
+   ETAPA G — LISTA COMERCIAL DE DISPONIBILIDAD
+   Usa el inventario existente. No modifica stock, precios,
+   Firebase ni la estructura de datos.
+   ========================================================= */
+
+let availabilityCategory = "Todas";
+let availabilityShowStock = false;
+
+function availabilityProducts(){
+  const products = Array.isArray(db.products) ? db.products : [];
+  const selected = String(availabilityCategory || "Todas").trim();
+  return products
+    .filter(product => {
+      const stock = Math.max(0, +product.stock || 0);
+      if(stock <= 0) return false;
+      if(selected !== "Todas" && String(product.category || "").trim().toLowerCase() !== selected.toLowerCase()) return false;
+      return true;
+    })
+    .slice()
+    .sort((a,b) => String(a.name || "").localeCompare(String(b.name || ""), "es", {sensitivity:"base"}));
+}
+
+function availabilityLabel(){
+  return availabilityCategory === "Todas" ? "Productos disponibles" : `${availabilityCategory} disponibles`;
+}
+
+function availabilityMessage(){
+  const rows = availabilityProducts();
+  const date = new Date().toLocaleDateString("es-CO", {day:"2-digit", month:"2-digit", year:"numeric"});
+  const lines = [
+    "🐠 AQUARIUM FISH",
+    `📋 ${availabilityLabel()}`,
+    `📅 Actualizado: ${date}`,
+    ""
+  ];
+  if(!rows.length){
+    lines.push("En este momento no hay productos disponibles en esta categoría.");
+  }else{
+    rows.forEach(product => {
+      const name = String(product.name || "Producto").trim();
+      const stock = Math.max(0, +product.stock || 0);
+      lines.push(availabilityShowStock ? `• ${name} — ${stock} disponible${stock === 1 ? "" : "s"}` : `• ${name}`);
+    });
+  }
+  lines.push("", "*Consulta disponibilidad antes de realizar tu pedido.*");
+  return lines.join("\n");
+}
+
+function toggleAvailabilityList(){
+  const panel = document.getElementById("availabilityPanel");
+  if(!panel) return;
+  const open = panel.style.display !== "none";
+  panel.style.display = open ? "none" : "block";
+  if(!open){
+    renderAvailabilityList();
+    panel.scrollIntoView({behavior:"smooth", block:"nearest"});
+  }
+}
+
+function renderAvailabilityList(){
+  const panel = document.getElementById("availabilityPanel");
+  if(!panel) return;
+  const categories = inventoryCategories();
+  if(availabilityCategory !== "Todas" && !categories.some(c => c.toLowerCase() === availabilityCategory.toLowerCase())){
+    availabilityCategory = "Todas";
+  }
+  const rows = availabilityProducts();
+  const date = new Date().toLocaleDateString("es-CO", {day:"2-digit", month:"2-digit", year:"numeric"});
+  panel.innerHTML = `
+    <div class="availability-head">
+      <div>
+        <span class="page-kicker">LISTADO COMERCIAL</span>
+        <h2>📋 Lista para clientes</h2>
+        <p class="muted">Genera en segundos una lista usando únicamente productos con stock.</p>
+      </div>
+      <button type="button" class="availability-close" onclick="toggleAvailabilityList()" aria-label="Cerrar lista">×</button>
+    </div>
+
+    <div class="availability-controls">
+      <label>
+        Categoría
+        <select id="availabilityCategory" class="search">
+          <option value="Todas">📂 Todas las categorías</option>
+          ${categories.map(category => `<option value="${esc(category)}" ${category.toLowerCase() === availabilityCategory.toLowerCase() ? "selected" : ""}>${esc(category)}</option>`).join("")}
+        </select>
+      </label>
+      <label class="availability-check">
+        <input id="availabilityShowStock" type="checkbox" ${availabilityShowStock ? "checked" : ""}>
+        <span>Mostrar cantidades</span>
+      </label>
+    </div>
+
+    <div class="availability-preview">
+      <div class="availability-preview-head">
+        <div>
+          <b>🐠 AQUARIUM FISH</b>
+          <h3>${esc(availabilityLabel())}</h3>
+          <small>Actualizado: ${date}</small>
+        </div>
+        <span class="badge">${rows.length} ${rows.length === 1 ? "producto" : "productos"}</span>
+      </div>
+      <div class="availability-items">
+        ${rows.length ? rows.map(product => {
+          const stock = Math.max(0, +product.stock || 0);
+          return `<div class="availability-item"><span>• ${esc(product.name || "Producto")}</span>${availabilityShowStock ? `<b>${stock}</b>` : ""}</div>`;
+        }).join("") : `<div class="empty"><b>No hay productos disponibles</b><div class="muted">Prueba otra categoría o revisa el stock del inventario.</div></div>`}
+      </div>
+      <div class="availability-note">*Consulta disponibilidad antes de realizar tu pedido.*</div>
+    </div>
+
+    <div class="availability-actions">
+      <button type="button" class="primary" onclick="shareAvailabilityWhatsApp()">📲 WhatsApp</button>
+      <button type="button" onclick="printAvailabilityList()">🖨️ Imprimir / PDF</button>
+      <button type="button" onclick="copyAvailabilityList()">📋 Copiar lista</button>
+    </div>
+  `;
+  const category = document.getElementById("availabilityCategory");
+  if(category) category.onchange = function(){ availabilityCategory = this.value; renderAvailabilityList(); };
+  const showStock = document.getElementById("availabilityShowStock");
+  if(showStock) showStock.onchange = function(){ availabilityShowStock = this.checked; renderAvailabilityList(); };
+}
+
+function shareAvailabilityWhatsApp(){
+  const text = availabilityMessage();
+  const url = `https://wa.me/?text=${encodeURIComponent(text)}`;
+  window.open(url, "_blank", "noopener,noreferrer");
+}
+
+function copyAvailabilityList(){
+  const text = availabilityMessage();
+  if(navigator.clipboard && window.isSecureContext){
+    navigator.clipboard.writeText(text).then(() => alert("Lista copiada. Ya puedes pegarla en WhatsApp u otro chat.")).catch(() => alert(text));
+    return;
+  }
+  const area = document.createElement("textarea");
+  area.value = text;
+  area.style.position = "fixed";
+  area.style.opacity = "0";
+  document.body.appendChild(area);
+  area.focus();
+  area.select();
+  try{ document.execCommand("copy"); alert("Lista copiada. Ya puedes pegarla en WhatsApp u otro chat."); }
+  catch(_){ alert(text); }
+  area.remove();
+}
+
+function printAvailabilityList(){
+  const rows = availabilityProducts();
+  const date = new Date().toLocaleDateString("es-CO", {day:"2-digit", month:"2-digit", year:"numeric"});
+  const items = rows.length ? rows.map(product => {
+    const stock = Math.max(0, +product.stock || 0);
+    return `<li><span>${esc(product.name || "Producto")}</span>${availabilityShowStock ? `<strong>${stock}</strong>` : ""}</li>`;
+  }).join("") : `<li><span>No hay productos disponibles en esta categoría.</span></li>`;
+  const title = esc(availabilityLabel());
+  const popup = window.open("", "_blank", "width=700,height=850");
+  if(!popup){ alert("El navegador bloqueó la ventana de impresión. Permite ventanas emergentes para este sitio e inténtalo de nuevo."); return; }
+  popup.document.open();
+  popup.document.write(`<!doctype html><html lang="es"><head><meta charset="utf-8"><title>${title} · Aquarium Fish</title><style>
+    *{box-sizing:border-box}body{font-family:Arial,Helvetica,sans-serif;margin:0;padding:34px;color:#17313a;background:#fff}main{max-width:680px;margin:auto;border:1px solid #d9e6e9;border-radius:18px;padding:28px}h1{margin:4px 0 6px;font-size:27px}p{color:#60777d;margin:0 0 22px}.brand{font-size:13px;font-weight:800;letter-spacing:.08em}.date{font-size:12px;color:#71858a}.list{margin:20px 0;border-top:1px solid #d9e6e9}li{list-style:none;display:flex;justify-content:space-between;gap:15px;padding:12px 4px;border-bottom:1px solid #e8eff0;font-size:16px}.note{margin-top:22px;padding:12px;border-radius:10px;background:#f3f8f9;color:#587077;font-size:12px}@media print{body{padding:0}main{border:0;max-width:none;padding:18px}}
+  </style></head><body><main><div class="brand">🐠 AQUARIUM FISH</div><h1>${title}</h1><p>Listado de productos disponibles · ${date}</p><ul class="list">${items}</ul><div class="note">Consulta disponibilidad antes de realizar tu pedido.</div></main><script>window.onload=function(){setTimeout(function(){window.print();},250)};<\/script></body></html>`);
+  popup.document.close();
+}
+
+
+/* =========================================================
+   ETAPA B — OPERACIÓN DIARIA PROFESIONAL
+   Inventario + Ventas: mejora de lectura y rapidez sin
+   modificar la estructura de datos ni Firebase.
+   ========================================================= */
+
+let inventoryStatusFilter = "Todos";
+let salesStatusFilter = "Todos";
+let salesPeriodFilter = "Todos";
+let salesPaymentFilter = "Todos";
+
+function clearInventorySearch(){
+  const el=document.getElementById("search");
+  if(el){ el.value=""; renderInventory(); el.focus(); }
+}
+
+function clearSalesSearch(){
+  const el=document.getElementById("salesSearch");
+  if(el){ el.value=""; renderSales(); el.focus(); }
+}
+
+function inventoryStockState(product){
+  const stock=Math.max(0,+product.stock||0);
+  const min=Math.max(0,+product.min||0);
+  if(stock<=0) return {key:"Agotado", cls:"stageb-danger", icon:"🔴"};
+  if(stock<=min) return {key:"Stock bajo", cls:"stageb-warning", icon:"🟠"};
+  return {key:"Disponible", cls:"stageb-good", icon:"🟢"};
+}
+
+function setInventoryStatusFilter(value){
+  inventoryStatusFilter=value||"Todos";
+  renderInventory();
+}
+
+function setSalesStatusFilter(value){
+  salesStatusFilter=value||"Todos";
+  renderSales();
+}
+
+function setSalesPeriodFilter(value){
+  salesPeriodFilter=value||"Todos";
+  renderSales();
+}
+
+function setSalesPaymentFilter(value){
+  salesPaymentFilter=value||"Todos";
+  renderSales();
+}
+
+function saleStatusClass(status){
+  const s=String(status||"Pagada").toLowerCase();
+  if(s.includes("pendiente")) return "stageb-warning";
+  if(s.includes("abono")) return "stageb-info";
+  if(s.includes("cancel")) return "stageb-danger";
+  return "stageb-good";
+}
+
+function salesPeriodMatch(sale){
+  if(salesPeriodFilter==="Todos") return true;
+  const d=new Date(sale.date);
+  if(Number.isNaN(d.getTime())) return true;
+  const nowDate=new Date();
+  if(salesPeriodFilter==="Hoy") return sameDay(d,nowDate);
+  const start=new Date(nowDate);
+  start.setHours(0,0,0,0);
+  start.setDate(start.getDate()-(salesPeriodFilter==="7 días"?6:29));
+  return d>=start;
+}
+
+function renderInventory(){
+  const search=document.getElementById("search");
+  const list=document.getElementById("inventoryList");
+  if(!search||!list) return;
+
+  const q=String(search.value||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").trim();
+  let rows=(Array.isArray(db.products)?db.products:[]).filter(p=>{
+    const hay=`${p.name||""} ${p.category||""}`.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"");
+    if(q && !hay.includes(q)) return false;
+    if(inventoryCategory!=="Todas" && String(p.category||"").trim().toLowerCase()!==inventoryCategory.toLowerCase()) return false;
+    if(inventoryStatusFilter!=="Todos" && inventoryStockState(p).key!==inventoryStatusFilter) return false;
+    return true;
+  });
+
+  if(inventorySort==="name-asc") rows.sort((a,b)=>String(a.name||"").localeCompare(String(b.name||""),"es"));
+  if(inventorySort==="name-desc") rows.sort((a,b)=>String(b.name||"").localeCompare(String(a.name||""),"es"));
+  if(inventorySort==="stock-desc") rows.sort((a,b)=>(+b.stock||0)-(+a.stock||0));
+  if(inventorySort==="stock-asc") rows.sort((a,b)=>(+a.stock||0)-(+b.stock||0));
+
+  const stats=inventoryStats();
+  const low=stats.lowStock;
+  const zero=stats.zeroStock;
+  const controls=document.getElementById("inventoryControls") || document.createElement("div");
+  controls.id="inventoryControls";
+  if(!controls.parentElement) search.insertAdjacentElement("afterend",controls);
+
+  controls.innerHTML=`
+    <div class="stageb-toolbar">
+      <div class="stageb-filter-group">
+        <label>Estado</label>
+        <select id="inventoryStatus" class="stageb-select">
+          ${["Todos","Disponible","Stock bajo","Agotado"].map(v=>`<option value="${esc(v)}" ${inventoryStatusFilter===v?"selected":""}>${v==="Todos"?"📋 Todos":v==="Disponible"?"🟢 Disponible":v==="Stock bajo"?"🟠 Stock bajo":"🔴 Agotado"}</option>`).join("")}
+        </select>
+      </div>
+      <div class="stageb-filter-group">
+        <label>Categoría</label>
+        <select id="inventoryCategory" class="stageb-select">
+          <option value="Todas">📂 Todas</option>
+          ${inventoryCategories().map(c=>`<option value="${esc(c)}" ${c.toLowerCase()===inventoryCategory.toLowerCase()?"selected":""}>${esc(c)}</option>`).join("")}
+        </select>
+      </div>
+      <div class="stageb-filter-group">
+        <label>Ordenar</label>
+        <select id="inventorySort" class="stageb-select">
+          <option value="name-asc" ${inventorySort==="name-asc"?"selected":""}>🔤 A-Z</option>
+          <option value="name-desc" ${inventorySort==="name-desc"?"selected":""}>🔤 Z-A</option>
+          <option value="stock-desc" ${inventorySort==="stock-desc"?"selected":""}>📈 Mayor stock</option>
+          <option value="stock-asc" ${inventorySort==="stock-asc"?"selected":""}>📉 Menor stock</option>
+        </select>
+      </div>
+    </div>
+    <div class="stageb-inventory-summary">
+      <span><b>${rows.length}</b> mostrados de ${db.products.length}</span>
+      <span>🟠 ${low} bajo</span>
+      <span>🔴 ${zero} agotados</span>
+      <span>💰 ${money(stats.saleValue)} en stock</span>
+    </div>`;
+
+  document.getElementById("inventoryStatus").onchange=e=>setInventoryStatusFilter(e.target.value);
+  document.getElementById("inventoryCategory").onchange=e=>setInventoryCategory(e.target.value);
+  document.getElementById("inventorySort").onchange=e=>setInventorySort(e.target.value);
+
+  list.innerHTML=rows.length?rows.map(product=>{
+    const state=inventoryStockState(product);
+    const idx=db.products.indexOf(product);
+    const margin=(+product.price||0)-(+product.cost||0);
+    return `<article class="stageb-product-card">
+      <button type="button" class="stageb-product-main" onclick="editProduct(${idx})">
+        <div class="stageb-product-title-row"><div><b>${esc(product.name||"Sin nombre")}</b><small>${esc(product.category||"Sin categoría")}</small></div><span class="stageb-status ${state.cls}">${state.icon} ${state.key}</span></div>
+        <div class="stageb-product-metrics">
+          <span><small>Stock</small><b>${+product.stock||0}</b></span>
+          <span><small>Venta</small><b>${money(product.price)}</b></span>
+          <span><small>Ganancia/u</small><b>${money(margin)}</b></span>
+        </div>
+      </button>
+      <div class="stageb-product-actions"><button type="button" onclick="editProduct(${idx})">✏️ Editar</button></div>
+    </article>`;
+  }).join(""):`<div class="empty"><b>No encontramos productos</b><div class="muted">Prueba otro término o cambia los filtros.</div></div>`;
+}
+
+function renderSales(){
+  const list=document.getElementById("salesList");
+  const search=document.getElementById("salesSearch");
+  if(!list) return;
+  const sales=Array.isArray(db.sales)?db.sales:[];
+  const q=String(search?.value||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").trim();
+  const filtered=sales.filter(sale=>{
+    const items=Array.isArray(sale.items)?sale.items.map(i=>i.product||"").join(" "):(sale.product||"");
+    const hay=[sale.id,sale.client,sale.phone,sale.date,sale.pay,sale.status,items].join(" ").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"");
+    if(q&&!hay.includes(q)) return false;
+    if(salesStatusFilter!=="Todos" && String(sale.status||"Pagada")!==salesStatusFilter) return false;
+    if(salesPaymentFilter!=="Todos" && String(sale.pay||"")!==salesPaymentFilter) return false;
+    if(!salesPeriodMatch(sale)) return false;
+    return true;
+  });
+
+  const controls=document.getElementById("salesControls");
+  if(controls){
+    const pays=[...new Set(sales.map(s=>String(s.pay||"").trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,"es"));
+    controls.innerHTML=`<div class="stageb-toolbar">
+      <div class="stageb-filter-group"><label>Periodo</label><select class="stageb-select" onchange="setSalesPeriodFilter(this.value)"><option>Todos</option><option ${salesPeriodFilter==="Hoy"?"selected":""}>Hoy</option><option ${salesPeriodFilter==="7 días"?"selected":""}>7 días</option><option ${salesPeriodFilter==="30 días"?"selected":""}>30 días</option></select></div>
+      <div class="stageb-filter-group"><label>Estado</label><select class="stageb-select" onchange="setSalesStatusFilter(this.value)"><option>Todos</option><option ${salesStatusFilter==="Pagada"?"selected":""}>Pagada</option><option ${salesStatusFilter==="Abono"?"selected":""}>Abono</option><option ${salesStatusFilter==="Pendiente"?"selected":""}>Pendiente</option></select></div>
+      <div class="stageb-filter-group"><label>Pago</label><select class="stageb-select" onchange="setSalesPaymentFilter(this.value)"><option>Todos</option>${pays.map(v=>`<option value="${esc(v)}" ${salesPaymentFilter===v?"selected":""}>${esc(v)}</option>`).join("")}</select></div>
+    </div>`;
+  }
+
+  const total=filtered.reduce((sum,s)=>sum+(+s.total||0),0);
+  const received=filtered.reduce((sum,s)=>sum+salePaid(s),0);
+  const pending=filtered.reduce((sum,s)=>sum+Math.max(0,(+s.total||0)-salePaid(s)),0);
+  const summary=document.getElementById("salesSummary");
+  if(summary) summary.innerHTML=`<div class="stageb-sales-kpi"><span><small>Ventas</small><b>${filtered.length}</b></span><span><small>Total</small><b>${money(total)}</b></span><span><small>Recibido</small><b>${money(received)}</b></span><span><small>Por cobrar</small><b>${money(pending)}</b></span></div>`;
+
+  if(!sales.length){list.innerHTML=`<div class="empty"><b>No hay ventas registradas</b><div class="muted">Las nuevas ventas aparecerán aquí.</div></div>`;return;}
+  if(!filtered.length){list.innerHTML=`<div class="empty"><b>No encontramos ventas</b><div class="muted">Prueba otros filtros o limpia la búsqueda.</div></div>`;return;}
+
+  const groups={};
+  filtered.forEach(s=>{const key=dateKey(s.date);(groups[key] ||= []).push(s);});
+  const keys=Object.keys(groups).sort((a,b)=>b.localeCompare(a));
+  list.innerHTML=keys.map((key,gi)=>{
+    const group=groups[key].slice().reverse();
+    const groupTotal=group.reduce((sum,s)=>sum+(+s.total||0),0);
+    return `<div class="date-group stageb-date-group">
+      <button class="date-group-head" type="button" onclick="toggleDateGroup(this)"><span><b>${esc(dateLabel(key))}</b><small>${group.length} ${group.length===1?"venta":"ventas"} · ${money(groupTotal)}</small></span><span class="date-chevron">${gi===0?"▲":"▼"}</span></button>
+      <div class="date-group-body ${gi===0?"open":""}">${group.map(sale=>{
+        const idx=db.sales.indexOf(sale); const status=sale.status||"Pagada"; const paid=salePaid(sale); const due=Math.max(0,(+sale.total||0)-paid);
+        const itemText=Array.isArray(sale.items)&&sale.items.length?sale.items.map(i=>`${esc(i.product||"Producto")} × ${i.qty||0}`).join(" · "):`${esc(sale.product||"Producto")} × ${sale.qty||0}`;
+        return `<article class="stageb-sale-card">
+          <div class="stageb-sale-info"><div class="stageb-sale-top"><div><b>${esc(sale.client||"Sin cliente")}</b><small>${esc(sale.id||"")} · ${esc(sale.pay||"")}</small></div><span class="stageb-status ${saleStatusClass(status)}">${status==="Pagada"?"🟢":"🟠"} ${esc(status)}</span></div><p>${itemText}</p><div class="stageb-sale-bottom"><span>${esc(sale.date||"")}</span>${due>0?`<strong>Por cobrar ${money(due)}</strong>`:`<strong>Recibido ${money(paid)}</strong>`}</div></div>
+          <div class="stageb-sale-side"><b>${money(sale.total)}</b><button type="button" onclick="openReceipt(${idx})">🧾 Ver comprobante</button><button type="button" class="danger-text" onclick="deleteSale(${idx})">🗑️ Eliminar</button></div>
+        </article>`;
+      }).join("")}</div></div>`;
+  }).join("");
+}
+
+
+/* =========================================================
+   ETAPA D — HERRAMIENTAS Y CONTROL PROFESIONAL
+   Cotizador, encargos, movimientos, respaldo y resumen.
+   Sin cambios de estructura Firebase.
+   ========================================================= */
+
+let movesSearch = "";
+let movesTypeFilter = "Todos";
+
+function runSystemAudit(){
+  const out=document.getElementById("stageFAudit");
+  const time=document.getElementById("stageFAuditTime");
+  if(!out) return;
+  const checks=[];
+  const add=(label,ok,detail)=>checks.push({label,ok,detail});
+  const requiredFunctions=["show","save","renderAll","renderHome","renderInventory","renderSales","renderCash","renderCustomers","renderOrders","renderMoves","renderReports","exportData","importData","applyMobileLayout","exposeFunctions","bindSearches"];
+  const missing=requiredFunctions.filter(name=>typeof window[name]!=="function");
+  add("Funciones principales",missing.length===0,missing.length?`Faltan: ${missing.join(", ")}`:"Todas las funciones críticas están disponibles.");
+  const ids=["home","inventory","sales","cash","customers","cotizador","orders","moves","reports","more","modal","form","importFile"];
+  const missingIds=ids.filter(id=>!document.getElementById(id));
+  add("Pantallas y controles",missingIds.length===0,missingIds.length?`Elementos faltantes: ${missingIds.join(", ")}`:"Pantallas y controles principales presentes.");
+  const collections=["products","sales","customers","quotes","orders","moves","cash"];
+  const badData=collections.filter(k=>!Array.isArray(db[k]));
+  const records=collections.reduce((n,k)=>n+(Array.isArray(db[k])?db[k].length:0),0);
+  add("Datos locales",badData.length===0,badData.length?`Colecciones inválidas: ${badData.join(", ")}`:`${records} registros disponibles.`);
+  let storageOk=true;
+  try{ const k="__af_stagef_test"; localStorage.setItem(k,"1"); localStorage.removeItem(k); }catch(_){ storageOk=false; }
+  add("Almacenamiento",storageOk,storageOk?"El navegador permite guardar datos locales.":"El almacenamiento local no está disponible.");
+  const swSupported="serviceWorker" in navigator;
+  add("PWA",swSupported,swSupported?"El navegador soporta Service Worker.":"Este navegador no soporta Service Worker.");
+  const authReady=typeof auth!=="undefined";
+  add("Firebase",authReady,authReady?"La configuración de autenticación está disponible.":"No se detectó el objeto de autenticación.");
+  out.innerHTML=checks.map(c=>`<div class="stagef-audit-item ${c.ok?"ok":"bad"}"><span class="stagef-audit-icon">${c.ok?"✓":"!"}</span><div><b>${esc(c.label)}</b><small>${esc(c.detail)}</small></div></div>`).join("");
+  if(time) time.textContent=`Última revisión: ${new Date().toLocaleString("es-CO")}`;
+}
+
+function setupStageDUI(){
+  const search = document.getElementById("movesSearch");
+  const type = document.getElementById("movesTypeFilter");
+  if(search){
+    search.value = movesSearch;
+    search.oninput = function(){ movesSearch=this.value; renderMoves(); };
+  }
+  if(type){
+    type.value = movesTypeFilter;
+    type.onchange = function(){ movesTypeFilter=this.value; renderMoves(); };
+  }
+  renderMore();
+  renderMoves();
+}
+
+function clearMovesSearch(){
+  movesSearch="";
+  const el=document.getElementById("movesSearch");
+  if(el){el.value="";renderMoves();el.focus();}
+}
+
+function renderMoves(){
+  const list=document.getElementById("movesList");
+  const summary=document.getElementById("movesSummary");
+  if(!list) return;
+  const q=String(movesSearch||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").trim();
+  const rows=(Array.isArray(db.moves)?db.moves:[]).map((move,index)=>({move,index})).filter(({move})=>{
+    const type=String(move.type||"");
+    if(movesTypeFilter!=="Todos" && type!==movesTypeFilter) return false;
+    if(!q) return true;
+    const hay=`${move.product||""} ${move.reason||""} ${move.responsible||""} ${move.date||""}`.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"");
+    return hay.includes(q);
+  }).reverse();
+  const entries=Array.isArray(db.moves)?db.moves:[];
+  const entradas=entries.filter(m=>String(m.type||"")==="Entrada").reduce((s,m)=>s+(+m.qty||0),0);
+  const salidas=entries.filter(m=>String(m.type||"")==="Salida").reduce((s,m)=>s+(+m.qty||0),0);
+  summary.innerHTML=`<span>Movimientos <b>${entries.length}</b></span><span>🟢 Entradas <b>${entradas}</b></span><span>🔴 Salidas <b>${salidas}</b></span><span>Mostrando <b>${rows.length}</b></span>`;
+  list.innerHTML=rows.length ? rows.map(({move,index})=>`<div class="item stage-d-move-item"><div><b>${esc(move.product||"Producto")}</b><div class="muted">${move.source==="Venta"?"Venta automática":esc(move.reason||"Sin motivo")} · ${esc(move.responsible||"Sin responsable")} · ${esc(move.date||"")}</div></div><span class="badge ${String(move.type||"")==="Salida"?"low":""}">${String(move.type||"Entrada")==="Salida"?"🔴":"🟢"} ${esc(move.type||"")} ${esc(move.qty||0)}</span></div>`).join(""):`<div class="empty">${entries.length?"No hay movimientos que coincidan con el filtro.":"No hay movimientos registrados."}</div>`;
+}
+
+function renderMore(){
+  const overview=document.getElementById("moreOverview");
+  if(!overview) return;
+  const lastBackup = (()=>{try{return localStorage.getItem("aquariumFishLastBackup")}catch(_){return null}})();
+  const backupText=lastBackup ? new Date(lastBackup).toLocaleString("es-CO") : "Aún no registrado en este dispositivo";
+  const activeOrders=(db.orders||[]).filter(o=>!['Entregado','Cancelado'].includes(String(o.status||'Pendiente'))).length;
+  const pendingQuotes=(db.quotes||[]).filter(q=>!q.convertedSaleId && !['Rechazada','Cancelada'].includes(String(q.status||''))).length;
+  const pendingReceivable=typeof calculateReceivable==='function'?calculateReceivable():0;
+  overview.innerHTML=`<div class="more-status-grid"><div><span>👥 Clientes</span><b>${db.customers.length}</b></div><div><span>📝 Encargos activos</span><b>${activeOrders}</b></div><div><span>🧾 Cotizaciones activas</span><b>${pendingQuotes}</b></div><div><span>💳 Por cobrar</span><b>${money(pendingReceivable)}</b></div></div><div class="more-backup-line">💾 Último respaldo descargado: <b>${esc(backupText)}</b></div>`;
+  const count=document.getElementById("moreCustomersCount");
+  if(count) count.textContent=String(db.customers.length);
+}
+
+function showBackupCenter(){
+  const panel=document.getElementById("moreBackupPanel");
+  if(!panel) return;
+  const last=(()=>{try{return localStorage.getItem("aquariumFishLastBackup")}catch(_){return null}})();
+  panel.style.display="block";
+  panel.innerHTML=`<div class="more-backup-head"><div><h2>💾 Centro de respaldo</h2><p class="muted">Protege tus datos antes de restaurar o cambiar información.</p></div><button type="button" onclick="document.getElementById('moreBackupPanel').style.display='none'">×</button></div><div class="more-backup-actions"><button class="primary" type="button" onclick="exportData()">⬇️ Descargar respaldo</button><button type="button" onclick="document.getElementById('importFile').click()">⬆️ Restaurar respaldo</button></div><p class="muted">Registros actuales: <b>${Object.values(db).reduce((s,v)=>s+(Array.isArray(v)?v.length:0),0)}</b> · Último respaldo desde este dispositivo: <b>${last?new Date(last).toLocaleString('es-CO'):"no registrado"}</b></p><div class="more-safety-note">🛡️ Al restaurar, la aplicación descarga primero una copia de los datos actuales. Los respaldos antiguos de Aquarium Fish siguen siendo compatibles.</div>`;
+  panel.scrollIntoView({behavior:"smooth",block:"nearest"});
 }
