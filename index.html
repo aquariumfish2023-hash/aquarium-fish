@@ -152,12 +152,9 @@
       <button type="button" class="primary" onclick="openSale()">🛒 Nueva venta</button>
       <button type="button" onclick="show('cotizador')">🧾 Nueva cotización</button>
       <button type="button" onclick="openCustomer()">👤 Nuevo cliente</button>
-      <button type="button" onclick="show('cash')">💰 Caja</button>
       <button type="button" onclick="show('inventory')">📦 Inventario</button>
-      <button type="button" onclick="show('customers')">👥 Clientes</button>
-      <button type="button" onclick="show('reports')">📊 Reportes</button>
-      <button type="button" onclick="show('moves')">🔄 Movimientos</button>
-      <button type="button" onclick="show('home')">🏠 Actualizar panel</button>
+      <button type="button" onclick="show('cash')">💰 Caja</button>
+      <button type="button" onclick="show('more')">☰ Más opciones</button>
     </div>
   </div>
 
@@ -181,7 +178,7 @@
 
   <div class="section-head">
 
-    <h1>Inventario</h1>
+    <div><span class="page-kicker">PRODUCTOS</span><h1>Inventario</h1><p class="muted page-subtitle">Controla existencias y precios desde un solo lugar.</p></div>
 
     <button
       class="primary"
@@ -212,7 +209,7 @@
 
   <div class="section-head">
 
-    <h1>Ventas</h1>
+    <div><span class="page-kicker">OPERACIÓN</span><h1>Ventas</h1><p class="muted page-subtitle">Consulta y registra las ventas de tu negocio.</p></div>
 
     <button
       class="primary"
@@ -414,76 +411,54 @@
 
 
 <!-- =====================================================
+     MÁS / HERRAMIENTAS
+===================================================== -->
+
+<section id="more" class="screen more-screen">
+  <div class="page-hero">
+    <div>
+      <span class="page-kicker">HERRAMIENTAS</span>
+      <h1>Más opciones</h1>
+      <p class="muted">Accede a las funciones de gestión que usas con menos frecuencia.</p>
+    </div>
+  </div>
+
+  <div class="more-grid">
+    <button type="button" class="more-card" onclick="show('customers')">
+      <span class="more-icon">👥</span><span><b>Clientes</b><small>Contactos, compras y saldos</small></span><strong>›</strong>
+    </button>
+    <button type="button" class="more-card" onclick="show('cotizador')">
+      <span class="more-icon">🧾</span><span><b>Cotizador</b><small>Crear, editar y dar seguimiento</small></span><strong>›</strong>
+    </button>
+    <button type="button" class="more-card" onclick="show('orders')">
+      <span class="more-icon">📝</span><span><b>Encargos</b><small>Pedidos y trabajos pendientes</small></span><strong>›</strong>
+    </button>
+    <button type="button" class="more-card" onclick="show('moves')">
+      <span class="more-icon">⇅</span><span><b>Movimientos</b><small>Entradas y salidas de inventario</small></span><strong>›</strong>
+    </button>
+    <button type="button" class="more-card" onclick="show('reports')">
+      <span class="more-icon">📊</span><span><b>Reportes</b><small>Resumen y análisis del negocio</small></span><strong>›</strong>
+    </button>
+    <button type="button" class="more-card" onclick="document.getElementById('importFile').click()">
+      <span class="more-icon">💾</span><span><b>Respaldo</b><small>Importar o exportar tus datos</small></span><strong>›</strong>
+    </button>
+  </div>
+
+  <div class="panel more-tip">
+    <span>💡</span><div><b>Consejo</b><p>Las operaciones diarias están en la barra inferior. Las herramientas adicionales quedan aquí para mantener la aplicación limpia y fácil de manejar.</p></div>
+  </div>
+</section>
+
+<!-- =====================================================
      NAVEGACIÓN
 ===================================================== -->
 
-<nav>
-
-  <button
-    type="button"
-    data-tab="portada"
-    class="active"
-  >
-    🐟
-    <span>Portada</span>
-  </button>
-
-  <button
-    type="button"
-    data-tab="home"
-  >
-    ⌂
-    <span>Inicio</span>
-  </button>
-
-  <button
-    type="button"
-    data-tab="inventory"
-  >
-    ▣
-    <span>Inventario</span>
-  </button>
-
-  <button
-    type="button"
-    data-tab="sales"
-  >
-    ▤
-    <span>Ventas</span>
-  </button>
-
-  <button
-    type="button"
-    data-tab="cash"
-  >
-    💰
-    <span>Caja</span>
-  </button>
-
-  <button
-    type="button"
-    data-tab="customers"
-  >
-    ♙
-    <span>Clientes</span>
-  </button>
-
-  <button
-    type="button"
-    data-tab="orders"
-  >
-    📝
-    <span>Encargos</span>
-  </button>
-
-  <button
-    type="button"
-    data-tab="moves"
-  >
-    ⇅
-    <span>Movimientos</span>
-  </button>
-
+<nav aria-label="Navegación principal">
+  <button type="button" data-tab="home" class="active" aria-label="Inicio">🏠<span>Inicio</span></button>
+  <button type="button" data-tab="inventory" aria-label="Inventario">📦<span>Inventario</span></button>
+  <button type="button" data-tab="sales" aria-label="Ventas">🛒<span>Ventas</span></button>
+  <button type="button" data-tab="cash" aria-label="Caja">💰<span>Caja</span></button>
+  <button type="button" data-tab="more" aria-label="Más opciones">☰<span>Más</span></button>
 </nav>
 
 

@@ -233,3 +233,123 @@ button{cursor:pointer}
 .dashboard-actions-v2{grid-template-columns:repeat(3,1fr)}
 @media(max-width:900px){.dashboard-period-grid{grid-template-columns:1fr}.dashboard-actions-v2{grid-template-columns:repeat(2,1fr)}}
 @media(max-width:699px){.dashboard-period-grid{gap:10px}.dashboard-period-card b{font-size:21px}.dashboard-inside-grid{margin-top:10px}.dashboard-actions-v2{grid-template-columns:1fr}.dashboard-stock-footer{flex-direction:column}.dashboard-kpis .card em{position:static;display:inline-block;margin-top:3px}.dashboard-kpis .card{min-height:104px}}
+
+/* =========================================================
+   ETAPA A — ORDEN Y EXPERIENCIA PROFESIONAL
+   ========================================================= */
+:root{
+  --af-primary:#087f8c;
+  --af-primary-dark:#066b76;
+  --af-bg:#f4f7f8;
+  --af-card:#ffffff;
+  --af-text:#172024;
+  --af-muted:#68777b;
+  --af-border:#e2e9eb;
+  --af-shadow:0 6px 22px rgba(15,35,42,.07);
+}
+html{scroll-behavior:smooth}
+body{background:var(--af-bg);color:var(--af-text)}
+button,input,select{font-family:inherit}
+button{touch-action:manipulation}
+.screen{padding:20px}
+.screen>h1{margin-top:4px}
+.section-head{gap:16px;margin-bottom:14px;align-items:flex-start}
+.section-head>div{min-width:0}
+.page-kicker{display:block;color:var(--af-primary);font-size:11px;font-weight:800;letter-spacing:.12em;margin-bottom:4px}
+.page-subtitle{margin:-10px 0 0;line-height:1.45}
+.page-hero{display:flex;justify-content:space-between;align-items:flex-end;gap:18px;margin:4px 0 18px}
+.page-hero h1{margin:3px 0 4px}
+.panel,.card,.item{box-shadow:var(--af-shadow);border:1px solid rgba(226,233,235,.7)}
+.panel{margin-top:14px}
+.primary{background:var(--af-primary);box-shadow:0 5px 14px rgba(8,127,140,.16);transition:transform .15s ease,background .15s ease,box-shadow .15s ease}
+.primary:hover{background:var(--af-primary-dark)}
+.primary:active{transform:translateY(1px);box-shadow:none}
+.ghost{border:1px solid var(--af-border);font-weight:700}
+.search,input,select{border-color:#d7e0e2;outline:none;transition:border-color .15s ease,box-shadow .15s ease}
+.search:focus,input:focus,select:focus{border-color:#68aeb5;box-shadow:0 0 0 3px rgba(8,127,140,.10)}
+
+/* Header */
+header{height:64px;padding:0 18px;box-shadow:0 2px 14px rgba(0,0,0,.06)}
+header .brand strong{font-size:17px}
+header .brand small{font-size:11px}
+#authUserEmail{max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+/* Bottom navigation: five predictable destinations */
+nav{height:76px;min-height:76px;grid-template-columns:repeat(5,1fr);gap:4px;padding:6px 8px calc(6px + env(safe-area-inset-bottom));box-shadow:0 -6px 22px rgba(20,40,45,.07);border-top:1px solid var(--af-border);background:rgba(255,255,255,.97);backdrop-filter:blur(10px)}
+nav button{position:relative;border-radius:13px;font-size:20px;padding:7px 2px;min-width:0;line-height:1;transition:background .15s ease,color .15s ease}
+nav button span{font-size:10px;margin-top:5px;font-weight:650}
+nav button.active{background:#e8f7f8;color:var(--af-primary)}
+nav button.active:before{content:"";position:absolute;top:2px;left:50%;width:24px;height:3px;border-radius:10px;background:var(--af-primary);transform:translateX(-50%)}
+/* Reports/cotizador add their legacy nav buttons dynamically; they now live under Más. */
+nav button[data-tab="reports"],nav button[data-tab="cotizador"]{display:none!important}
+
+/* More */
+.more-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.more-card{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:12px;text-align:left;width:100%;border:1px solid var(--af-border);background:#fff;border-radius:16px;padding:15px;box-shadow:var(--af-shadow);cursor:pointer;color:inherit;transition:transform .15s ease,box-shadow .15s ease,border-color .15s ease}
+.more-card:hover{transform:translateY(-1px);border-color:#b9d9dc;box-shadow:0 9px 25px rgba(15,35,42,.09)}
+.more-card:active{transform:translateY(0)}
+.more-icon{width:42px;height:42px;border-radius:13px;display:grid;place-items:center;background:#eef8f9;font-size:21px}
+.more-card b,.more-card small{display:block}.more-card b{font-size:14px}.more-card small{font-size:11px;color:var(--af-muted);margin-top:3px;line-height:1.35}.more-card>strong{font-size:23px;color:#8a999c;font-weight:500}
+.more-tip{display:flex;gap:12px;align-items:flex-start;background:linear-gradient(135deg,#eef9fa,#fff)}
+.more-tip>span{font-size:22px}.more-tip p{margin:4px 0 0;color:var(--af-muted);font-size:12px;line-height:1.5}
+
+/* Dashboard: clearer hierarchy */
+.dashboard-screen{padding-top:20px}
+.dashboard-kpis{gap:10px}
+.dashboard-kpis .card{min-height:112px}
+.dashboard-kpis .card span{font-size:12px;font-weight:650}
+.dashboard-kpis .card b{font-size:22px}
+.dashboard-hero{margin-bottom:14px}
+.dashboard-hero h1{letter-spacing:-.02em}
+.dashboard-status-panel{background:#fff}
+
+/* Quick actions */
+.quick-actions-grid button{box-shadow:0 2px 8px rgba(20,40,45,.04);transition:transform .15s ease,border-color .15s ease}
+.quick-actions-grid button:hover{transform:translateY(-1px);border-color:#b9d9dc}
+
+/* Lists/cards */
+.item{min-height:64px}
+.item .data-actions button{min-height:40px}
+.badge{font-weight:700}
+.empty{background:#fff;border:1px dashed #d8e2e4;border-radius:14px}
+
+/* Modals / touch targets */
+.modal-box{box-shadow:0 -12px 45px rgba(0,0,0,.16)}
+.modal-head button{cursor:pointer}
+.form-actions button,.data-actions button{min-height:44px}
+
+@media(min-width:901px){
+  main{max-width:1180px;margin:auto}
+  nav{max-width:1180px}
+}
+@media(max-width:699px){
+  body{padding-bottom:88px}
+  header{height:60px;padding:0 12px}
+  header .brand img{width:36px;height:36px}
+  header .brand strong{font-size:15px}
+  #authUserEmail{display:none}
+  #logoutBtn{padding:8px 10px;font-size:12px}
+  .screen{padding:14px 12px}
+  .section-head{margin-bottom:10px}
+  .section-head .primary{white-space:nowrap}
+  .page-subtitle{font-size:12px}
+  .more-grid{grid-template-columns:1fr;gap:9px}
+  .more-card{padding:13px}
+  .more-icon{width:40px;height:40px}
+  nav{height:78px;min-height:78px;padding-left:5px;padding-right:5px}
+  nav button{font-size:19px}
+  nav button span{font-size:9px}
+  .dashboard-screen{padding-top:14px}
+  .dashboard-kpis .card{min-height:98px}
+  .dashboard-kpis .card b{font-size:18px}
+  .dashboard-hero p{font-size:12px}
+}
+@media(min-width:700px) and (max-width:1100px){
+  .screen{padding:18px}
+  .more-grid{grid-template-columns:repeat(2,1fr)}
+}
+@media(max-width:380px){
+  nav button span{font-size:8px}
+  nav button{font-size:18px}
+  .section-head h1{font-size:22px}
+}
