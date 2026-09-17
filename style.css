@@ -410,3 +410,25 @@ nav button[data-tab="reports"],nav button[data-tab="cotizador"]{display:none!imp
   .more-status-grid>div{padding:10px}
   .more-status-grid b{font-size:15px}
 }
+
+
+/* =========================================================
+   ETAPA 4.9 — COTIZADOR COMPACTO
+   ========================================================= */
+#cotizador details > summary { list-style: none; }
+#cotizador details > summary::-webkit-details-marker { display:none; }
+#cotizador details > summary::before { content:"＋"; display:inline-block; margin-right:6px; }
+#cotizador details[open] > summary::before { content:"−"; }
+#cotizador textarea { width:100%; box-sizing:border-box; resize:vertical; }
+#cotizador .badge { white-space:nowrap; }
+@media (max-width: 600px){
+  #cotizador .section-head { align-items:flex-start; }
+  #cotizador .section-head h1 { font-size:1.35rem; }
+  #cotizador .panel { margin-bottom:10px; }
+  #cotizador button { min-height:42px; }
+}
+@media (max-width: 430px){
+  #cotizador [style*="grid-template-columns:minmax(0,1.4fr)"] { grid-template-columns:1fr !important; }
+  #cotizador [style*="grid-template-columns:1fr 1fr"] { grid-template-columns:1fr !important; }
+  #cotizador [style*="repeat(4,minmax(0,1fr))"] { grid-template-columns:repeat(2,minmax(0,1fr)) !important; }
+}

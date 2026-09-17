@@ -4123,267 +4123,183 @@ function maybeNotifyQuoteFollowups(){
 
 function renderCotizador(){
   const section = document.getElementById("cotizador");
-  if(!section){
-    return;
-  }
+  if(!section) return;
 
   const categories = quoteCategories();
   const q = quoteSearch.trim().toLowerCase();
-
   const products = db.products
     .map((product,index) => ({product,index}))
     .filter(({product}) => {
       const category = String(product.category || "").trim();
-      if(quoteCategory !== "Todas" && category !== quoteCategory){
-        return false;
-      }
-
-      if(!q){
-        return true;
-      }
-
-      return `${product.name || ""} ${category}`
-        .toLowerCase()
-        .includes(q);
+      if(quoteCategory !== "Todas" && category !== quoteCategory) return false;
+      if(!q) return true;
+      return `${product.name || ""} ${category}`.toLowerCase().includes(q);
     })
-    .sort((a,b) =>
-      String(a.product.name || "").localeCompare(
-        String(b.product.name || ""),
-        "es"
-      )
-    );
+    .sort((a,b) => String(a.product.name || "").localeCompare(String(b.product.name || ""),"es"));
+
+  const customerMatches = db.customers
+    .map((customer,index) => ({customer,index}))
+    .filter(({customer}) => customer && String(customer.name || "").trim())
+    .sort((a,b) => String(a.customer.name || "").localeCompare(String(b.customer.name || ""),"es"));
+  const registeredCustomer = customerMatches.some(({customer}) => String(customer.name || "").trim() === String(quoteCustomer || "").trim());
+  const hasExtra = !!(quoteFollowupDate || quoteFollowupNote || quoteNote || quoteDiscount);
 
   section.innerHTML = `
-    <div class="section-head">
-      <h1>🧾 Cotizador</h1>
-      <button type="button" onclick="clearQuote()">Limpiar</button>
+    <div class="section-head" style="margin-bottom:10px;">
+      <div>
+        <h1 style="margin-bottom:2px;">🧾 Cotizador</h1>
+        <div class="muted">${quoteEditingId ? `Editando ${esc(quoteEditingId)}` : "Crea una cotización rápida"}</div>
+      </div>
+      <button type="button" onclick="clearQuote()">🧹 Limpiar</button>
     </div>
 
-    <div class="panel">
-      <h2>Cliente</h2>
-
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
-        <select id="quoteCustomerSelect" class="search">
-          <option value="">Cliente general</option>
-          ${db.customers
-            .map((customer, index) => ({
-              customer,
-              index
-            }))
-            .filter(({customer}) => customer && String(customer.name || "").trim())
-            .sort((a,b) =>
-              String(a.customer.name || "").localeCompare(
-                String(b.customer.name || ""),
-                "es"
-              )
-            )
-            .map(({customer,index}) => `
-              <option
-                value="${index}"
-                ${String(customer.name || "").trim() === String(quoteCustomer || "").trim() ? "selected" : ""}
-              >
-                ${esc(customer.name)}
-              </option>
+    <div class="panel" style="padding:12px;">
+      <div style="display:grid;grid-template-columns:minmax(0,1.4fr) minmax(150px,.8fr);gap:8px;align-items:start;">
+        <div>
+          <label class="muted" style="display:block;margin-bottom:4px;">Cliente</label>
+          <select id="quoteCustomerSelect" class="search" style="width:100%;box-sizing:border-box;">
+            <option value="">Cliente general</option>
+            ${customerMatches.map(({customer,index}) => `
+              <option value="${index}" ${String(customer.name || "").trim() === String(quoteCustomer || "").trim() ? "selected" : ""}>${esc(customer.name)}</option>
             `).join("")}
-          <option value="__manual__" ${quoteCustomer && !db.customers.some(c => String(c?.name || "").trim() === String(quoteCustomer || "").trim()) ? "selected" : ""}>
-            ✏️ Escribir otro cliente
-          </option>
-        </select>
-
-        <input
-          id="quotePhone"
-          class="search"
-          type="tel"
-          placeholder="WhatsApp / teléfono"
-          value="${esc(quotePhone)}"
-        >
+            <option value="__manual__" ${quoteCustomer && !registeredCustomer ? "selected" : ""}>✏️ Otro cliente</option>
+          </select>
+          <input id="quoteCustomer" class="search" placeholder="Nombre del cliente" value="${esc(quoteCustomer)}" style="width:100%;box-sizing:border-box;margin-top:6px;${registeredCustomer ? "display:none;" : ""}">
+        </div>
+        <div>
+          <label class="muted" style="display:block;margin-bottom:4px;">WhatsApp / teléfono</label>
+          <input id="quotePhone" class="search" type="tel" placeholder="300 000 0000" value="${esc(quotePhone)}" style="width:100%;box-sizing:border-box;">
+        </div>
       </div>
-
-      <div style="margin-top:8px;">
-        <input
-          id="quoteCustomer"
-          class="search"
-          placeholder="Nombre del cliente"
-          value="${esc(quoteCustomer)}"
-          ${quoteCustomer && db.customers.some(c => String(c?.name || "").trim() === String(quoteCustomer || "").trim()) ? 'style="display:none;"' : ""}
-        >
-      </div>
-
-      <p class="muted" style="margin:8px 0 0;">
-        ${db.customers.length
-          ? "Selecciona un cliente registrado y sus datos se cargarán automáticamente."
-          : "No hay clientes registrados todavía. Puedes escribir el nombre manualmente."}
-      </p>
     </div>
 
-    <div class="panel">
-      <h2>Agregar productos</h2>
-      <p class="muted">
-        Selecciona varios productos. El cotizador usa el precio de venta del inventario y no modifica el stock.
-      </p>
+    <div class="panel" style="padding:12px;">
+      <div style="display:flex;justify-content:space-between;gap:8px;align-items:center;margin-bottom:8px;">
+        <div>
+          <h2 style="margin:0;">🛒 Productos</h2>
+          <div class="muted">Busca y toca <b>Agregar</b>. El stock no se modifica.</div>
+        </div>
+        <span class="badge">${quoteItems.length} ${quoteItems.length === 1 ? "producto" : "productos"}</span>
+      </div>
 
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:10px 0;">
-        <input
-          id="quoteSearch"
-          class="search"
-          placeholder="🔎 Buscar producto..."
-          value="${esc(quoteSearch)}"
-        >
-        <select id="quoteCategory" class="search">
-          ${categories.map(category => `
-            <option value="${esc(category)}" ${category === quoteCategory ? "selected" : ""}>
-              ${esc(category)}
-            </option>
-          `).join("")}
+      <div style="display:grid;grid-template-columns:minmax(0,1.4fr) minmax(130px,.7fr);gap:8px;margin-bottom:8px;">
+        <input id="quoteSearch" class="search" placeholder="🔎 Buscar producto..." value="${esc(quoteSearch)}" style="width:100%;box-sizing:border-box;">
+        <select id="quoteCategory" class="search" style="width:100%;box-sizing:border-box;">
+          ${categories.map(category => `<option value="${esc(category)}" ${category === quoteCategory ? "selected" : ""}>${esc(category)}</option>`).join("")}
         </select>
       </div>
 
-      <div class="list" style="max-height:360px;overflow:auto;">
+      <div class="list" style="max-height:250px;overflow:auto;">
         ${products.length ? products.map(({product,index}) => `
-          <div class="item" style="align-items:center;gap:8px;">
+          <div class="item" style="align-items:center;gap:8px;padding:8px 0;">
             <div style="flex:1;min-width:0;">
               <b>${esc(product.name || "Producto")}</b>
-              <div class="muted">
-                ${esc(product.category || "Sin categoría")} · ${money(product.price)}
-              </div>
+              <div class="muted">${esc(product.category || "Sin categoría")} · ${money(product.price)}</div>
             </div>
-            <button type="button" class="primary" onclick="addQuoteItem(${index})">
-              + Agregar
-            </button>
+            <button type="button" class="primary" onclick="addQuoteItem(${index})">+ Agregar</button>
           </div>
-        `).join("") : `
-          <div class="empty">No hay productos que coincidan.</div>
-        `}
+        `).join("") : `<div class="empty">No hay productos que coincidan.</div>`}
       </div>
     </div>
 
-    <div class="panel">
-      <h2>🛒 Cotización actual</h2>
+    <div class="panel" style="padding:12px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:8px;">
+        <h2 style="margin:0;">📋 Cotización</h2>
+        <strong>${money(quoteTotal())}</strong>
+      </div>
+
       ${quoteItems.length ? quoteItems.map(item => {
         const subtotal = (+item.qty || 0) * (+item.unitPrice || 0);
         return `
-          <div class="item" style="align-items:flex-start;gap:8px;">
-            <div style="flex:1;min-width:0;">
+          <div class="item" style="display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:center;padding:8px 0;">
+            <div style="min-width:0;">
               <b>${esc(item.name)}</b>
-              <div style="display:grid;grid-template-columns:90px 1fr;gap:8px;margin-top:6px;">
-                <input
-                  class="search"
-                  type="number"
-                  min="1"
-                  step="1"
-                  value="${+item.qty || 1}"
-                  aria-label="Cantidad"
-                  onchange="updateQuoteItem('${esc(item.key)}','qty',this.value)"
-                >
-                <input
-                  class="search"
-                  type="number"
-                  min="0"
-                  step="1"
-                  value="${+item.unitPrice || 0}"
-                  aria-label="Precio unitario"
-                  onchange="updateQuoteItem('${esc(item.key)}','unitPrice',this.value)"
-                >
-              </div>
-              <div class="muted" style="margin-top:5px;">
-                ${Number(item.qty) || 1} unidad(es) · Subtotal ${money(subtotal)}
+              <div style="display:grid;grid-template-columns:72px minmax(100px,150px);gap:6px;margin-top:5px;">
+                <input class="search" type="number" min="1" step="1" value="${+item.qty || 1}" aria-label="Cantidad" onchange="updateQuoteItem('${esc(item.key)}','qty',this.value)">
+                <input class="search" type="number" min="0" step="1" value="${+item.unitPrice || 0}" aria-label="Precio unitario" onchange="updateQuoteItem('${esc(item.key)}','unitPrice',this.value)">
               </div>
             </div>
-            <button type="button" onclick="removeQuoteItem('${esc(item.key)}')">🗑️</button>
+            <div style="text-align:right;white-space:nowrap;">
+              <b>${money(subtotal)}</b><br>
+              <button type="button" onclick="removeQuoteItem('${esc(item.key)}')" style="margin-top:4px;">🗑️</button>
+            </div>
+          </div>`;
+      }).join("") : `<div class="empty">Agrega productos para comenzar.</div>`}
+
+      <div style="margin-top:10px;padding-top:10px;border-top:1px solid rgba(0,0,0,.08);">
+        <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;">
+          <span class="muted">Subtotal</span><strong>${money(quoteSubtotal())}</strong>
+        </div>
+        ${quoteDiscountAmount() > 0 ? `<div style="display:flex;justify-content:space-between;gap:10px;margin-top:4px;"><span class="muted">Descuento</span><strong>-${money(quoteDiscountAmount())}</strong></div>` : ""}
+        <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;margin-top:6px;font-size:1.25rem;">
+          <b>Total</b><strong>${money(quoteTotal())}</strong>
+        </div>
+      </div>
+
+      <details ${hasExtra ? "open" : ""} style="margin-top:10px;">
+        <summary style="cursor:pointer;font-weight:700;padding:7px 0;">⚙️ Más opciones ${hasExtra ? "· configuradas" : ""}</summary>
+        <div style="display:grid;gap:8px;padding-top:8px;">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+            <label>Descuento
+              <input id="quoteDiscount" class="search" type="number" min="0" step="1" placeholder="0" value="${quoteDiscount || 0}" style="width:100%;box-sizing:border-box;">
+            </label>
+            <label>Seguimiento
+              <input id="quoteFollowupDate" class="search" type="date" value="${esc(quoteFollowupDate)}" style="width:100%;box-sizing:border-box;">
+            </label>
           </div>
-        `;
-      }).join("") : `
-        <div class="empty">Agrega productos para comenzar.</div>
-      `}
-
-      <div style="margin-top:12px;padding-top:12px;border-top:1px solid rgba(0,0,0,.08);">
-        <h3 style="margin:0 0 8px;">📌 Seguimiento comercial</h3>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
-          <label>Fecha de seguimiento
-            <input id="quoteFollowupDate" class="search" type="date" value="${esc(quoteFollowupDate)}">
+          <label>Nota interna de seguimiento
+            <input id="quoteFollowupNote" class="search" placeholder="Ej. llamar, confirmar pedido..." value="${esc(quoteFollowupNote)}" style="width:100%;box-sizing:border-box;">
           </label>
-          <label>Nota interna
-            <input id="quoteFollowupNote" class="search" placeholder="Ej. llamar, confirmar pedido..." value="${esc(quoteFollowupNote)}">
+          <label>Nota para el cliente
+            <textarea id="quoteNote" rows="2" placeholder="Ej. domicilio, instalación, disponibilidad...">${esc(quoteNote)}</textarea>
           </label>
+          <div class="muted">La nota interna no aparece en la cotización del cliente.</div>
         </div>
-        <p class="muted" style="margin:6px 0 10px;">La nota interna no se muestra al cliente.</p>
-        <label>
-          Nota para el cliente
-          <textarea
-            id="quoteNote"
-            rows="3"
-            placeholder="Ej. Instalación, domicilio, disponibilidad, etc."
-          >${esc(quoteNote)}</textarea>
-        </label>
-      </div>
+      </details>
 
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px;">
-        <label>Descuento
-          <input id="quoteDiscount" class="search" type="number" min="0" step="1" placeholder="0" value="${quoteDiscount || 0}">
-        </label>
-        <div style="background:#f5f8f9;border-radius:14px;padding:12px;margin-bottom:10px;">
-          <div class="muted">Subtotal</div><strong>${money(quoteSubtotal())}</strong>
-          <div class="muted" style="margin-top:5px;">Descuento</div><strong>-${money(quoteDiscountAmount())}</strong>
-        </div>
-      </div>
-
-      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:4px;padding-top:12px;border-top:1px solid rgba(0,0,0,.08);">
-        <span><b>Total</b></span>
-        <strong style="font-size:1.35rem;">${money(quoteTotal())}</strong>
-      </div>
-
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px;">
-        <button type="button" class="primary" onclick="saveQuote()">
-          ${quoteEditingId ? "💾 Guardar cambios" : "💾 Guardar cotización"}
-        </button>
+      <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:10px;">
+        <button type="button" class="primary" onclick="saveQuote()">${quoteEditingId ? "💾 Guardar cambios" : "💾 Guardar cotización"}</button>
         <button type="button" onclick="copyQuote()">📋 Copiar</button>
         <button type="button" class="primary" onclick="shareQuoteWhatsApp()">📲 WhatsApp</button>
+        <button type="button" onclick="window.scrollTo({top:document.body.scrollHeight,behavior:'smooth'})">📂 Ver guardadas</button>
       </div>
-
-      <p class="muted" style="margin-top:10px;">
-        El cotizador muestra precios de venta. La ganancia nunca se muestra al cliente.
-      </p>
+      <div class="muted" style="margin-top:8px;text-align:center;">Los precios y la ganancia interna no se muestran al cliente.</div>
     </div>
 
-    <div class="panel" style="margin-top:12px;">
-      <div class="section-head" style="margin-bottom:8px;">
-        <h2>📊 Resumen de cotizaciones</h2>
-        <span class="muted">Actualizado automáticamente</span>
-      </div>
-      <div id="quoteReports"></div>
+    <div class="panel" style="padding:0 12px;">
+      <details>
+        <summary style="cursor:pointer;font-weight:700;padding:12px 0;">📊 Resumen de cotizaciones</summary>
+        <div id="quoteReports" style="padding-bottom:12px;"></div>
+      </details>
     </div>
 
-    <div class="panel" style="margin-top:12px;">
-      <div class="section-head" style="margin-bottom:8px;">
-        <h2>🧠 Inteligencia comercial</h2>
-        <span class="muted">Oportunidades y prioridades del cotizador</span>
-      </div>
-      <div id="quoteIntelligence"></div>
+    <div class="panel" style="padding:0 12px;">
+      <details>
+        <summary style="cursor:pointer;font-weight:700;padding:12px 0;">🧠 Inteligencia comercial</summary>
+        <div id="quoteIntelligence" style="padding-bottom:12px;"></div>
+      </details>
     </div>
 
-    <div class="panel" style="margin-top:12px;">
-      <div class="section-head" style="margin-bottom:8px;">
-        <h2>📌 Seguimiento comercial</h2>
-        <span class="muted">Control de próximas llamadas y contactos</span>
-      </div>
-      <div id="quoteFollowupSummary" style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-bottom:12px;"></div>
-      <div id="quoteFollowupList"></div>
+    <div class="panel" style="padding:0 12px;">
+      <details>
+        <summary style="cursor:pointer;font-weight:700;padding:12px 0;">📌 Seguimiento comercial</summary>
+        <div id="quoteFollowupSummary" style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;margin-bottom:10px;"></div>
+        <div id="quoteFollowupList" style="padding-bottom:12px;"></div>
+      </details>
     </div>
 
-    <div class="panel" style="margin-top:12px;">
-      <div class="section-head" style="margin-bottom:8px;">
-        <h2>🔔 Automatización y alertas</h2>
-        <span class="muted">Control automático de seguimientos</span>
-      </div>
-      <div id="quoteAutomationAlerts"></div>
+    <div class="panel" style="padding:0 12px;">
+      <details>
+        <summary style="cursor:pointer;font-weight:700;padding:12px 0;">🔔 Automatización y alertas</summary>
+        <div id="quoteAutomationAlerts" style="padding-bottom:12px;"></div>
+      </details>
     </div>
 
-    <div class="panel" style="margin-top:12px;">
-      <div class="section-head" style="margin-bottom:8px;">
-        <h2>📋 Cotizaciones guardadas</h2>
-        <span class="muted">${Array.isArray(db.quotes) ? db.quotes.length : 0} guardadas</span>
-      </div>
-      <div id="quotesList"></div>
+    <div class="panel" style="padding:0 12px;">
+      <details>
+        <summary style="cursor:pointer;font-weight:700;padding:12px 0;">📋 Cotizaciones guardadas <span class="muted">· ${Array.isArray(db.quotes) ? db.quotes.length : 0}</span></summary>
+        <div id="quotesList" style="padding-bottom:12px;"></div>
+      </details>
     </div>
   `;
 
@@ -4400,78 +4316,39 @@ function renderCotizador(){
   if(customerSelect){
     customerSelect.onchange = function(){
       const value = this.value;
-
       if(value === "__manual__"){
         quoteCustomer = "";
-        if(customer){
-          customer.style.display = "";
-          customer.focus();
-        }
-        if(phone){
-          phone.value = "";
-        }
+        if(customer){ customer.style.display = ""; customer.focus(); }
         quotePhone = "";
+        if(phone) phone.value = "";
         return;
       }
-
       if(value === ""){
         quoteCustomer = "";
         quotePhone = "";
-        if(customer){
-          customer.value = "";
-          customer.style.display = "none";
-        }
-        if(phone){
-          phone.value = "";
-        }
+        if(customer){ customer.value = ""; customer.style.display = "none"; }
+        if(phone) phone.value = "";
         return;
       }
-
       const selectedCustomer = db.customers[Number(value)];
-
       if(selectedCustomer){
         quoteCustomer = String(selectedCustomer.name || "").trim();
         quotePhone = String(selectedCustomer.phone || "").trim();
-
-        if(customer){
-          customer.value = quoteCustomer;
-          customer.style.display = "none";
-        }
-
-        if(phone){
-          phone.value = quotePhone;
-        }
+        if(customer){ customer.value = quoteCustomer; customer.style.display = "none"; }
+        if(phone) phone.value = quotePhone;
       }
     };
   }
-
-  if(customer){
-    customer.oninput = function(){
-      quoteCustomer = this.value;
-    };
-  }
-
-  if(phone){
-    phone.oninput = function(){
-      quotePhone = this.value;
-    };
-  }
-
+  if(customer) customer.oninput = function(){ quoteCustomer = this.value; };
+  if(phone) phone.oninput = function(){ quotePhone = this.value; };
   const note = document.getElementById("quoteNote");
-  if(note){
-    note.oninput = function(){ quoteNote = this.value; };
-  }
-
+  if(note) note.oninput = function(){ quoteNote = this.value; };
   const followupDate = document.getElementById("quoteFollowupDate");
-  if(followupDate){ followupDate.oninput = function(){ quoteFollowupDate=this.value; }; }
+  if(followupDate) followupDate.oninput = function(){ quoteFollowupDate = this.value; };
   const followupNote = document.getElementById("quoteFollowupNote");
-  if(followupNote){ followupNote.oninput = function(){ quoteFollowupNote=this.value; }; }
-
+  if(followupNote) followupNote.oninput = function(){ quoteFollowupNote = this.value; };
   const discount = document.getElementById("quoteDiscount");
-  if(discount){
-    discount.oninput = function(){ quoteDiscount = Math.max(0, Number(this.value) || 0); renderCotizador(); };
-  }
-
+  if(discount) discount.oninput = function(){ quoteDiscount = Math.max(0, Number(this.value) || 0); renderCotizador(); };
   const search = document.getElementById("quoteSearch");
   if(search){
     search.oninput = function(){
@@ -4479,21 +4356,13 @@ function renderCotizador(){
       const cursor = this.value.length;
       renderCotizador();
       const next = document.getElementById("quoteSearch");
-      if(next){
-        next.focus();
-        try{ next.setSelectionRange(cursor,cursor); }catch(_){ }
-      }
+      if(next){ next.focus(); try{ next.setSelectionRange(cursor,cursor); }catch(_){} }
     };
   }
-
   const category = document.getElementById("quoteCategory");
-  if(category){
-    category.onchange = function(){
-      quoteCategory = this.value;
-      renderCotizador();
-    };
-  }
+  if(category) category.onchange = function(){ quoteCategory = this.value; renderCotizador(); };
 }
+
 
 /* =========================================================
    MOVIMIENTOS
