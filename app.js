@@ -76,6 +76,15 @@ db.cash =
 
 db.quotes = Array.isArray(db.quotes) ? db.quotes : [];
 
+// Exponer la base de datos al módulo JARVIS sin cambiar su estructura.
+// El getter siempre devuelve la referencia actual, incluso después de importar un respaldo.
+if (typeof window !== "undefined") {
+  Object.defineProperty(window, "db", {
+    configurable: true,
+    get: () => db
+  });
+}
+
 db.quotes.forEach(quote => {
   if(!quote || typeof quote !== "object") return;
   if(!quote.id) quote.id = `COT-${String(db.quotes.indexOf(quote)+1).padStart(4,"0")}`;
