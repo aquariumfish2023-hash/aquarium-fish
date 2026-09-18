@@ -177,7 +177,6 @@
       <div class="jarvis-lines">${rows}</div>
       ${unknown}${stock}
       <div class="jarvis-total"><span>Total</span><b>${money(total)}</b></div>
-      <div class="jarvis-profit">Ganancia estimada: ${money(profit)}</div>
       <div class="jarvis-actions">
         <button type="button" class="primary" id="jarvisPrepareSale">🧾 Preparar venta</button>
         <button type="button" id="jarvisClear">Limpiar</button>
@@ -270,13 +269,29 @@
     }
   }
 
+  function speak(text){
+    if(!("speechSynthesis" in window)) return;
+    try{
+      window.speechSynthesis.cancel();
+      const u=new SpeechSynthesisUtterance(text);
+      u.lang="es-CO";
+      u.rate=1;
+      u.pitch=1;
+      window.speechSynthesis.speak(u);
+    }catch(e){}
+  }
+
   function processCommand(command){
     const result=parseCommand(command);
     renderResult(result);
     if(result.items.length){
-      updateStatus(`Encontré ${result.items.length} producto(s). Revisa el total antes de confirmar.`);
+      const total=result.items.reduce((sum,item)=>sum+(item.price*item.qty),0);
+      const resumen=result.items.map(item=>`${item.qty} ${item.name}`).join(", ");
+      updateStatus(`Encontré ${result.items.length} producto(s). Total: ${money(total)}.`);
+      speak(`Encontré ${resumen}. El total es ${money(total)}. ¿Deseas preparar la venta?`);
     }else{
       updateStatus("No encontré esos productos en el inventario.");
+      speak("No encontré esos productos en el inventario.");
     }
     return result;
   }
@@ -321,7 +336,6 @@
         <div id="jarvisResult" class="jarvis-result"></div>
         <div class="jarvis-foot">
           <span>JARVIS no registra la venta automáticamente: primero prepara el formulario y tú confirmas.</span>
-          <button type="button" id="jarvisProcess" class="primary">Calcular</button>
         </div>
       </div>
     `;
@@ -331,9 +345,6 @@
     panel.querySelector(".jarvis-close").addEventListener("click",closeJarvis);
     panel.addEventListener("click",e=>{if(e.target===panel) closeJarvis();});
     document.getElementById("jarvisMic").addEventListener("click",startListening);
-    document.getElementById("jarvisProcess").addEventListener("click",()=>{
-      processCommand(document.getElementById("jarvisInput").value);
-    });
     document.getElementById("jarvisInput").addEventListener("keydown",e=>{
       if(e.key==="Enter") processCommand(e.target.value);
     });
