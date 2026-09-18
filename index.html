@@ -27,6 +27,41 @@
 .dashboard-quote-alerts-panel button{font-size:.9rem}
 @media (max-width:700px){#quoteAutomationAlerts>div:first-child{grid-template-columns:repeat(2,minmax(0,1fr)) !important}.dashboard-quote-alerts-panel .dashboard-panel-head{gap:8px;flex-wrap:wrap}}
 .availability-panel{margin:12px 0;padding:14px;border:1px solid #d9e6e9;border-radius:16px;background:#fff}.availability-head,.availability-preview-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}.availability-controls{display:flex;gap:12px;flex-wrap:wrap;margin:14px 0}.availability-controls label{display:flex;flex-direction:column;gap:6px;font-size:13px;font-weight:700}.availability-check{flex-direction:row!important;align-items:center!important;margin-top:24px}.availability-preview{border:1px solid #e3ecee;border-radius:14px;padding:14px}.availability-preview h3{margin:4px 0}.availability-items{margin-top:10px}.availability-item{display:flex;justify-content:space-between;gap:12px;padding:9px 4px;border-bottom:1px solid #edf2f3}.availability-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}.availability-note{margin-top:12px;font-size:12px;color:#60777d}.availability-close{font-size:22px;line-height:1;min-width:38px}.inventory-head-actions{display:flex;gap:8px;flex-wrap:wrap}</style>
+<style>
+/* =========================================================
+   JARVIS — interfaz independiente
+   ========================================================= */
+.jarvis-open{font-weight:800}
+.jarvis-overlay{position:fixed;inset:0;z-index:10050;display:none;align-items:center;justify-content:center;padding:18px;background:rgba(8,28,34,.58);backdrop-filter:blur(4px)}
+.jarvis-overlay.open{display:flex}
+.jarvis-card{width:min(560px,100%);max-height:min(760px,94vh);overflow:auto;background:#fff;border:1px solid #d9e6e9;border-radius:22px;padding:20px;box-shadow:0 24px 80px rgba(0,0,0,.25)}
+.jarvis-head{display:flex;justify-content:space-between;gap:14px;align-items:flex-start}
+.jarvis-kicker{font-size:11px;font-weight:900;letter-spacing:.12em;opacity:.65}
+.jarvis-head h2{margin:3px 0 4px}
+.jarvis-head p{margin:0;color:#60777d;font-size:13px}
+.jarvis-close{font-size:25px;line-height:1;min-width:40px}
+.jarvis-input-row{display:grid;grid-template-columns:1fr 52px;gap:8px;margin-top:18px}
+#jarvisInput{width:100%;box-sizing:border-box;padding:14px;border:1px solid #cbd9dc;border-radius:12px;font:inherit}
+.jarvis-mic{font-size:22px;border-radius:12px}
+.jarvis-mic.listening{transform:scale(1.04);box-shadow:0 0 0 4px rgba(8,127,140,.16)}
+.jarvis-status{margin-top:8px;font-size:12px;color:#60777d;min-height:18px}
+.jarvis-result{margin-top:14px;border:1px solid #e1eaec;border-radius:15px;padding:13px;background:#f9fbfb}
+.jarvis-empty{color:#60777d;font-size:13px}
+.jarvis-lines{display:grid;gap:8px}
+.jarvis-line{display:flex;justify-content:space-between;gap:12px;padding-bottom:8px;border-bottom:1px solid #e6edef}
+.jarvis-total{display:flex;justify-content:space-between;gap:12px;margin-top:13px;font-size:19px}
+.jarvis-profit{margin-top:5px;font-size:12px;color:#60777d}
+.jarvis-warning{margin-top:10px;padding:9px;border-radius:10px;background:#fff8e8;font-size:12px}
+.jarvis-error{padding:9px;border-radius:10px;background:#fff0f0;font-size:13px}
+.jarvis-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:13px}
+.jarvis-foot{display:flex;justify-content:space-between;gap:12px;align-items:center;margin-top:14px;font-size:11px;color:#71858a}
+.jarvis-foot span{flex:1}
+@media(max-width:700px){
+  .jarvis-open{padding-left:9px;padding-right:9px}
+  .jarvis-card{padding:16px;border-radius:18px}
+  .jarvis-foot{align-items:stretch;flex-direction:column}
+}
+</style>
 </head>
 
 <body>
@@ -718,6 +753,7 @@ const firebaseConfig = {
 ===================================================== -->
 
 <script src="app.js"></script>
+<script src="jarvis.js"></script>
 
 <!-- =====================================================
      SINCRONIZACIÓN FIREBASE
