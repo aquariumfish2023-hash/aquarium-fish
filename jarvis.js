@@ -281,7 +281,83 @@
     }catch(e){}
   }
 
+  function isToday(value){
+    if(!value) return false;
+    const d=new Date(value);
+    if(Number.isNaN(d.getTime())) return false;
+    const n=new Date();
+    return d.getFullYear()===n.getFullYear() && d.getMonth()===n.getMonth() && d.getDate()===n.getDate();
+  }
+
+  function paidSale(sale){
+    if(sale?.paid!=null) return Math.max(0,Number(sale.paid)||0);
+    if(sale?.abono!=null) return Math.max(0,Number(sale.abono)||0);
+    if(String(sale?.status||'').toLowerCase().includes('pag')) return Number(sale?.total)||0;
+    return 0;
+  }
+
+  function businessQuery(command){
+    const t=normalize(command);
+    const sales=Array.isArray(window.db?.sales)?window.db.sales:[];
+    const products=Array.isArray(window.db?.products)?window.db.products:[];
+    const customers=Array.isArray(window.db?.customers)?window.db.customers:[];
+    const quotes=Array.isArray(window.db?.quotes)?window.db.quotes:[];
+    const orders=Array.isArray(window.db?.orders)?window.db.orders:[];
+    const cash=Array.isArray(window.db?.cash)?window.db.cash:[];
+
+    if(/\b(ventas?|vendimos|vendido)\b.*\b(hoy|dia|día)\b/.test(t) || /\bcuanto vendimos hoy\b/.test(t)){
+      const rows=sales.filter(s=>isToday(s.date||s.createdAt));
+      const total=rows.reduce((a,s)=>a+(Number(s.total)||0),0);
+      return {title:'Ventas de hoy',text:`Hoy tienes ${rows.length} venta${rows.length===1?'':'s'} por ${money(total)}.`,speak:`Hoy tienes ${rows.length} ventas por ${money(total)}.`};
+    }
+    if(/\b(inventario|stock)\b.*\b(bajo|bajos|agotado|agotados|alertas?)\b/.test(t) || /\bproductos (bajos|agotados)\b/.test(t)){
+      const zero=products.filter(p=>(Number(p.stock)||0)<=0);
+      const low=products.filter(p=>(Number(p.stock)||0)>0 && (Number(p.stock)||0)<=(Number(p.min)||0));
+      const names=[...zero.slice(0,4).map(p=>`${p.name} agotado`),...low.slice(0,4).map(p=>`${p.name} bajo`)];
+      return {title:'Alertas de inventario',text:`Agotados: ${zero.length}. Stock bajo: ${low.length}.${names.length?` ${names.join(' · ')}`:''}`,speak:`Tienes ${zero.length} productos agotados y ${low.length} con stock bajo.`};
+    }
+    if(/\b(cotizaciones?|cotizacion)\b.*\b(pendientes?|abiertas?)\b/.test(t) || /\bcotizaciones pendientes\b/.test(t)){
+      const pending=quotes.filter(q=>!q.convertedSaleId && !['Rechazada','Cancelada'].includes(String(q.status||'')));
+      const total=pending.reduce((a,q)=>a+(Number(q.total)||0),0);
+      return {title:'Cotizaciones pendientes',text:`Hay ${pending.length} cotización${pending.length===1?'':'es'} pendientes por ${money(total)}.`,speak:`Hay ${pending.length} cotizaciones pendientes por ${money(total)}.`};
+    }
+    if(/\b(encargos?|pedidos?)\b.*\b(activos?|pendientes?)\b/.test(t) || /\bencargos activos\b/.test(t)){
+      const active=orders.filter(o=>!['Entregado','Cancelado'].includes(String(o.status||'Pendiente')));
+      return {title:'Encargos activos',text:`Tienes ${active.length} encargo${active.length===1?'':'s'} activo${active.length===1?'':'s'}.`,speak:`Tienes ${active.length} encargos activos.`};
+    }
+    if(/\b(clientes?|cliente)\b.*\b(saldo|deben|pendiente)\b/.test(t) || /\bsaldo pendiente\b/.test(t)){
+      const balances=customers.map(c=>{
+        const name=c.name||'Cliente';
+        const bought=sales.filter(s=>s.client===name).reduce((a,s)=>a+(Number(s.total)||0),0);
+        const paid=sales.filter(s=>s.client===name).reduce((a,s)=>a+paidSale(s),0);
+        const extra=Array.isArray(c.payments)?c.payments.reduce((a,x)=>a+(Number(x.amount)||0),0):0;
+        return {name,balance:Math.max(0,bought-paid-extra)};
+      }).filter(x=>x.balance>0).sort((a,b)=>b.balance-a.balance);
+      const total=balances.reduce((a,x)=>a+x.balance,0);
+      const top=balances.slice(0,4).map(x=>`${x.name}: ${money(x.balance)}`).join(' · ');
+      return {title:'Saldos pendientes',text:`Clientes con saldo: ${balances.length}. Total pendiente: ${money(total)}.${top?` ${top}`:''}`,speak:`Hay ${balances.length} clientes con saldo pendiente por ${money(total)}.`};
+    }
+    if(/\b(caja|efectivo)\b/.test(t) && /\b(cuanto|cuánta|cuanto hay|saldo|total)\b/.test(t)){
+      const balance=cash.reduce((a,m)=>a + (String(m.type||'').toLowerCase()==='gasto' ? -Math.abs(Number(m.amount)||0) : Math.abs(Number(m.amount)||0)),0);
+      return {title:'Caja',text:`El saldo calculado de los movimientos de caja es ${money(balance)}.`,speak:`El saldo calculado de caja es ${money(balance)}.`};
+    }
+    return null;
+  }
+
+  function renderBusinessResult(result){
+    const box=document.getElementById('jarvisResult');
+    if(!box || !result) return;
+    box.innerHTML=`<div class="jarvis-business"><div class="jarvis-business-title">📊 ${escapeHtml(result.title)}</div><div class="jarvis-business-text">${escapeHtml(result.text)}</div></div>`;
+  }
+
   function processCommand(command){
+    const q=businessQuery(command);
+    if(q){
+      renderBusinessResult(q);
+      updateStatus(q.text);
+      speak(q.speak);
+      return q;
+    }
     const result=parseCommand(command);
     renderResult(result);
     if(result.items.length){
@@ -323,19 +399,19 @@
           <div>
             <div class="jarvis-kicker">AQUARIUM FISH</div>
             <h2 id="jarvisTitle">🤖 JARVIS</h2>
-            <p>Asistente rápido para preparar ventas con tus precios reales.</p>
+            <p>Asistente del negocio: consulta ventas, caja, inventario, clientes y cotizaciones.</p>
           </div>
           <button type="button" class="jarvis-close" aria-label="Cerrar">×</button>
         </div>
         <div class="jarvis-input-row">
           <input id="jarvisInput" type="text" autocomplete="off"
-            placeholder="Ej.: 3 bailarinas, 2 koi y una comida">
+            placeholder="Ej.: ¿cuánto vendimos hoy? o 3 bailarinas y 2 koi">
           <button type="button" id="jarvisMic" class="jarvis-mic" title="Hablar">🎙️</button>
         </div>
         <div id="jarvisStatus" class="jarvis-status">Listo.</div>
         <div id="jarvisResult" class="jarvis-result"></div>
         <div class="jarvis-foot">
-          <span>JARVIS no registra la venta automáticamente: primero prepara el formulario y tú confirmas.</span>
+          <span>Prueba: “¿cuánto vendimos hoy?”, “¿qué productos están bajos?”, “¿cuántas cotizaciones pendientes hay?” o dicta una venta.</span>
         </div>
       </div>
     `;

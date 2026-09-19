@@ -1,4 +1,4 @@
-const CACHE='aquarium-fish-v22';
+const CACHE='aquarium-fish-v23';
 const ASSETS=[
   './',
   './index.html',
