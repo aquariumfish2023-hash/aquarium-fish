@@ -377,6 +377,28 @@
     return null;
   }
 
+  function actionQuery(command){
+    const t=normalize(command);
+    const actions=[
+      {re:/\b(nueva|nuevo|crear|crea|agregar)\b.*\bventa\b|\babrir\b.*\bnueva venta\b/, fn:()=>window.openSale?.(), title:'Nueva venta', text:'Abrí el formulario para crear una nueva venta.', speak:'Listo. Abrí la nueva venta.'},
+      {re:/\b(nueva|nuevo|crear|crea|agregar)\b.*\b(cotizacion|cotización)\b|\babrir\b.*\bcotizador\b/, fn:()=>window.show?.('cotizador'), title:'Cotizador', text:'Abrí el cotizador.', speak:'Listo. Abrí el cotizador.'},
+      {re:/\b(nuevo|crear|crea|agregar)\b.*\bcliente\b/, fn:()=>window.openCustomer?.(), title:'Nuevo cliente', text:'Abrí el formulario para crear un cliente.', speak:'Listo. Abrí el formulario de nuevo cliente.'},
+      {re:/\b(nuevo|crear|crea|agregar)\b.*\b(encargo|pedido)\b/, fn:()=>window.openOrder?.(), title:'Nuevo encargo', text:'Abrí el formulario para crear un encargo.', speak:'Listo. Abrí el formulario de nuevo encargo.'},
+      {re:/\babrir\b.*\b(inventario|stock)\b|\bmu[eé]strame\b.*\binventario\b/, fn:()=>window.show?.('inventory'), title:'Inventario', text:'Abrí el inventario.', speak:'Listo. Abrí el inventario.'},
+      {re:/\babrir\b.*\b(ventas?|ventas del negocio)\b|\bmu[eé]strame\b.*\bventas\b/, fn:()=>window.show?.('sales'), title:'Ventas', text:'Abrí el módulo de ventas.', speak:'Listo. Abrí ventas.'},
+      {re:/\babrir\b.*\b(caja|efectivo)\b|\bmu[eé]strame\b.*\bcaja\b/, fn:()=>window.show?.('cash'), title:'Caja', text:'Abrí caja.', speak:'Listo. Abrí caja.'},
+      {re:/\babrir\b.*\b(clientes?|clientes)\b|\bmu[eé]strame\b.*\bclientes\b/, fn:()=>window.show?.('customers'), title:'Clientes', text:'Abrí clientes.', speak:'Listo. Abrí clientes.'},
+      {re:/\babrir\b.*\b(encargos?|pedidos?)\b|\bmu[eé]strame\b.*\bencargos\b/, fn:()=>window.show?.('orders'), title:'Encargos', text:'Abrí encargos.', speak:'Listo. Abrí encargos.'},
+      {re:/\babrir\b.*\b(reportes?|informes?)\b|\bmu[eé]strame\b.*\breportes\b/, fn:()=>window.show?.('reports'), title:'Reportes', text:'Abrí reportes.', speak:'Listo. Abrí reportes.'},
+      {re:/\babrir\b.*\b(m[aá]s|opciones)\b/, fn:()=>window.show?.('more'), title:'Más opciones', text:'Abrí Más opciones.', speak:'Listo. Abrí Más opciones.'},
+      {re:/\bvolver\b.*\b(inicio|home)\b|\bir\b.*\binicio\b/, fn:()=>window.show?.('home'), title:'Inicio', text:'Volví al inicio.', speak:'Listo. Volví al inicio.'}
+    ];
+    const hit=actions.find(a=>a.re.test(t));
+    if(!hit) return null;
+    try{ hit.fn(); }catch(e){ console.error('JARVIS action',e); }
+    return {title:hit.title,text:hit.text,speak:hit.speak};
+  }
+
   function renderBusinessResult(result){
     const box=document.getElementById('jarvisResult');
     if(!box || !result) return;
@@ -384,6 +406,13 @@
   }
 
   function processCommand(command){
+    const action=actionQuery(command);
+    if(action){
+      renderBusinessResult(action);
+      updateStatus(action.text);
+      speak(action.speak);
+      return action;
+    }
     const q=businessQuery(command);
     if(q){
       renderBusinessResult(q);
