@@ -305,6 +305,33 @@
     const orders=Array.isArray(window.db?.orders)?window.db.orders:[];
     const cash=Array.isArray(window.db?.cash)?window.db.cash:[];
 
+    // Resumen integral del negocio: reúne los indicadores más útiles en una sola respuesta.
+    if(/\b(resumen|reporte|estado)\b.*\b(negocio|hoy|dia|día)\b/.test(t) || /\bcomo va (el )?negocio\b/.test(t) || /\bdame (el )?resumen\b/.test(t)){
+      const todaySales=sales.filter(s=>isToday(s.date||s.createdAt));
+      const todayTotal=todaySales.reduce((a,s)=>a+(Number(s.total)||0),0);
+      const todayReceived=todaySales.reduce((a,s)=>a+paidSale(s),0);
+      const todayExpenses=cash.filter(m=>String(m.type||'').toLowerCase()==='gasto' && isToday(m.date||m.createdAt)).reduce((a,m)=>a+(Number(m.amount)||0),0);
+      const receivable=sales.reduce((a,s)=>a+Math.max(0,(Number(s.total)||0)-paidSale(s)),0);
+      const zero=products.filter(p=>(Number(p.stock)||0)<=0);
+      const low=products.filter(p=>(Number(p.stock)||0)>0 && (Number(p.stock)||0)<=(Number(p.min)||0));
+      const pending=quotes.filter(q=>!q.convertedSaleId && !['Rechazada','Cancelada'].includes(String(q.status||'')));
+      const active=orders.filter(o=>!['Entregado','Cancelado'].includes(String(o.status||'Pendiente')));
+      const cashBalance=cash.reduce((a,m)=>a+(String(m.type||'').toLowerCase()==='gasto'?-Math.abs(Number(m.amount)||0):Math.abs(Number(m.amount)||0)),0);
+      const net=todayReceived-todayExpenses;
+      const text=[
+        `Ventas de hoy: ${todaySales.length} por ${money(todayTotal)}.`,
+        `Recibido hoy: ${money(todayReceived)}.`,
+        `Gastos de hoy: ${money(todayExpenses)}.`,
+        `Resultado de caja del día: ${money(net)}.`,
+        `Por cobrar: ${money(receivable)}.`,
+        `Inventario: ${low.length} productos con stock bajo y ${zero.length} agotados.`,
+        `Cotizaciones pendientes: ${pending.length}.`,
+        `Encargos activos: ${active.length}.`,
+        `Saldo calculado de caja: ${money(cashBalance)}.`
+      ].join(' ');
+      return {title:'Resumen del negocio',text,speak:`Resumen de hoy. Vendiste ${money(todayTotal)} en ${todaySales.length} ventas. Recibiste ${money(todayReceived)}, tuviste ${money(todayExpenses)} en gastos y el resultado de caja del día es ${money(net)}. Hay ${pending.length} cotizaciones pendientes, ${active.length} encargos activos, ${low.length} productos con stock bajo y ${zero.length} agotados. Tienes ${money(receivable)} por cobrar.`};
+    }
+
     if(/\b(ventas?|vendimos|vendido)\b.*\b(hoy|dia|día)\b/.test(t) || /\bcuanto vendimos hoy\b/.test(t)){
       const rows=sales.filter(s=>isToday(s.date||s.createdAt));
       const total=rows.reduce((a,s)=>a+(Number(s.total)||0),0);
