@@ -25,9 +25,15 @@
   }
 
   function money(n){
-    return new Intl.NumberFormat("es-CO",{
-      style:"currency",currency:"COP",maximumFractionDigits:0
-    }).format(Number(n)||0);
+    const value=new Intl.NumberFormat("es-CO",{maximumFractionDigits:0}).format(Number(n)||0);
+    return `COP $${value}`;
+  }
+
+  // JARVIS siempre habla en pesos colombianos. Evita que el navegador
+  // interprete el símbolo "$" como dólares al usar la voz.
+  function moneyForSpeech(n){
+    const value=new Intl.NumberFormat("es-CO",{maximumFractionDigits:0}).format(Number(n)||0);
+    return `${value} pesos colombianos`;
   }
 
   function numberFromText(text){
@@ -329,13 +335,13 @@
         `Encargos activos: ${active.length}.`,
         `Saldo calculado de caja: ${money(cashBalance)}.`
       ].join(' ');
-      return {title:'Resumen del negocio',text,speak:`Resumen de hoy. Vendiste ${money(todayTotal)} en ${todaySales.length} ventas. Recibiste ${money(todayReceived)}, tuviste ${money(todayExpenses)} en gastos y el resultado de caja del día es ${money(net)}. Hay ${pending.length} cotizaciones pendientes, ${active.length} encargos activos, ${low.length} productos con stock bajo y ${zero.length} agotados. Tienes ${money(receivable)} por cobrar.`};
+      return {title:'Resumen del negocio',text,speak:`Resumen de hoy. Vendiste ${moneyForSpeech(todayTotal)} en ${todaySales.length} ventas. Recibiste ${moneyForSpeech(todayReceived)}, tuviste ${moneyForSpeech(todayExpenses)} en gastos y el resultado de caja del día es ${moneyForSpeech(net)}. Hay ${pending.length} cotizaciones pendientes, ${active.length} encargos activos, ${low.length} productos con stock bajo y ${zero.length} agotados. Tienes ${moneyForSpeech(receivable)} por cobrar.`};
     }
 
     if(/\b(ventas?|vendimos|vendido)\b.*\b(hoy|dia|día)\b/.test(t) || /\bcuanto vendimos hoy\b/.test(t)){
       const rows=sales.filter(s=>isToday(s.date||s.createdAt));
       const total=rows.reduce((a,s)=>a+(Number(s.total)||0),0);
-      return {title:'Ventas de hoy',text:`Hoy tienes ${rows.length} venta${rows.length===1?'':'s'} por ${money(total)}.`,speak:`Hoy tienes ${rows.length} ventas por ${money(total)}.`};
+      return {title:'Ventas de hoy',text:`Hoy tienes ${rows.length} venta${rows.length===1?'':'s'} por ${money(total)}.`,speak:`Hoy tienes ${rows.length} ventas por ${moneyForSpeech(total)}.`};
     }
     if(/\b(inventario|stock)\b.*\b(bajo|bajos|agotado|agotados|alertas?|sin stock)\b/.test(t) || /\bproductos\b.*\b(esta|estan|está|están|con)\b.*\b(bajo|bajos|agotado|agotados|alerta|stock)\b/.test(t) || /\bproductos (bajos|agotados)\b/.test(t)){
       const zero=products.filter(p=>(Number(p.stock)||0)<=0);
@@ -346,7 +352,7 @@
     if(/\b(cotizaciones?|cotizacion)\b.*\b(pendientes?|abiertas?)\b/.test(t) || /\bcotizaciones pendientes\b/.test(t)){
       const pending=quotes.filter(q=>!q.convertedSaleId && !['Rechazada','Cancelada'].includes(String(q.status||'')));
       const total=pending.reduce((a,q)=>a+(Number(q.total)||0),0);
-      return {title:'Cotizaciones pendientes',text:`Hay ${pending.length} cotización${pending.length===1?'':'es'} pendientes por ${money(total)}.`,speak:`Hay ${pending.length} cotizaciones pendientes por ${money(total)}.`};
+      return {title:'Cotizaciones pendientes',text:`Hay ${pending.length} cotización${pending.length===1?'':'es'} pendientes por ${money(total)}.`,speak:`Hay ${pending.length} cotizaciones pendientes por ${moneyForSpeech(total)}.`};
     }
     if(/\b(encargos?|pedidos?)\b.*\b(activos?|pendientes?)\b/.test(t) || /\bencargos activos\b/.test(t)){
       const active=orders.filter(o=>!['Entregado','Cancelado'].includes(String(o.status||'Pendiente')));
@@ -362,11 +368,11 @@
       }).filter(x=>x.balance>0).sort((a,b)=>b.balance-a.balance);
       const total=balances.reduce((a,x)=>a+x.balance,0);
       const top=balances.slice(0,4).map(x=>`${x.name}: ${money(x.balance)}`).join(' · ');
-      return {title:'Saldos pendientes',text:`Clientes con saldo: ${balances.length}. Total pendiente: ${money(total)}.${top?` ${top}`:''}`,speak:`Hay ${balances.length} clientes con saldo pendiente por ${money(total)}.`};
+      return {title:'Saldos pendientes',text:`Clientes con saldo: ${balances.length}. Total pendiente: ${money(total)}.${top?` ${top}`:''}`,speak:`Hay ${balances.length} clientes con saldo pendiente por ${moneyForSpeech(total)}.`};
     }
     if(/\b(caja|efectivo)\b/.test(t) && /\b(cuanto|cuánta|cuanto hay|saldo|total)\b/.test(t)){
       const balance=cash.reduce((a,m)=>a + (String(m.type||'').toLowerCase()==='gasto' ? -Math.abs(Number(m.amount)||0) : Math.abs(Number(m.amount)||0)),0);
-      return {title:'Caja',text:`El saldo calculado de los movimientos de caja es ${money(balance)}.`,speak:`El saldo calculado de caja es ${money(balance)}.`};
+      return {title:'Caja',text:`El saldo calculado de los movimientos de caja es ${money(balance)}.`,speak:`El saldo calculado de caja es ${moneyForSpeech(balance)}.`};
     }
     return null;
   }
