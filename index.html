@@ -106,6 +106,7 @@
   </div>
 
   <div style="display:flex;gap:8px;align-items:center">
+    <span id="syncBadge" class="sync-badge sync-neutral" title="Estado de sincronización">☁️ Preparando</span>
     <span id="authUserEmail" class="muted" style="font-size:12px"></span>
     <button id="logoutBtn" class="ghost" type="button" onclick="aquariumLogout()">Salir</button>
     <button id="installBtn" class="ghost hidden" type="button">
@@ -237,8 +238,6 @@
     >
     <button type="button" class="stageb-clear-search" onclick="clearInventorySearch()" aria-label="Limpiar búsqueda">×</button>
   </div>
-
-  <div id="availabilityPanel" class="availability-panel" style="display:none"></div>
 
   <div id="availabilityPanel" class="availability-panel" style="display:none"></div>
 
@@ -499,6 +498,29 @@
     </button>
   </div>
 
+  <div id="syncCenterPanel" class="panel sync-center-panel" style="margin-top:14px;">
+    <div class="sync-center-head">
+      <div>
+        <span class="page-kicker">PROTECCIÓN DE DATOS</span>
+        <h2 style="margin:4px 0 2px;">☁️ Centro de sincronización</h2>
+        <p class="muted" style="margin:0;">Controla la conexión con Firebase y protege una copia de tus datos.</p>
+      </div>
+      <span id="syncCenterState" class="sync-center-state">☁️ Preparando</span>
+    </div>
+    <div class="sync-center-grid">
+      <div class="sync-center-item"><span>☁️ Estado de nube</span><b id="syncCenterCloud">Comprobando...</b></div>
+      <div class="sync-center-item"><span>🕐 Última sincronización</span><b id="syncCenterLastSync">Aún no registrada</b></div>
+      <div class="sync-center-item"><span>💾 Último respaldo</span><b id="syncCenterLastBackup">Aún no registrado</b></div>
+      <div class="sync-center-item"><span>📦 Datos locales</span><b id="syncCenterRecords">0 registros</b></div>
+    </div>
+    <div class="sync-center-actions">
+      <button type="button" class="primary" onclick="exportData(); refreshSyncCenter();">💾 Crear respaldo</button>
+      <button type="button" onclick="document.getElementById('importFile').click()">📥 Restaurar respaldo</button>
+      <button type="button" onclick="window.aquariumRetrySync && window.aquariumRetrySync()">🔄 Sincronizar ahora</button>
+    </div>
+    <p id="syncCenterMessage" class="muted sync-center-message">Tus datos se guardan en este dispositivo y, cuando hay conexión, también en Firebase.</p>
+  </div>
+
   <div class="panel" style="margin-top:14px;">
     <b>💡 Accesos rápidos</b>
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;">
@@ -749,6 +771,28 @@ const firebaseConfig = {
 </script>
 
 <!-- =====================================================
+     PROTECCIÓN DE ERRORES DE INTERFAZ
+===================================================== -->
+<script>
+(function(){
+  function notify(message){
+    const status=document.getElementById("syncStatus");
+    const badge=document.getElementById("syncBadge");
+    if(status) status.textContent=message;
+    if(badge){ badge.textContent=message.replace(/^.*?\s/,''); badge.className="sync-badge sync-error"; }
+  }
+  window.addEventListener("error", function(event){
+    console.error("Error de interfaz Aquarium Fish:", event.error || event.message);
+    notify("⚠️ La aplicación encontró un problema. Tus datos locales siguen protegidos.");
+  });
+  window.addEventListener("unhandledrejection", function(event){
+    console.error("Error no controlado Aquarium Fish:", event.reason);
+    notify("⚠️ No se pudo completar una operación. Inténtalo nuevamente.");
+  });
+})();
+</script>
+
+<!-- =====================================================
      APP.JS
 ===================================================== -->
 
@@ -795,18 +839,16 @@ const originalSetItem =
 
 
 function setStatus(text){
-
-  const el =
-    document.getElementById(
-      "syncStatus"
-    );
-
-  if(el){
-    el.textContent = text;
+  const el = document.getElementById("syncStatus");
+  const badge = document.getElementById("syncBadge");
+  if(el) el.textContent = text;
+  if(badge){
+    const value=String(text||"");
+    badge.textContent = value.replace(/^\S+\s*/,"") || "Estado";
+    badge.className = "sync-badge " + (value.includes("⚠️") ? "sync-error" : value.includes("🟢") ? "sync-ok" : "sync-working");
   }
-
-  console.log(text);
-
+  const center = document.getElementById("syncCenterState");
+  if(center) center.textContent = String(text||"Estado").replace(/^\S+\s*/,"") || "Estado";
 }
 
 
@@ -967,7 +1009,10 @@ function saveLocalV5(data){
 window.aquariumPersistData = function(data){
   const normalized = saveLocalV5(data);
   if(ready && firestoreRef && currentUser){
+    setStatus("💾 Guardando cambios...");
     uploadLocalData();
+  }else{
+    setStatus("📱 Guardado en este dispositivo");
   }
   return normalized;
 };
@@ -1065,10 +1110,12 @@ function uploadLocalData(){
           lastCloudJSON =
             localJSON;
 
+          try{ localStorage.setItem("aquariumFishLastSync", new Date().toISOString()); }catch(_){ }
 
           setStatus(
-            "☁️ Datos sincronizados"
+            "🟢 Datos sincronizados"
           );
+          refreshSyncCenter("Los datos están sincronizados con Firebase.");
 
 
         }catch(error){
@@ -1210,10 +1257,12 @@ function applyRemoteData(remoteData){
     lastCloudJSON =
       remoteJSON;
 
+    try{ localStorage.setItem("aquariumFishLastSync", new Date().toISOString()); }catch(_){ }
 
     setStatus(
-      "☁️ Datos actualizados desde Firebase"
+      "🟢 Datos actualizados desde Firebase"
     );
+    refreshSyncCenter("Datos actualizados desde Firebase.");
 
 
   }catch(error){
@@ -1540,6 +1589,8 @@ async function startSync(){
 
           lastCloudJSON =
             remoteJSON;
+          try{ localStorage.setItem("aquariumFishLastSync", new Date().toISOString()); }catch(_){ }
+          refreshSyncCenter("Sincronización confirmada.");
 
           return;
 
@@ -1587,6 +1638,49 @@ async function startSync(){
 }
 
 
+function formatSyncDate(value){
+  if(!value) return "Aún no registrada";
+  try{ return new Date(value).toLocaleString("es-CO", {dateStyle:"short", timeStyle:"short"}); }catch(_){ return "Aún no registrada"; }
+}
+
+function refreshSyncCenter(message){
+  try{
+    const local = getLocalData();
+    const records = Object.values(local).reduce((sum,v)=>sum + (Array.isArray(v) ? v.length : 0), 0);
+    const lastSync = localStorage.getItem("aquariumFishLastSync");
+    const lastBackup = localStorage.getItem("aquariumFishLastBackup");
+    const cloud = document.getElementById("syncCenterCloud");
+    const state = document.getElementById("syncCenterState");
+    const syncEl = document.getElementById("syncCenterLastSync");
+    const backupEl = document.getElementById("syncCenterLastBackup");
+    const recordsEl = document.getElementById("syncCenterRecords");
+    const msg = document.getElementById("syncCenterMessage");
+    if(cloud) cloud.textContent = ready && firestoreRef ? "🟢 Conectado" : "📱 Solo dispositivo";
+    if(state) state.textContent = ready && firestoreRef ? "🟢 Activo" : "📱 Local";
+    if(syncEl) syncEl.textContent = formatSyncDate(lastSync);
+    if(backupEl) backupEl.textContent = formatSyncDate(lastBackup);
+    if(recordsEl) recordsEl.textContent = records + (records===1 ? " registro" : " registros");
+    if(msg && message) msg.textContent = message;
+  }catch(error){ console.warn("No se pudo actualizar el centro de sincronización", error); }
+}
+
+window.refreshSyncCenter = refreshSyncCenter;
+
+window.aquariumRetrySync = async function(){
+  try{
+    if(!currentUser){ setStatus("⚠️ Inicia sesión para sincronizar"); refreshSyncCenter("Inicia sesión para conectar con Firebase."); return; }
+    setStatus("☁️ Sincronizando ahora...");
+    if(!firestoreRef && !initFirebase()){ refreshSyncCenter("No se pudo conectar con Firebase. Los datos locales siguen disponibles."); return; }
+    ready = false;
+    await startSync();
+    refreshSyncCenter("Sincronización solicitada. Puedes seguir trabajando mientras se completa.");
+  }catch(error){
+    console.error("Error en sincronización manual:", error);
+    setStatus("⚠️ No se pudo sincronizar");
+    refreshSyncCenter("No se pudo completar la sincronización. Tus datos locales siguen disponibles.");
+  }
+};
+
 async function startAuthenticatedFirebase(){
 
   if(!window.AQ_AUTH_USER){
@@ -1597,7 +1691,10 @@ async function startAuthenticatedFirebase(){
 
   if(connected){
     await startSync();
+  }else{
+    refreshSyncCenter("Firebase no está disponible. Puedes seguir trabajando con los datos del dispositivo.");
   }
+  refreshSyncCenter();
 
 }
 

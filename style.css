@@ -482,3 +482,30 @@ nav button[data-tab="reports"],nav button[data-tab="cotizador"]{display:none!imp
   .availability-actions{grid-template-columns:1fr}
   .availability-preview-head{align-items:center}
 }
+
+
+/* =========================================================
+   ETAPA 1 — ESTADO DE SINCRONIZACIÓN
+   ========================================================= */
+.sync-badge{display:inline-flex;align-items:center;gap:5px;padding:6px 9px;border-radius:999px;font-size:11px;font-weight:800;white-space:nowrap;border:1px solid transparent}
+.sync-neutral{background:#f3f6f7;color:#60777d;border-color:#dbe5e7}
+.sync-working{background:#fff8e8;color:#795b00;border-color:#f0dfaa}
+.sync-ok{background:#edf9f1;color:#1f6b3a;border-color:#cbe9d5}
+.sync-error{background:#fff0f0;color:#a33a3a;border-color:#f0caca}
+@media(max-width:700px){.sync-badge{padding:5px 7px;font-size:10px}.authUserEmail{display:none}}
+
+/* =========================================================
+   ETAPA 2 — CENTRO DE SINCRONIZACIÓN Y RESPALDO
+   ========================================================= */
+.sync-center-panel{border:1px solid #cfe3e5;background:linear-gradient(135deg,#f4fbfb,#ffffff)}
+.sync-center-head{display:flex;align-items:flex-start;justify-content:space-between;gap:14px}
+.sync-center-state{display:inline-flex;align-items:center;justify-content:center;min-height:34px;padding:7px 11px;border-radius:999px;background:#eaf6f6;color:#087f8c;font-size:11px;font-weight:800;white-space:nowrap;border:1px solid #cfe3e5}
+.sync-center-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px;margin-top:14px}
+.sync-center-item{padding:11px 12px;border:1px solid #e1eaeb;border-radius:11px;background:#fff;min-width:0}
+.sync-center-item span{display:block;color:#718084;font-size:11px;margin-bottom:5px}
+.sync-center-item b{display:block;color:#273438;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sync-center-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.sync-center-actions button{min-height:43px}
+.sync-center-message{margin:10px 0 0;padding:9px 11px;border-radius:10px;background:#f7fafb;border:1px solid #e3eaeb}
+@media(max-width:900px){.sync-center-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:600px){.sync-center-head{flex-direction:column}.sync-center-state{align-self:flex-start}.sync-center-grid{grid-template-columns:1fr 1fr}.sync-center-actions button{flex:1;min-width:145px}}
