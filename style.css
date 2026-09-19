@@ -509,3 +509,11 @@ nav button[data-tab="reports"],nav button[data-tab="cotizador"]{display:none!imp
 .sync-center-message{margin:10px 0 0;padding:9px 11px;border-radius:10px;background:#f7fafb;border:1px solid #e3eaeb}
 @media(max-width:900px){.sync-center-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:600px){.sync-center-head{flex-direction:column}.sync-center-state{align-self:flex-start}.sync-center-grid{grid-template-columns:1fr 1fr}.sync-center-actions button{flex:1;min-width:145px}}
+
+
+/* ETAPA 5 — Inventario inteligente */
+.stage5-inventory-panel{margin:10px 0 12px;padding:14px;border:1px solid #dbe8eb;border-radius:16px;background:linear-gradient(180deg,#fff,#f7fbfc)}
+.stage5-head{display:flex;justify-content:space-between;gap:12px;margin-bottom:10px}.stage5-head b{display:block;font-size:16px}.stage5-head small{display:block;margin-top:3px;color:#65787d}
+.stage5-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}.stage5-kpis>div,.stage5-kpis>button{min-width:0;padding:10px;border:1px solid #e0eaec;border-radius:12px;background:#fff;text-align:left}.stage5-kpis button{font:inherit;cursor:pointer}.stage5-kpis b{display:block;font-size:15px}.stage5-kpis small{display:block;margin-top:3px;color:#687b80;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.stage5-rotation{display:flex;justify-content:space-between;gap:14px;margin-top:9px;padding:10px 12px;border-radius:12px;background:#f2f7f8}.stage5-rotation>div:first-child{flex:1}.stage5-rotation b{display:block}.stage5-rotation small{display:block;color:#687b80;line-height:1.45;margin-top:3px}.stage5-rotation>div:last-child{text-align:right;min-width:110px}.stage5-rotation>div:last-child b{font-size:17px}
+@media(max-width:650px){.stage5-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.stage5-rotation{display:block}.stage5-rotation>div:last-child{text-align:left;margin-top:8px}}

@@ -8431,6 +8431,61 @@ function salesPeriodMatch(sale){
   return d>=start;
 }
 
+
+/* =========================================================
+   ETAPA 5 — INVENTARIO INTELIGENTE
+   Lectura de rotación, alertas y valor del stock.
+   No modifica la estructura de Firebase.
+   ========================================================= */
+
+function inventorySmartAnalysis(){
+  const products = Array.isArray(db.products) ? db.products : [];
+  const moves = Array.isArray(db.moves) ? db.moves : [];
+  const outbound = {};
+  const inbound = {};
+
+  moves.forEach(move=>{
+    const name=String(move?.product||"").trim();
+    const qty=Math.max(0,+move?.qty||0);
+    if(!name || !qty) return;
+    const type=String(move?.type||"").toLowerCase();
+    if(type.includes("salida")) outbound[name]=(outbound[name]||0)+qty;
+    if(type.includes("entrada")) inbound[name]=(inbound[name]||0)+qty;
+  });
+
+  const ranked=products.map(product=>({
+    product,
+    sold:outbound[String(product.name||"").trim()]||0,
+    entered:inbound[String(product.name||"").trim()]||0
+  })).sort((a,b)=>b.sold-a.sold);
+
+  const low=products.filter(p=>inventoryStockState(p).key==="Stock bajo").length;
+  const zero=products.filter(p=>inventoryStockState(p).key==="Agotado").length;
+  const saleValue=products.reduce((sum,p)=>sum+Math.max(0,+p.stock||0)*(+p.price||0),0);
+  const costValue=products.reduce((sum,p)=>sum+Math.max(0,+p.stock||0)*(+p.cost||0),0);
+  const totalOutbound=Object.values(outbound).reduce((a,b)=>a+b,0);
+
+  return {products,ranked,low,zero,saleValue,costValue,totalOutbound};
+}
+
+function inventorySmartHtml(){
+  const a=inventorySmartAnalysis();
+  const top=a.ranked.filter(x=>x.sold>0).slice(0,3);
+  const topText=top.length
+    ? top.map((x,i)=>`${i+1}. ${esc(x.product.name||"Producto")} · ${x.sold} salidas`).join("<br>")
+    : "Aún no hay movimientos de salida registrados.";
+  return `<div class="stage5-inventory-panel">
+    <div class="stage5-head"><div><span class="page-kicker">CONTROL INTELIGENTE</span><b>📦 Inventario</b><small>Lectura rápida para saber qué necesita atención.</small></div></div>
+    <div class="stage5-kpis">
+      <button type="button" onclick="setInventoryStatusFilter('Stock bajo')"><b>${a.low}</b><small>🟠 Stock bajo</small></button>
+      <button type="button" onclick="setInventoryStatusFilter('Agotado')"><b>${a.zero}</b><small>🔴 Agotados</small></button>
+      <div><b>${money(a.costValue)}</b><small>💰 Valor compra</small></div>
+      <div><b>${money(a.saleValue)}</b><small>🏷️ Valor venta</small></div>
+    </div>
+    <div class="stage5-rotation"><div><b>📈 Mayor movimiento</b><small>${topText}</small></div><div><b>${a.totalOutbound}</b><small>unidades con salida registrada</small></div></div>
+  </div>`;
+}
+
 function renderInventory(){
   const search=document.getElementById("search");
   const list=document.getElementById("inventoryList");
@@ -8457,7 +8512,7 @@ function renderInventory(){
   controls.id="inventoryControls";
   if(!controls.parentElement) search.insertAdjacentElement("afterend",controls);
 
-  controls.innerHTML=`
+  controls.innerHTML=inventorySmartHtml()+`
     <div class="stageb-toolbar">
       <div class="stageb-filter-group">
         <label>Estado</label>
