@@ -2111,6 +2111,51 @@ function openCustomerPayment(index){
 }
 
 
+
+function customerCommercialHistory(index){
+  const customer=db.customers[index];
+  if(!customer){ alert("No se encontró el cliente."); return; }
+  const name=String(customer.name||"").trim();
+  const phone=String(customer.phone||"").trim();
+  const stats=customerStats(name);
+  const quotes=(Array.isArray(db.quotes)?db.quotes:[]).filter(q=>{
+    const qName=String(q.customer||"").trim().toLowerCase();
+    const qPhone=String(q.phone||"").replace(/\D/g,"");
+    const cPhone=phone.replace(/\D/g,"");
+    return (qName && qName===name.toLowerCase()) || (cPhone && qPhone && cPhone===qPhone);
+  }).sort((a,b)=>String(b.updatedAt||b.createdAt||"").localeCompare(String(a.updatedAt||a.createdAt||"")));
+  const sales=(stats.sales||[]).slice().sort((a,b)=>String(b.date||b.createdAt||"").localeCompare(String(a.date||a.createdAt||"")));
+  const quoteRows=quotes.length?quotes.map(q=>`<div class="item" style="margin-bottom:6px"><div style="flex:1"><b>${esc(q.id||"")}</b><div class="muted">${esc(q.status||"Pendiente")} · ${q.createdAt?esc(new Date(q.createdAt).toLocaleDateString("es-CO")):""}</div></div><div class="right"><b>${money(q.total||0)}</b><div style="display:flex;gap:5px;margin-top:4px"><button type="button" onclick="closeModal();viewQuote('${esc(String(q.id))}')">👁️</button>${!q.convertedSaleId?`<button type="button" onclick="closeModal();openQuoteStatus('${esc(String(q.id))}')">Estado</button>`:""}</div></div></div>`).join(""):"<div class=\"empty\">No hay cotizaciones de este cliente.</div>";
+  const saleRows=sales.length?sales.slice(0,12).map(s=>`<div class="item" style="margin-bottom:6px"><div style="flex:1"><b>${esc(saleLabel(s))}</b><div class="muted">${esc(s.date||s.createdAt||"")} · ${esc(s.status||"Pagada")}</div></div><div class="right"><b>${money(s.total||0)}</b></div></div>`).join(""):"<div class=\"empty\">No hay ventas registradas.</div>";
+  modal(`👤 Historial — ${esc(name)}`,`
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px">
+      <div class="item"><div><b>Comprado</b><div class="muted">Total</div></div><strong>${money(stats.bought)}</strong></div>
+      <div class="item"><div><b>Pagado</b><div class="muted">Total</div></div><strong>${money(stats.paid)}</strong></div>
+      <div class="item"><div><b>Saldo</b><div class="muted">Pendiente</div></div><strong>${money(stats.balance)}</strong></div>
+    </div>
+    <h3 style="margin:12px 0 8px">🧾 Cotizaciones (${quotes.length})</h3>${quoteRows}
+    <h3 style="margin:16px 0 8px">💰 Ventas (${sales.length})</h3>${saleRows}
+    <div style="display:flex;justify-content:flex-end;margin-top:14px"><button type="button" onclick="closeModal()">Cerrar</button></div>
+  `,null);
+}
+
+function openQuoteStatus(quoteId){
+  const q=findQuoteById(quoteId);
+  if(!q){alert("No se encontró la cotización.");return;}
+  if(q.convertedSaleId){alert("Esta cotización ya está convertida en venta.");return;}
+  const statuses=["Pendiente","Enviada","En negociación","Aprobada","Rechazada","Cancelada"];
+  modal("📌 Estado de cotización",`
+    <p><strong>${esc(q.id)}</strong> · ${esc(q.customer||"Cliente general")}</p>
+    <label>Estado<select id="quoteStatusInput" class="search" style="width:100%;box-sizing:border-box;margin-top:6px">${statuses.map(st=>`<option value="${esc(st)}" ${String(q.status||"Pendiente")===st?"selected":""}>${esc(st)}</option>`).join("")}</select></label>
+    <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:14px"><button type="button" onclick="closeModal()">Cancelar</button><button type="button" class="primary" onclick="saveQuoteStatus('${esc(String(q.id))}')">💾 Guardar</button></div>
+  `,null);
+}
+function saveQuoteStatus(quoteId){
+  const q=findQuoteById(quoteId); if(!q)return;
+  const value=String(document.getElementById("quoteStatusInput")?.value||"Pendiente");
+  q.status=value; q.updatedAt=now(); save(); closeModal(); renderCotizador();
+}
+
 function renderCustomers() {
 
   const search =
@@ -2282,6 +2327,13 @@ function renderCustomers() {
                       }
 
                     </span>
+
+                    <button
+                      type="button"
+                      onclick="event.stopPropagation();customerCommercialHistory(${index})"
+                    >
+                      📊 Historial
+                    </button>
 
                     <button
                       type="button"
@@ -2754,6 +2806,7 @@ function renderQuotesList(){
         <button type="button" onclick="duplicateQuote('${esc(id)}')">📑 Duplicar</button>
         <button type="button" onclick="shareSavedQuoteWhatsApp('${esc(id)}')">📲 WhatsApp</button>
         <button type="button" onclick="printQuote('${esc(id)}')">🖨️</button>
+        ${!converted ? `<button type="button" onclick="openQuoteStatus('${esc(id)}')">📌 Estado</button>` : ""}
         ${converted ? `<span class="badge">✅ Venta ${esc(q.convertedSaleId)}</span>` : `<button type="button" onclick="editQuote('${esc(id)}')">✏️ Editar</button><button type="button" class="primary" onclick="convertQuoteToSale('${esc(id)}')">➡️ Convertir</button>${q.followupDate&&!q.followupCompleted?`<button type="button" onclick="markQuoteFollowupDone('${esc(id)}')">☑️ Listo</button>`:""}`}
         ${!converted ? `<button type="button" onclick="deleteQuote('${esc(id)}')">🗑️</button>` : ""}
       </div></div>`;
