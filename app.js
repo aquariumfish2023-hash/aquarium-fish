@@ -752,6 +752,12 @@ function renderHome() {
   const todaySales = salesIn(today), weekSales = salesIn(week), prevWeekSales = salesIn(prevWeek), monthSales = salesIn(month), prevMonthSales = salesIn(prevMonth);
   const todayTotal = totalOf(todaySales), weekTotal = totalOf(weekSales), prevWeekTotal = totalOf(prevWeekSales), monthTotal = totalOf(monthSales), prevMonthTotal = totalOf(prevMonthSales);
   const todayReceived = paidOf(todaySales);
+  const saleProfit = sale => {
+    if(Number.isFinite(Number(sale?.profit))) return Number(sale.profit)||0;
+    return saleCost(sale) ? ((+sale.total||0) - saleCost(sale)) : 0;
+  };
+  const todayProfit = todaySales.reduce((sum,s) => sum + saleProfit(s), 0);
+  const todayMargin = todayTotal > 0 ? (todayProfit / todayTotal) * 100 : 0;
   const receivable = sales.reduce((sum,s) => sum + Math.max(0,(+s.total||0)-salePaid(s)),0);
   const todayExpenses = cash.filter(m => String(m.type||'').toLowerCase()==='gasto' && inRange(m.date,today)).reduce((sum,m)=>sum+(+m.amount||0),0);
   const inventoryCost = products.reduce((sum,p)=>sum + Math.max(0,+p.stock||0)*(+p.cost||0),0);
@@ -767,8 +773,8 @@ function renderHome() {
   set('salesTotal',money(totalOf(sales))); set('salesCount',`${sales.length} transacciones en total`);
   set('todaySalesTotal',money(todayTotal)); set('todaySalesCount',`${todaySales.length} venta${todaySales.length===1?'':'s'} hoy`);
   set('todayReceived',money(todayReceived)); set('dashboardReceivable',money(receivable)); set('todayExpenses',money(todayExpenses));
-  set('dashboardNetToday',money(netToday)); set('dashboardInventoryValue',money(inventoryCost)); set('dashboardUnits',inventoryUnits);
-  set('lowStock',low.length); set('customerCount',customers.length); set('pendingQuotesCount',pendingQuotes.length);
+  set('dashboardNetToday',money(netToday)); set('dashboardProfitToday',money(todayProfit)); set('dashboardMarginToday',`margen estimado: ${todayMargin.toFixed(1)}%`); set('dashboardInventoryValue',money(inventoryCost)); set('dashboardUnits',inventoryUnits);
+  set('lowStock',low.length); set('customerCount',customers.length); set('pendingQuotesCount',pendingQuotes.length); set('activeOrdersCount',activeOrders.length);
   set('dashboardWeekTotal',money(weekTotal)); set('dashboardWeekTotalCopy',money(weekTotal)); set('dashboardWeekCount',`${weekSales.length} venta${weekSales.length===1?'':'s'}`);
   set('dashboardMonthTotal',money(monthTotal)); set('dashboardMonthCount',`${monthSales.length} venta${monthSales.length===1?'':'s'}`);
   set('dashboardZeroStock',zero.length); set('dashboardInventorySaleValue',money(inventorySale));
@@ -822,6 +828,7 @@ function renderHome() {
     const items=[];
     if(zero.length) items.push(`🔴 <b>${zero.length}</b> producto${zero.length===1?' está':'s están'} agotado${zero.length===1?'':'s'}.`);
     else if(low.length) items.push(`🟠 <b>${low.length}</b> producto${low.length===1?' necesita':'s necesitan'} revisar stock.`);
+    if(todayProfit>0) items.push(`📈 Hoy llevas una ganancia estimada de <b>${money(todayProfit)}</b> sobre las ventas registradas.`);
     if(receivable>0) items.push(`💳 Hay <b>${money(receivable)}</b> pendiente por cobrar.`);
     if(pendingQuotes.length) items.push(`🧾 Tienes <b>${pendingQuotes.length}</b> cotización${pendingQuotes.length===1?' activa':'es activas'} para seguimiento.`);
     if(activeOrders.length) items.push(`📦 Hay <b>${activeOrders.length}</b> encargo${activeOrders.length===1?' activo':'s activos'} por gestionar.`);
