@@ -310,7 +310,7 @@
       const total=rows.reduce((a,s)=>a+(Number(s.total)||0),0);
       return {title:'Ventas de hoy',text:`Hoy tienes ${rows.length} venta${rows.length===1?'':'s'} por ${money(total)}.`,speak:`Hoy tienes ${rows.length} ventas por ${money(total)}.`};
     }
-    if(/\b(inventario|stock)\b.*\b(bajo|bajos|agotado|agotados|alertas?)\b/.test(t) || /\bproductos (bajos|agotados)\b/.test(t)){
+    if(/\b(inventario|stock)\b.*\b(bajo|bajos|agotado|agotados|alertas?|sin stock)\b/.test(t) || /\bproductos\b.*\b(esta|estan|está|están|con)\b.*\b(bajo|bajos|agotado|agotados|alerta|stock)\b/.test(t) || /\bproductos (bajos|agotados)\b/.test(t)){
       const zero=products.filter(p=>(Number(p.stock)||0)<=0);
       const low=products.filter(p=>(Number(p.stock)||0)>0 && (Number(p.stock)||0)<=(Number(p.min)||0));
       const names=[...zero.slice(0,4).map(p=>`${p.name} agotado`),...low.slice(0,4).map(p=>`${p.name} bajo`)];
