@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>AQUARIUMFISH · Catálogo de peces</title>
+<title>AQUARIUMFISH · Administración del catálogo</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,500;0,600;1,500&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <meta name="theme-color" content="#0E2A2B" />
@@ -12,8 +12,23 @@
 <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png" />
 <link rel="apple-touch-icon" href="icons/icon-192.png" />
 <link rel="stylesheet" href="style.css" />
+<meta name="robots" content="noindex,nofollow" />
 </head>
 <body>
+  <div id="loginScreen" class="login-screen">
+    <div class="login-box">
+      <div class="login-brand"><img src="logo-empresa.jpg" alt="AQUARIUMFISH · Gestión del negocio" /></div>
+      <div class="login-title">🐟 Administración del catálogo</div>
+      <div class="login-sub">Inicia sesión para administrar tu catálogo</div>
+      <div class="field"><div class="field-label">Correo</div><input id="loginEmail" type="email" placeholder="tu@correo.com" autocomplete="username" /></div>
+      <div class="field"><div class="field-label">Contraseña</div><input id="loginPassword" type="password" placeholder="••••••••" autocomplete="current-password" /></div>
+      <div id="loginError" class="login-error"></div>
+      <button id="loginBtn" class="save-btn login-main-btn" type="button" style="width:100%" onclick="window.ingresarConCorreo()">Ingresar</button>
+      <div class="login-or">o</div>
+      <button id="googleLoginBtn" class="google-btn" type="button">Continuar con Google</button>
+    </div>
+  </div>
+
   <div id="app" class="hidden">
     <header class="header">
       <div class="header-inner">
@@ -33,18 +48,6 @@
 
     <main class="main">
       <div id="modeHint" class="mode-hint">Modo administración</div>
-      <section id="categoryHome" class="category-home" aria-label="Categorías del catálogo">
-        <div class="category-home-head">
-          <div>
-            <div class="eyebrow">LOBOTA AQUARIUM FISH · CATÁLOGO</div>
-            <h1>¿Qué estás buscando?</h1>
-            <p>Elige una categoría para explorar nuestros productos.</p>
-          </div>
-        </div>
-        <div id="categoryGrid" class="category-grid"></div>
-      </section>
-      <div id="catalogContent" class="catalog-content">
-      <button id="categoryBackBtn" class="category-back hidden" type="button">← Volver a categorías</button>
       <section class="hero-row">
         <div>
           <div class="eyebrow">MI ACUARIO · CATÁLOGO PROFESIONAL</div>
@@ -54,18 +57,7 @@
         <button id="heroAddBtn" class="hero-add internal-only" type="button">＋ Agregar especie</button>
       </section>
 
-      <section class="client-tools fish-only-ui" aria-label="Opciones del catálogo para clientes">
-        <button id="clientSearchToggle" type="button" class="client-tool primary">🔎 Buscar y opciones</button>
-        <button id="clientAssistantToggle" type="button" class="client-tool">🧪 Ayúdame a elegir</button>
-      </section>
-
-      <div id="clientWelcome" class="client-welcome hidden">
-        <div class="welcome-icon">👋</div>
-        <div><strong>¿Cómo hacer tu pedido?</strong><p>1️⃣ Elige los peces que te gustan.<br>2️⃣ Indica la cantidad.<br>3️⃣ Revisa tu pedido.<br>4️⃣ Envíanoslo por WhatsApp.</p><b>¡Así de fácil!</b></div>
-        <button id="clientWelcomeClose" type="button" aria-label="Cerrar ayuda">✕</button>
-      </div>
-
-      <section class="stats-strip fish-only-ui" aria-label="Resumen del catálogo">
+      <section class="stats-strip" aria-label="Resumen del catálogo">
         <div class="summary-card">
           <span class="summary-icon">🐟</span>
           <div><strong id="totalCount">0</strong><small>Especies</small></div>
@@ -83,7 +75,7 @@
       <section class="toolbar">
         <div class="search-title-row">
           <div>
-            <div class="search-heading" id="searchHeading">🔎 Buscar en esta categoría</div>
+            <div class="search-heading">🔎 Buscar una especie</div>
             <div class="search-help">Busca por nombre, familia, variedad, origen o cualquier dato de la ficha.</div>
           </div>
           <span id="searchResultBadge" class="search-result-badge hidden"></span>
@@ -124,7 +116,7 @@
         </div>
       </section>
 
-      <section class="aquarium-assistant fish-only-ui" id="aquariumAssistant">
+      <section class="aquarium-assistant" id="aquariumAssistant">
         <div class="assistant-head">
           <div><div class="assistant-eyebrow">MI ACUARIO · ASISTENTE</div><h2>🧪 Encuentra peces para tu acuario</h2><p>Introduce las condiciones de tu acuario y consulta qué especies de tu catálogo encajan con esos parámetros.</p></div>
           <button id="assistantToggle" class="assistant-toggle" type="button" aria-expanded="true">Ocultar</button>
@@ -154,14 +146,9 @@
       </section>
 
       <div class="list" id="list"></div>
-      </div>
     </main>
 
     <button id="fab" class="fab internal-only" type="button" title="Agregar especie" aria-label="Agregar especie">+</button>
-  </div>
-
-  <div id="clientOrderBar" class="client-order-bar hidden">
-    <button id="clientOrderBtn" type="button"><span>🛒</span><span><b>Mi pedido</b><small id="clientOrderSummary">Sin peces seleccionados</small></span><strong id="clientOrderCount">0</strong></button>
   </div>
 
   <div id="detailOverlay" class="detail-overlay hidden">
