@@ -4540,30 +4540,24 @@ function deleteProduct(index) {
    VENTAS
    ========================================================= */
 
-function addSaleRow() {
+function addSaleRow(productIndex = "") {
 
   const container =
     document.getElementById(
       "saleRows"
     );
 
-
   if(!container){
-
     return;
-
   }
-
 
   const row =
     document.createElement(
       "div"
     );
 
-
   row.className =
     "sale-row";
-
 
   row.style.cssText =
     `
@@ -4572,7 +4566,6 @@ function addSaleRow() {
       gap:6px;
       margin-bottom:8px;
     `;
-
 
   row.innerHTML = `
 
@@ -4594,6 +4587,7 @@ function addSaleRow() {
 
               <option
                 value="${index}"
+                ${String(productIndex) === String(index) ? "selected" : ""}
               >
 
                 ${esc(
@@ -4614,7 +4608,6 @@ function addSaleRow() {
 
     </select>
 
-
     <input
       class="sale-qty"
       type="number"
@@ -4622,32 +4615,28 @@ function addSaleRow() {
       value="1"
     >
 
-
     <button
       type="button"
+      title="Quitar producto"
     >
       ✕
     </button>
 
   `;
 
-
   container.appendChild(
     row
   );
-
 
   row.querySelector(
     ".sale-product"
   ).onchange =
     updateSalePreview;
 
-
   row.querySelector(
     ".sale-qty"
   ).oninput =
     updateSalePreview;
-
 
   row.querySelector(
     "button"
@@ -4660,8 +4649,162 @@ function addSaleRow() {
 
     };
 
-
   updateSalePreview();
+
+}
+
+
+function renderSaleProductSearch() {
+
+  const input =
+    document.getElementById(
+      "saleProductSearch"
+    );
+
+  const results =
+    document.getElementById(
+      "saleProductSearchResults"
+    );
+
+  if(!input || !results){
+    return;
+  }
+
+  const query =
+    String(input.value || "")
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .trim();
+
+  if(!query){
+
+    results.innerHTML =
+      `<div class="sale-search-hint">Escribe el nombre del producto para encontrarlo rápidamente.</div>`;
+
+    return;
+  }
+
+  const matches =
+    db.products
+      .map((product,index) => ({product,index}))
+      .filter(({product}) => {
+
+        const name =
+          String(product.name || "")
+            .toLowerCase()
+            .normalize("NFD")
+            .replace(/[\u0300-\u036f]/g, "");
+
+        return name.includes(query);
+
+      })
+      .slice(0, 12);
+
+  if(!matches.length){
+
+    results.innerHTML =
+      `<div class="sale-search-empty">No encontramos productos con “${esc(input.value)}”.</div>`;
+
+    return;
+  }
+
+  results.innerHTML =
+    matches.map(({product,index}) => {
+
+      const stock =
+        +product.stock || 0;
+
+      const disabled =
+        stock <= 0
+          ? "disabled"
+          : "";
+
+      return `
+        <button
+          type="button"
+          class="sale-search-result ${stock <= 0 ? "out-of-stock" : ""}"
+          ${disabled}
+          onclick="addSaleProductFromSearch(${index})"
+        >
+          <span>
+            <b>${esc(product.name || "Producto")}</b>
+            <small>Stock: ${stock} · ${money(+product.price || 0)}</small>
+          </span>
+          <strong>${stock > 0 ? "＋ Agregar" : "Agotado"}</strong>
+        </button>
+      `;
+
+    }).join("");
+
+}
+
+
+function addSaleProductFromSearch(productIndex) {
+
+  const product =
+    db.products[+productIndex];
+
+  if(!product){
+    return;
+  }
+
+  if((+product.stock || 0) <= 0){
+
+    alert(`El producto "${product.name}" está agotado.`);
+
+    return;
+
+  }
+
+  const rows =
+    [...document.querySelectorAll(".sale-row")];
+
+  // Si ya existe una fila vacía, la reutilizamos.
+  const emptyRow =
+    rows.find(row =>
+      String(
+        row.querySelector(".sale-product")?.value || ""
+      ) === ""
+    );
+
+  if(emptyRow){
+
+    const select =
+      emptyRow.querySelector(".sale-product");
+
+    if(select){
+      select.value =
+        String(productIndex);
+    }
+
+  }else{
+
+    addSaleRow(productIndex);
+
+  }
+
+  const search =
+    document.getElementById("saleProductSearch");
+
+  if(search){
+    search.value = "";
+  }
+
+  renderSaleProductSearch();
+  updateSalePreview();
+
+  const currentRows =
+    [...document.querySelectorAll(".sale-row")];
+
+  const qty =
+    emptyRow?.querySelector(".sale-qty") ||
+    currentRows[currentRows.length - 1]?.querySelector(".sale-qty");
+
+  if(qty){
+    qty.focus();
+    qty.select();
+  }
 
 }
 
@@ -4814,6 +4957,32 @@ function openSale(quotePayload = null) {
       </label>
 
 
+      <div class="sale-product-search-box">
+
+        <label for="saleProductSearch">
+          🔎 Buscar producto para agregar
+        </label>
+
+        <input
+          id="saleProductSearch"
+          class="search"
+          type="search"
+          placeholder="Escribe el nombre del producto..."
+          autocomplete="off"
+        >
+
+        <div
+          id="saleProductSearchResults"
+          class="sale-search-results"
+        >
+          <div class="sale-search-hint">
+            Escribe el nombre del producto para encontrarlo rápidamente.
+          </div>
+        </div>
+
+      </div>
+
+
       <div id="saleRows"></div>
 
 
@@ -4821,7 +4990,7 @@ function openSale(quotePayload = null) {
         type="button"
         onclick="addSaleRow()"
       >
-        ➕ Agregar producto
+        ➕ Agregar producto manualmente
       </button>
 
 
@@ -5213,6 +5382,34 @@ function openSale(quotePayload = null) {
 
 
   addSaleRow();
+
+  const saleProductSearch =
+    document.getElementById("saleProductSearch");
+
+  if(saleProductSearch){
+
+    saleProductSearch.addEventListener(
+      "input",
+      renderSaleProductSearch
+    );
+
+    saleProductSearch.addEventListener(
+      "keydown",
+      event => {
+
+        if(event.key === "Escape"){
+
+          saleProductSearch.value = "";
+          renderSaleProductSearch();
+
+        }
+
+      }
+    );
+
+  }
+
+  renderSaleProductSearch();
 
   if(quotePayload && quotePayload.items){
     const clientSelect=document.querySelector('#modal select[name="client"]');
