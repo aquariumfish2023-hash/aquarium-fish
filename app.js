@@ -18,7 +18,7 @@ function readStoredObject(key){
 
 const EMPTY_DB = {
   products: [], sales: [], moves: [], customers: [],
-  orders: [], cash: [], quotes: []
+  orders: [], cash: [], quotes: [], cashClosings: []
 };
 
 let db =
@@ -84,6 +84,7 @@ db.cash =
     : [];
 
 db.quotes = Array.isArray(db.quotes) ? db.quotes : [];
+db.cashClosings = Array.isArray(db.cashClosings) ? db.cashClosings : [];
 
 // Exponer la base de datos al módulo JARVIS sin cambiar su estructura.
 // El getter siempre devuelve la referencia actual, incluso después de importar un respaldo.
@@ -7197,6 +7198,8 @@ function renderCash(){
   }
 
 
+  renderCashClosingHistory();
+
   const totals =
     calculateCashTotals(
       cashPeriod
@@ -7971,6 +7974,71 @@ function deleteCashMovement(
 
 
 /* =========================================================
+   CIERRE DE CAJA
+   ========================================================= */
+
+function getTodayCashTotals(){
+  return calculateCashTotals("today");
+}
+
+function renderCashClosingHistory(){
+  const el = document.getElementById("cashClosingHistory");
+  if(!el) return;
+  const rows = Array.isArray(db.cashClosings) ? db.cashClosings.slice().reverse() : [];
+  if(!rows.length){
+    el.innerHTML = `<div class="empty">No hay cierres de caja registrados todavía.</div>`;
+    return;
+  }
+  el.innerHTML = rows.slice(0,8).map(item => {
+    const diff = +item.difference || 0;
+    const cls = diff === 0 ? "" : (diff > 0 ? "low" : "danger");
+    const label = diff === 0 ? "Cuadra" : (diff > 0 ? "Sobrante" : "Faltante");
+    return `<div class="item">
+      <div><b>🔒 Cierre · ${esc(item.date || "")}</b>
+      <div class="muted">Esperado: ${money(item.expectedCash)} · Contado: ${money(item.countedCash)}${item.note ? ` · ${esc(item.note)}` : ""}</div></div>
+      <span class="badge ${cls}">${label}: ${money(Math.abs(diff))}</span>
+    </div>`;
+  }).join("");
+}
+
+function openCashClosing(){
+  const totals = getTodayCashTotals();
+  const expected = +totals.methods.Efectivo || 0;
+  const today = new Date().toISOString().slice(0,10);
+  const last = Array.isArray(db.cashClosings) ? db.cashClosings.find(x => x.date === today) : null;
+  modal("🔒 Cierre de caja", `
+    <div class="form-grid">
+      <div class="field"><label>Fecha</label><input value="${today}" disabled></div>
+      <div class="field"><label>Efectivo esperado</label><input value="${money(expected)}" disabled></div>
+      <div class="field"><label>Efectivo contado físicamente</label><input name="countedCash" type="number" min="0" step="1" inputmode="numeric" value="${last ? (+last.countedCash || 0) : expected}" required></div>
+      <div class="field"><label>Observación (opcional)</label><input name="note" value="${esc(last?.note || "")}" maxlength="180" placeholder="Ej. diferencia por cambio"></div>
+    </div>
+    <p class="muted" style="margin-top:10px">El cierre compara únicamente el efectivo físico con el efectivo registrado. Nequi, transferencias y tarjetas no se incluyen en el conteo físico.</p>
+  `, function(e){
+    e.preventDefault();
+    const counted = Math.max(0, +this.countedCash.value || 0);
+    const difference = counted - expected;
+    const item = {
+      id: last?.id || `CIERRE-${Date.now()}`,
+      date: today,
+      createdAt: new Date().toISOString(),
+      expectedCash: expected,
+      countedCash: counted,
+      difference,
+      note: String(this.note.value || "").trim()
+    };
+    if(!Array.isArray(db.cashClosings)) db.cashClosings = [];
+    const index = db.cashClosings.findIndex(x => x.id === item.id);
+    if(index >= 0) db.cashClosings[index] = item;
+    else db.cashClosings.push(item);
+    save();
+    closeModal();
+    renderCashClosingHistory();
+    alert(difference === 0 ? "✅ Cierre realizado. La caja cuadra." : `Cierre guardado. ${difference > 0 ? "Sobrante" : "Faltante"}: ${money(Math.abs(difference))}`);
+  });
+}
+
+/* =========================================================
    RESUMEN INTERNO
    ========================================================= */
 
@@ -8309,6 +8377,8 @@ function exposeFunctions(){
   window.editCashMovement=editCashMovement;
   window.deleteCashMovement=deleteCashMovement;
   window.setCashPeriod=setCashPeriod;
+  window.openCashClosing=openCashClosing;
+  window.renderCashClosingHistory=renderCashClosingHistory;
   window.addQuoteItem=addQuoteItem;
   window.updateQuoteItem=updateQuoteItem;
   window.removeQuoteItem=removeQuoteItem;
@@ -8833,7 +8903,7 @@ function runSystemAudit(){
   if(!out) return;
   const checks=[];
   const add=(label,ok,detail)=>checks.push({label,ok,detail});
-  const requiredFunctions=["show","save","renderAll","renderHome","renderInventory","renderSales","renderCash","renderCustomers","renderOrders","renderMoves","renderReports","exportData","importData","applyMobileLayout","exposeFunctions","bindSearches"];
+  const requiredFunctions=["show","save","renderAll","renderHome","renderInventory","renderSales","renderCash","renderCustomers","renderOrders","renderMoves","renderReports","exportData","importData","applyMobileLayout","exposeFunctions","bindSearches","openCashClosing","renderCashClosingHistory"];
   const missing=requiredFunctions.filter(name=>typeof window[name]!=="function");
   add("Funciones principales",missing.length===0,missing.length?`Faltan: ${missing.join(", ")}`:"Todas las funciones críticas están disponibles.");
   const ids=["home","inventory","sales","cash","customers","cotizador","orders","moves","reports","more","modal","form","importFile"];
