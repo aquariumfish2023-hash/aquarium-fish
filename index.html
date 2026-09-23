@@ -1,0 +1,1731 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#087f8c">
+<meta name="description" content="Aquarium Fish - inventario, ventas, caja, clientes y encargos">
+
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon.svg">
+<link rel="stylesheet" href="style.css">
+
+<title>Aquarium Fish</title>
+<style>
+  .auth-gate{position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;padding:24px;background:rgba(248,250,252,.98)}
+  .auth-gate.hidden{display:none}
+  .auth-card{width:min(420px,100%);background:#fff;border:1px solid #e5e7eb;border-radius:20px;padding:24px;box-shadow:0 18px 50px rgba(15,23,42,.12)}
+  .auth-brand{margin-bottom:20px}
+  .auth-card h1{margin:0 0 8px}
+  .auth-card form{display:grid;gap:10px}
+  .auth-card label{font-weight:600;margin-top:6px}
+  .auth-card input{width:100%;box-sizing:border-box;padding:12px;border:1px solid #cbd5e1;border-radius:10px;font:inherit}
+  #loginError{min-height:20px;margin:4px 0 0}
+  #appHeader.hidden{display:none}
+  body.auth-locked main, body.auth-locked nav{display:none!important}
+
+.dashboard-quote-alerts-panel button{font-size:.9rem}
+@media (max-width:700px){#quoteAutomationAlerts>div:first-child{grid-template-columns:repeat(2,minmax(0,1fr)) !important}.dashboard-quote-alerts-panel .dashboard-panel-head{gap:8px;flex-wrap:wrap}}
+.availability-panel{margin:12px 0;padding:14px;border:1px solid #d9e6e9;border-radius:16px;background:#fff}.availability-head,.availability-preview-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}.availability-controls{display:flex;gap:12px;flex-wrap:wrap;margin:14px 0}.availability-controls label{display:flex;flex-direction:column;gap:6px;font-size:13px;font-weight:700}.availability-check{flex-direction:row!important;align-items:center!important;margin-top:24px}.availability-preview{border:1px solid #e3ecee;border-radius:14px;padding:14px}.availability-preview h3{margin:4px 0}.availability-items{margin-top:10px}.availability-item{display:flex;justify-content:space-between;gap:12px;padding:9px 4px;border-bottom:1px solid #edf2f3}.availability-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}.availability-note{margin-top:12px;font-size:12px;color:#60777d}.availability-close{font-size:22px;line-height:1;min-width:38px}.inventory-head-actions{display:flex;gap:8px;flex-wrap:wrap}</style>
+<style>
+/* =========================================================
+   JARVIS — interfaz independiente
+   ========================================================= */
+.jarvis-open{font-weight:800}
+.jarvis-overlay{position:fixed;inset:0;z-index:10050;display:none;align-items:center;justify-content:center;padding:18px;background:rgba(8,28,34,.58);backdrop-filter:blur(4px)}
+.jarvis-overlay.open{display:flex}
+.jarvis-card{width:min(560px,100%);max-height:min(760px,94vh);overflow:auto;background:#fff;border:1px solid #d9e6e9;border-radius:22px;padding:20px;box-shadow:0 24px 80px rgba(0,0,0,.25)}
+.jarvis-head{display:flex;justify-content:space-between;gap:14px;align-items:flex-start}
+.jarvis-kicker{font-size:11px;font-weight:900;letter-spacing:.12em;opacity:.65}
+.jarvis-head h2{margin:3px 0 4px}
+.jarvis-head p{margin:0;color:#60777d;font-size:13px}
+.jarvis-close{font-size:25px;line-height:1;min-width:40px}
+.jarvis-input-row{display:grid;grid-template-columns:1fr 52px;gap:8px;margin-top:18px}
+#jarvisInput{width:100%;box-sizing:border-box;padding:14px;border:1px solid #cbd9dc;border-radius:12px;font:inherit}
+.jarvis-mic{font-size:22px;border-radius:12px}
+.jarvis-mic.listening{transform:scale(1.04);box-shadow:0 0 0 4px rgba(8,127,140,.16)}
+.jarvis-status{margin-top:8px;font-size:12px;color:#60777d;min-height:18px}
+.jarvis-result{margin-top:14px;border:1px solid #e1eaec;border-radius:15px;padding:13px;background:#f9fbfb}
+.jarvis-empty{color:#60777d;font-size:13px}
+.jarvis-lines{display:grid;gap:8px}
+.jarvis-line{display:flex;justify-content:space-between;gap:12px;padding-bottom:8px;border-bottom:1px solid #e6edef}
+.jarvis-total{display:flex;justify-content:space-between;gap:12px;margin-top:13px;font-size:19px}
+.jarvis-profit{margin-top:5px;font-size:12px;color:#60777d}
+.jarvis-warning{margin-top:10px;padding:9px;border-radius:10px;background:#fff8e8;font-size:12px}
+.jarvis-error{padding:9px;border-radius:10px;background:#fff0f0;font-size:13px}
+.jarvis-business{padding:14px;border-radius:12px;background:#f3f8f9;border:1px solid #dce9eb}.jarvis-business-title{font-weight:900;font-size:16px}.jarvis-business-text{margin-top:7px;line-height:1.45;color:#425a60}
+.jarvis-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:13px}
+.jarvis-foot{display:flex;justify-content:space-between;gap:12px;align-items:center;margin-top:14px;font-size:11px;color:#71858a}
+.jarvis-foot span{flex:1}
+@media(max-width:700px){
+  .jarvis-open{padding-left:9px;padding-right:9px}
+  .jarvis-card{padding:16px;border-radius:18px}
+  .jarvis-foot{align-items:stretch;flex-direction:column}
+}
+</style>
+</head>
+
+<body>
+
+<div id="splash" aria-label="Aquarium Fish">
+  <img src="splash-v7.png" alt="Aquarium Fish - Gestión del negocio">
+</div>
+
+<div id="authGate" class="auth-gate">
+  <div class="auth-card">
+    <div class="brand auth-brand">
+      <img src="icon.svg" alt="">
+      <div>
+        <strong>Aquarium Fish</strong>
+        <small>Acceso seguro</small>
+      </div>
+    </div>
+
+    <h1>Iniciar sesión</h1>
+    <p class="muted">Ingresa con tu cuenta de Firebase para acceder a los datos del negocio.</p>
+
+    <form id="loginForm" autocomplete="on">
+      <label>Correo electrónico</label>
+      <input id="loginEmail" type="email" autocomplete="username" required placeholder="tu-correo@ejemplo.com">
+
+      <label>Contraseña</label>
+      <input id="loginPassword" type="password" autocomplete="current-password" required minlength="6" placeholder="••••••••">
+
+      <button id="loginBtn" class="primary" type="submit">Iniciar sesión</button>
+      <p id="loginError" class="muted" role="alert"></p>
+    </form>
+  </div>
+</div>
+
+<header id="appHeader" class="hidden">
+  <div class="brand">
+    <img src="icon.svg" alt="">
+    <div>
+      <strong>Aquarium Fish</strong>
+      <small>Gestión del negocio</small>
+    </div>
+  </div>
+
+  <div style="display:flex;gap:8px;align-items:center">
+    <span id="syncBadge" class="sync-badge sync-neutral" title="Estado de sincronización">☁️ Preparando</span>
+    <span id="authUserEmail" class="muted" style="font-size:12px"></span>
+    <button id="logoutBtn" class="ghost" type="button" onclick="aquariumLogout()">Salir</button>
+    <button id="installBtn" class="ghost hidden" type="button">
+      Instalar
+    </button>
+  </div>
+</header>
+
+<main>
+
+<section id="portada" class="screen active portada-screen">
+  <div class="portada-card">
+    <picture class="portada-picture">
+      <source media="(max-width: 699px)" srcset="aquarium-portada-mobile.png">
+      <img src="aquarium-portada-wide.png" alt="Aquarium Fish - Pasión por la vida acuática">
+    </picture>
+    <button class="portada-enter" type="button" onclick="show('home')" aria-label="Entrar al sistema">
+      <span>Entrar al sistema</span>
+    </button>
+  </div>
+</section>
+
+<section id="home" class="screen dashboard-screen">
+  <div class="dashboard-hero">
+    <div>
+      <span class="dashboard-kicker">🐠 AQUARIUM FISH</span>
+      <h1>Panel de control</h1>
+      <p>Tu negocio, resumido en una sola vista.</p>
+    </div>
+    <div class="dashboard-date" id="dashboardDate">Hoy</div>
+  </div>
+
+  <div class="dashboard-kpis">
+    <div class="card dash-main-card"><span>💰 Ventas de hoy</span><b id="todaySalesTotal">$0</b><small id="todaySalesCount">0 ventas hoy</small><em id="todaySalesChange" class="dashboard-change neutral">—</em></div>
+    <div class="card"><span>💵 Recibido hoy</span><b id="todayReceived">$0</b><small>ingresos registrados</small></div>
+    <div class="card"><span>🧾 Por cobrar</span><b id="dashboardReceivable">$0</b><small>saldo pendiente</small></div>
+    <div class="card"><span>💸 Gastos hoy</span><b id="todayExpenses">$0</b><small>registrados en caja</small></div>
+    <div class="card"><span>💹 Neto de hoy</span><b id="dashboardNetToday">$0</b><small>recibido menos gastos</small></div>
+    <div class="card"><span>📈 Ganancia hoy</span><b id="dashboardProfitToday">$0</b><small id="dashboardMarginToday">margen estimado: 0%</small></div>
+    <div class="card"><span>📦 Inventario a costo</span><b id="dashboardInventoryValue">$0</b><small><span id="dashboardUnits">0</span> unidades</small></div>
+    <div class="card"><span>⚠️ Stock bajo</span><b id="lowStock">0</b><small>requieren atención</small></div>
+    <div class="card"><span>👥 Clientes</span><b id="customerCount">0</b><small>registrados</small></div>
+    <div class="card"><span>📝 Cotizaciones</span><b id="pendingQuotesCount">0</b><small>pendientes</small></div>
+    <div class="card"><span>📦 Encargos activos</span><b id="activeOrdersCount">0</b><small>por gestionar</small></div>
+  </div>
+
+  <div class="dashboard-period-grid">
+    <div class="panel dashboard-period-card"><div><span>📅 Últimos 7 días</span><b id="dashboardWeekTotal">$0</b><small id="dashboardWeekCount">0 ventas</small></div><strong id="weekSalesChange" class="dashboard-change neutral">—</strong><p>vs. los 7 días anteriores</p></div>
+    <div class="panel dashboard-period-card"><div><span>🗓️ Este mes</span><b id="dashboardMonthTotal">$0</b><small id="dashboardMonthCount">0 ventas</small></div><strong id="monthSalesChange" class="dashboard-change neutral">—</strong><p>vs. el mes anterior</p></div>
+  </div>
+
+  <div class="dashboard-grid">
+    <div class="panel dashboard-chart-panel">
+      <div class="dashboard-panel-head"><div><h2>📈 Evolución de ventas</h2><p class="muted">Últimos 7 días</p></div><strong id="dashboardWeekTotalCopy"> </strong></div>
+      <div id="dashboardSalesChart" class="dashboard-bars"></div>
+    </div>
+    <div class="panel dashboard-chart-panel">
+      <div class="dashboard-panel-head"><div><h2>🐠 Productos</h2><p class="muted">Más vendidos</p></div></div>
+      <div id="dashboardProductChart" class="dashboard-hbars"></div>
+    </div>
+  </div>
+
+  <div class="dashboard-grid dashboard-inside-grid">
+    <div class="panel"><div class="dashboard-panel-head"><div><h2>💳 Cobros de hoy</h2><p class="muted">Distribución por medio de pago</p></div></div><div id="dashboardPayments" class="dashboard-payment-list"></div></div>
+    <div class="panel"><div class="dashboard-panel-head"><div><h2>👥 Clientes</h2><p class="muted">Mayor facturación acumulada</p></div></div><div id="dashboardCustomers" class="dashboard-mini-list"></div></div>
+  </div>
+
+  <div class="dashboard-grid dashboard-inside-grid">
+    <div class="panel"><div class="dashboard-panel-head"><div><h2>📦 Inventario en alerta</h2><p class="muted">Productos con stock bajo o agotado</p></div></div><div id="dashboardInventoryAlerts" class="dashboard-mini-list"></div><div class="dashboard-stock-footer"><span>Agotados: <b id="dashboardZeroStock">0</b></span><span>Valor de venta: <b id="dashboardInventorySaleValue">$0</b></span></div></div>
+    <div class="panel"><div class="dashboard-panel-head"><div><h2>🛒 Actividad reciente</h2><p class="muted">Últimas operaciones</p></div></div><div id="recentSales" class="list"></div></div>
+  </div>
+
+  <div class="panel dashboard-status-panel">
+    <div class="dashboard-panel-head"><div><h2>🧭 Lectura rápida</h2><p class="muted">Indicadores que merecen atención</p></div></div>
+    <div id="dashboardInsights" class="dashboard-insights"></div>
+  </div>
+
+  <div class="panel">
+    <h2>⚡ Acciones rápidas</h2>
+    <div class="quick-actions-grid dashboard-actions-v2">
+      <button type="button" class="primary" onclick="openSale()">🛒 Nueva venta</button>
+      <button type="button" onclick="show('cotizador')">🧾 Nueva cotización</button>
+      <button type="button" onclick="openCustomer()">👤 Nuevo cliente</button>
+      <button type="button" onclick="show('inventory')">📦 Inventario</button>
+      <button type="button" onclick="show('cash')">💰 Caja</button>
+      <button type="button" onclick="show('more')">☰ Más opciones</button>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h2>Datos</h2>
+    <div class="data-actions">
+      <button type="button" onclick="exportData()">Exportar respaldo</button>
+      <button type="button" onclick="document.getElementById('importFile').click()">Importar respaldo</button>
+      <input id="importFile" type="file" accept=".json" hidden>
+    </div>
+    <p class="muted">El respaldo guarda productos, ventas, clientes, cotizaciones, encargos, movimientos y caja.</p>
+    <p id="syncStatus" class="muted">☁️ Preparando sincronización...</p>
+  </div>
+</section>
+
+<!-- =====================================================
+     INVENTARIO
+===================================================== -->
+
+<section id="inventory" class="screen">
+
+  <div class="section-head">
+
+    <div><span class="page-kicker">PRODUCTOS</span><h1>Inventario</h1><p class="muted page-subtitle">Controla existencias y precios desde un solo lugar.</p></div>
+
+    <div class="inventory-head-actions">
+      <button type="button" onclick="toggleAvailabilityList()">📋 Lista para clientes</button>
+      <button
+        class="primary"
+        type="button"
+        onclick="openProduct()"
+      >
+        + Producto
+      </button>
+    </div>
+
+  </div>
+
+  <div class="stageb-search-wrap">
+    <input
+      id="search"
+      class="search"
+      placeholder="🔎 Buscar por nombre o categoría..."
+      autocomplete="off"
+    >
+    <button type="button" class="stageb-clear-search" onclick="clearInventorySearch()" aria-label="Limpiar búsqueda">×</button>
+  </div>
+
+  <div id="availabilityPanel" class="availability-panel" style="display:none"></div>
+
+  <div id="inventoryList" class="list"></div>
+
+</section>
+
+
+<!-- =====================================================
+     VENTAS
+===================================================== -->
+
+<section id="sales" class="screen">
+
+  <div class="section-head">
+
+    <div><span class="page-kicker">OPERACIÓN</span><h1>Ventas</h1><p class="muted page-subtitle">Consulta y registra las ventas de tu negocio.</p></div>
+
+    <button
+      class="primary"
+      type="button"
+      onclick="openSale()"
+    >
+      + Venta
+    </button>
+
+  </div>
+
+  <div class="stageb-search-wrap">
+    <input
+      id="salesSearch"
+      class="search"
+      placeholder="🔎 Buscar cliente, producto o número..."
+      autocomplete="off"
+    >
+    <button type="button" class="stageb-clear-search" onclick="clearSalesSearch()" aria-label="Limpiar búsqueda">×</button>
+  </div>
+
+  <div id="salesControls" class="stageb-controls"></div>
+  <div id="salesSummary" class="stageb-summary"></div>
+  <div id="salesList" class="list"></div>
+
+</section>
+
+
+<!-- =====================================================
+     CAJA
+===================================================== -->
+
+<section id="cash" class="screen">
+
+  <div class="section-head">
+
+    <h1>💰 Caja</h1>
+
+    <button
+      class="primary"
+      type="button"
+      onclick="openCashMovement()"
+    >
+      + Movimiento
+    </button>
+
+  </div>
+
+
+  <div class="panel">
+
+    <h2>Resumen de caja</h2>
+
+    <div id="cashSummary" class="cards"></div>
+
+  </div>
+
+
+  <div class="panel">
+
+    <h2>Periodo</h2>
+
+    <select
+      id="cashPeriod"
+      class="search"
+    >
+
+      <option value="today">
+        📅 Hoy
+      </option>
+
+      <option value="7days">
+        📆 Últimos 7 días
+      </option>
+
+      <option value="month">
+        🗓️ Este mes
+      </option>
+
+      <option value="all">
+        📚 Todo
+      </option>
+
+    </select>
+
+  </div>
+
+
+  <div class="panel cash-control-panel">
+    <div class="section-head">
+      <div>
+        <h2>🔒 Cierre de caja</h2>
+        <p class="muted">Compara el efectivo registrado con el dinero físico contado.</p>
+      </div>
+      <button class="primary" type="button" onclick="openCashClosing()">Cerrar caja</button>
+    </div>
+    <div id="cashClosingHistory"></div>
+  </div>
+
+
+  <div class="panel">
+
+    <h2>Movimientos de caja</h2>
+
+    <p class="muted">
+      Las ventas cobradas aparecen automáticamente.
+      Los ingresos y gastos que registres manualmente
+      también aparecerán aquí.
+    </p>
+
+    <div id="cashList" class="list"></div>
+
+  </div>
+
+</section>
+
+
+<!-- =====================================================
+     CLIENTES
+===================================================== -->
+
+<section id="customers" class="screen">
+
+  <div class="section-head">
+
+    <h1>Clientes</h1>
+
+    <button
+      class="primary"
+      type="button"
+      onclick="openCustomer()"
+    >
+      + Cliente
+    </button>
+
+  </div>
+
+  <input
+    id="customerSearch"
+    class="search"
+    placeholder="Buscar cliente..."
+  >
+
+  <div id="customersList" class="list"></div>
+
+</section>
+
+
+<!-- =====================================================
+     ENCARGOS
+===================================================== -->
+
+<section id="orders" class="screen">
+
+  <div class="section-head">
+
+    <h1>Encargos</h1>
+
+    <button
+      class="primary"
+      type="button"
+      onclick="openOrder()"
+    >
+      + Encargo
+    </button>
+
+  </div>
+
+  <p class="muted">
+    Anota peces o accesorios que un cliente pidió
+    y que no tienes disponibles.
+  </p>
+
+  <div id="ordersList" class="list"></div>
+
+</section>
+
+
+<!-- =====================================================
+     MOVIMIENTOS
+===================================================== -->
+
+<section id="moves" class="screen">
+
+  <div class="section-head">
+
+    <div><span class="page-kicker">CONTROL DE STOCK</span><h1>Movimientos</h1><p class="muted page-subtitle">Consulta entradas y salidas de inventario sin perder el historial.</p></div>
+
+    <button
+      class="primary"
+      type="button"
+      onclick="openMove()"
+    >
+      Registrar movimiento
+    </button>
+
+  </div>
+
+  <div class="stageb-controls stage-d-move-controls">
+    <div class="stageb-filter-group"><label>Buscar</label><div class="stageb-search-wrap"><input id="movesSearch" class="search" placeholder="🔎 Producto, motivo o responsable..." autocomplete="off"><button type="button" class="stageb-clear-search" onclick="clearMovesSearch()" aria-label="Limpiar búsqueda">×</button></div></div>
+    <div class="stageb-filter-group"><label>Tipo</label><select id="movesTypeFilter" class="stageb-select"><option value="Todos">Todos</option><option value="Entrada">🟢 Entradas</option><option value="Salida">🔴 Salidas</option></select></div>
+  </div>
+  <div id="movesSummary" class="stageb-inventory-summary"></div>
+  <div id="movesList" class="list"></div>
+
+</section>
+
+</main>
+
+
+<!-- =====================================================
+     MÁS / HERRAMIENTAS
+===================================================== -->
+
+<section id="more" class="screen">
+  <div class="section-head">
+    <div>
+      <h1>➕ Más</h1>
+      <p class="muted">Herramientas y funciones adicionales</p>
+    </div>
+  </div>
+
+  <div class="cards" style="grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;">
+    <button type="button" class="panel" style="text-align:left;border:0;cursor:pointer;min-height:90px;" onclick="show('sales')">
+      <b style="font-size:17px;">🛒 Ventas</b><br><span class="muted">Registrar y consultar ventas</span>
+    </button>
+    <button type="button" class="panel" style="text-align:left;border:0;cursor:pointer;min-height:90px;" onclick="show('cash')">
+      <b style="font-size:17px;">💰 Caja</b><br><span class="muted">Movimientos y cierres de caja</span>
+    </button>
+    <button type="button" class="panel" style="text-align:left;border:0;cursor:pointer;min-height:90px;" onclick="show('customers')">
+      <b style="font-size:17px;">👥 Clientes</b><br><span class="muted">Clientes y datos de contacto</span>
+    </button>
+    <button type="button" class="panel" style="text-align:left;border:0;cursor:pointer;min-height:90px;" onclick="show('reports')">
+      <b style="font-size:17px;">📊 Reportes</b><br><span class="muted">Estadísticas y análisis</span>
+    </button>
+    <button type="button" class="panel" style="text-align:left;border:0;cursor:pointer;min-height:90px;" onclick="show('orders')">
+      <b style="font-size:17px;">📝 Encargos</b><br><span class="muted">Pedidos y encargos</span>
+    </button>
+    <button type="button" class="panel" style="text-align:left;border:0;cursor:pointer;min-height:90px;" onclick="show('moves')">
+      <b style="font-size:17px;">⇅ Movimientos</b><br><span class="muted">Entradas y salidas</span>
+    </button>
+  </div>
+
+  <div id="syncCenterPanel" class="panel sync-center-panel" style="margin-top:14px;">
+    <div class="sync-center-head">
+      <div>
+        <span class="page-kicker">PROTECCIÓN DE DATOS</span>
+        <h2 style="margin:4px 0 2px;">☁️ Centro de sincronización</h2>
+        <p class="muted" style="margin:0;">Controla la conexión con Firebase y protege una copia de tus datos.</p>
+      </div>
+      <span id="syncCenterState" class="sync-center-state">☁️ Preparando</span>
+    </div>
+    <div class="sync-center-grid">
+      <div class="sync-center-item"><span>☁️ Estado de nube</span><b id="syncCenterCloud">Comprobando...</b></div>
+      <div class="sync-center-item"><span>🕐 Última sincronización</span><b id="syncCenterLastSync">Aún no registrada</b></div>
+      <div class="sync-center-item"><span>💾 Último respaldo</span><b id="syncCenterLastBackup">Aún no registrado</b></div>
+      <div class="sync-center-item"><span>📦 Datos locales</span><b id="syncCenterRecords">0 registros</b></div>
+    </div>
+    <div class="sync-center-actions">
+      <button type="button" class="primary" onclick="exportData(); refreshSyncCenter();">💾 Crear respaldo</button>
+      <button type="button" onclick="document.getElementById('importFile').click()">📥 Restaurar respaldo</button>
+      <button type="button" onclick="window.aquariumRetrySync && window.aquariumRetrySync()">🔄 Sincronizar ahora</button>
+    </div>
+    <p id="syncCenterMessage" class="muted sync-center-message">Tus datos se guardan en este dispositivo y, cuando hay conexión, también en Firebase.</p>
+  </div>
+
+  <div class="panel" style="margin-top:14px;">
+    <b>💡 Accesos rápidos</b>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;">
+      <button type="button" onclick="show('cotizador')">🧾 Nueva cotización</button>
+      <button type="button" onclick="show('inventory')">📦 Inventario</button>
+      <button type="button" onclick="show('home')">⌂ Inicio</button>
+    </div>
+  </div>
+</section>
+
+<!-- =====================================================
+     NAVEGACIÓN
+===================================================== -->
+
+<nav aria-label="Navegación principal">
+  <button type="button" data-tab="home" class="active" aria-label="Inicio">🏠<span>Inicio</span></button>
+  <button type="button" data-tab="cotizador" aria-label="Cotizador">🧾<span>Cotizador</span></button>
+  <button type="button" data-tab="inventory" aria-label="Inventario">📦<span>Inventario</span></button>
+  <button type="button" data-tab="more" aria-label="Más opciones">☰<span>Más</span></button>
+</nav>
+
+
+<!-- =====================================================
+     MODAL GENERAL
+===================================================== -->
+
+<div id="modal" class="modal hidden">
+
+  <div class="modal-box">
+
+    <div class="modal-head">
+
+      <h2 id="modalTitle"></h2>
+
+      <button
+        type="button"
+        onclick="closeModal()"
+      >
+        ×
+      </button>
+
+    </div>
+
+    <form id="form"></form>
+
+  </div>
+
+</div>
+
+
+<!-- =====================================================
+     MODAL RESUMEN INTERNO
+===================================================== -->
+
+<div id="internalModal" class="modal hidden">
+
+  <div class="modal-box">
+
+    <div class="modal-head">
+
+      <h2>🔒 Resumen interno</h2>
+
+      <button
+        type="button"
+        onclick="closeInternal()"
+      >
+        ×
+      </button>
+
+    </div>
+
+    <div id="internalStats"></div>
+
+    <p class="muted">
+      Esta información está separada de la pantalla de venta
+      para que puedas mostrar los precios al cliente sin
+      enseñarle la ganancia.
+    </p>
+
+    <div class="form-actions">
+
+      <button
+        type="button"
+        class="primary"
+        onclick="closeInternal()"
+      >
+        Cerrar
+      </button>
+
+    </div>
+
+  </div>
+
+</div>
+
+
+<!-- =====================================================
+     SPLASH
+===================================================== -->
+
+<script>
+
+(function(){
+
+  function hideSplash(){
+
+    const splash =
+      document.getElementById("splash");
+
+    if(splash){
+      splash.classList.add("hide");
+    }
+
+  }
+
+  setTimeout(hideSplash,1500);
+  setTimeout(hideSplash,3000);
+
+})();
+
+</script>
+
+
+<!-- =====================================================
+     FIREBASE
+===================================================== -->
+
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+
+<script>
+
+const firebaseConfig = {
+
+  apiKey:
+    "AIzaSyBhmpkynU7Kl87UNge7aWwDhJ2Pm-TpVxk",
+
+  authDomain:
+    "aquarium-fish-218a1.firebaseapp.com",
+
+  projectId:
+    "aquarium-fish-218a1",
+
+  storageBucket:
+    "aquarium-fish-218a1.firebasestorage.app",
+
+  messagingSenderId:
+    "629993722414",
+
+  appId:
+    "1:629993722414:web:fa7d4f8ec7ec1f3d2f05bf"
+
+};
+
+</script>
+
+<script>
+(function(){
+  "use strict";
+
+  document.body.classList.add("auth-locked");
+
+  const gate = document.getElementById("authGate");
+  const form = document.getElementById("loginForm");
+  const email = document.getElementById("loginEmail");
+  const password = document.getElementById("loginPassword");
+  const button = document.getElementById("loginBtn");
+  const error = document.getElementById("loginError");
+  const header = document.getElementById("appHeader");
+
+  function showError(message){
+    if(error) error.textContent = message || "";
+  }
+
+  function translateAuthError(err){
+    const code = err && err.code ? err.code : "";
+    const messages = {
+      "auth/invalid-credential": "Correo o contraseña incorrectos.",
+      "auth/invalid-login-credentials": "Correo o contraseña incorrectos.",
+      "auth/user-not-found": "No existe una cuenta con ese correo.",
+      "auth/wrong-password": "Correo o contraseña incorrectos.",
+      "auth/too-many-requests": "Demasiados intentos. Espera unos minutos e inténtalo de nuevo.",
+      "auth/network-request-failed": "No se pudo conectar con Firebase.",
+      "auth/user-disabled": "Esta cuenta está deshabilitada."
+    };
+    return messages[code] || "No se pudo iniciar sesión. Revisa los datos e inténtalo de nuevo.";
+  }
+
+  if(!firebase.apps.length){
+    firebase.initializeApp(firebaseConfig);
+  }
+
+  const auth = firebase.auth();
+  window.AQ_AUTH_READY = false;
+  window.AQ_AUTH_USER = null;
+
+  if(form){
+    form.addEventListener("submit", async function(event){
+      event.preventDefault();
+      showError("");
+      button.disabled = true;
+      button.textContent = "Verificando...";
+
+      try{
+        await auth.signInWithEmailAndPassword(
+          email.value.trim(),
+          password.value
+        );
+      }catch(err){
+        console.error("Error de autenticación:", err);
+        showError(translateAuthError(err));
+      }finally{
+        button.disabled = false;
+        button.textContent = "Iniciar sesión";
+      }
+    });
+  }
+
+  auth.onAuthStateChanged(function(user){
+    window.AQ_AUTH_USER = user || null;
+    window.AQ_AUTH_READY = true;
+
+    if(user){
+      const userEmail = document.getElementById("authUserEmail");
+      if(userEmail) userEmail.textContent = user.email || "";
+      document.body.classList.remove("auth-locked");
+      gate.classList.add("hidden");
+      if(header) header.classList.remove("hidden");
+      window.dispatchEvent(new CustomEvent("aquarium-auth-ready"));
+    }else{
+      document.body.classList.add("auth-locked");
+      gate.classList.remove("hidden");
+      if(header) header.classList.add("hidden");
+    }
+  });
+
+  window.aquariumLogout = async function(){
+    try{
+      await auth.signOut();
+      window.location.reload();
+    }catch(err){
+      console.error("Error cerrando sesión:", err);
+      alert("No se pudo cerrar la sesión.");
+    }
+  };
+})();
+</script>
+
+<!-- =====================================================
+     PROTECCIÓN DE ERRORES DE INTERFAZ
+===================================================== -->
+<script>
+(function(){
+  function notify(message){
+    const status=document.getElementById("syncStatus");
+    const badge=document.getElementById("syncBadge");
+    if(status) status.textContent=message;
+    if(badge){ badge.textContent=message.replace(/^.*?\s/,''); badge.className="sync-badge sync-error"; }
+  }
+  window.addEventListener("error", function(event){
+    console.error("Error de interfaz Aquarium Fish:", event.error || event.message);
+    notify("⚠️ La aplicación encontró un problema. Tus datos locales siguen protegidos.");
+  });
+  window.addEventListener("unhandledrejection", function(event){
+    console.error("Error no controlado Aquarium Fish:", event.reason);
+    notify("⚠️ No se pudo completar una operación. Inténtalo nuevamente.");
+  });
+})();
+</script>
+
+<!-- =====================================================
+     APP.JS
+===================================================== -->
+
+<script src="app.js"></script>
+<script src="jarvis.js"></script>
+
+<!-- =====================================================
+     SINCRONIZACIÓN FIREBASE
+===================================================== -->
+
+<script>
+
+(function(){
+
+"use strict";
+
+
+let DATA_KEY =
+  "aquarium_fish_data_v5";
+
+
+const COLLECTION =
+  "appData";
+
+
+const DOCUMENT =
+  "aquariumFish";
+
+
+let syncing = false;
+
+let ready = false;
+
+let uploadTimer = null;
+
+let firestoreRef = null;
+
+let lastCloudJSON = null;
+let currentUser = null;
+
+
+const originalSetItem =
+  Storage.prototype.setItem;
+
+
+function setStatus(text){
+  const el = document.getElementById("syncStatus");
+  const badge = document.getElementById("syncBadge");
+  if(el) el.textContent = text;
+  if(badge){
+    const value=String(text||"");
+    badge.textContent = value.replace(/^\S+\s*/,"") || "Estado";
+    badge.className = "sync-badge " + (value.includes("⚠️") ? "sync-error" : value.includes("🟢") ? "sync-ok" : "sync-working");
+  }
+  const center = document.getElementById("syncCenterState");
+  if(center) center.textContent = String(text||"Estado").replace(/^\S+\s*/,"") || "Estado";
+}
+
+
+function normalize(data){
+
+  data = data || {};
+
+  return {
+
+    products:
+      Array.isArray(data.products)
+        ? data.products
+        : [],
+
+    sales:
+      Array.isArray(data.sales)
+        ? data.sales
+        : [],
+
+    moves:
+      Array.isArray(data.moves)
+        ? data.moves
+        : [],
+
+    customers:
+      Array.isArray(data.customers)
+        ? data.customers
+        : [],
+
+    orders:
+      Array.isArray(data.orders)
+        ? data.orders
+        : [],
+
+    cash:
+      Array.isArray(data.cash)
+        ? data.cash
+        : [],
+
+    quotes:
+      Array.isArray(data.quotes)
+        ? data.quotes
+        : []
+
+  };
+
+}
+
+
+function hasRealData(data){
+
+  const d =
+    normalize(data);
+
+  return (
+
+    d.products.length > 0 ||
+
+    d.sales.length > 0 ||
+
+    d.moves.length > 0 ||
+
+    d.customers.length > 0 ||
+
+    d.orders.length > 0 ||
+
+    d.cash.length > 0 ||
+
+    d.quotes.length > 0
+
+  );
+
+}
+
+
+function getLocalData(){
+
+  try{
+
+    if(
+      typeof db !== "undefined" &&
+      db
+    ){
+
+      return normalize(db);
+
+    }
+
+
+    const saved =
+      localStorage.getItem(
+        DATA_KEY
+      );
+
+
+    if(saved){
+
+      return normalize(
+        JSON.parse(saved)
+      );
+
+    }
+
+
+    return normalize(null);
+
+  }catch(error){
+
+    console.error(
+      "Error leyendo datos locales:",
+      error
+    );
+
+    return normalize(null);
+
+  }
+
+}
+
+
+function saveLocalV5(data){
+
+  try{
+
+    const normalized =
+      normalize(data);
+
+    syncing = true;
+
+    originalSetItem.call(
+      localStorage,
+      DATA_KEY,
+      JSON.stringify(
+        normalized
+      )
+    );
+
+    syncing = false;
+
+    return normalized;
+
+  }catch(error){
+
+    syncing = false;
+
+    console.error(
+      "Error guardando datos locales:",
+      error
+    );
+
+    return normalize(null);
+
+  }
+
+}
+
+
+window.aquariumPersistData = function(data){
+  const normalized = saveLocalV5(data);
+  if(ready && firestoreRef && currentUser){
+    setStatus("💾 Guardando cambios...");
+    uploadLocalData();
+  }else{
+    setStatus("📱 Guardado en este dispositivo");
+  }
+  return normalized;
+};
+
+
+function refreshApp(){
+
+  try{
+
+    if(
+      typeof renderAll ===
+      "function"
+    ){
+
+      renderAll();
+
+    }
+
+  }catch(error){
+
+    console.error(
+      "Error actualizando pantalla:",
+      error
+    );
+
+  }
+
+}
+
+
+function uploadLocalData(){
+
+  if(
+    !ready ||
+    syncing ||
+    !firestoreRef
+  ){
+
+    return;
+
+  }
+
+
+  clearTimeout(
+    uploadTimer
+  );
+
+
+  uploadTimer =
+    setTimeout(
+      async function(){
+
+        try{
+
+          const localData =
+            getLocalData();
+
+          const localJSON =
+            JSON.stringify(
+              localData
+            );
+
+
+          if(
+            localJSON ===
+            lastCloudJSON
+          ){
+
+            return;
+
+          }
+
+
+          setStatus(
+            "☁️ Guardando datos en Firebase..."
+          );
+
+
+          await firestoreRef.set({
+
+            ownerUid:
+              currentUser.uid,
+
+            data:
+              localData,
+
+            updatedAt:
+              firebase.firestore
+                .FieldValue
+                .serverTimestamp()
+
+          });
+
+
+          lastCloudJSON =
+            localJSON;
+
+          try{ localStorage.setItem("aquariumFishLastSync", new Date().toISOString()); }catch(_){ }
+
+          setStatus(
+            "🟢 Datos sincronizados"
+          );
+          refreshSyncCenter("Los datos están sincronizados con Firebase.");
+
+
+        }catch(error){
+
+          console.error(
+            "Error guardando en Firebase:",
+            error
+          );
+
+
+          setStatus(
+            "⚠️ No se pudo sincronizar"
+          );
+
+        }
+
+      },
+      700
+    );
+
+}
+
+
+Storage.prototype.setItem =
+  function(key,value){
+
+    originalSetItem.call(
+      this,
+      key,
+      value
+    );
+
+
+    if(
+
+      key === DATA_KEY &&
+
+      ready &&
+
+      !syncing
+
+    ){
+
+      uploadLocalData();
+
+    }
+
+  };
+
+
+function applyRemoteData(remoteData){
+
+  if(!remoteData){
+    return;
+  }
+
+
+  try{
+
+    const normalized =
+      normalize(remoteData);
+
+
+    const remoteJSON =
+      JSON.stringify(
+        normalized
+      );
+
+
+    const localData =
+      getLocalData();
+
+
+    const localJSON =
+      JSON.stringify(
+        localData
+      );
+
+
+    if(
+      remoteJSON ===
+      localJSON
+    ){
+
+      lastCloudJSON =
+        remoteJSON;
+
+      return;
+
+    }
+
+
+    if(
+
+      !hasRealData(
+        normalized
+      ) &&
+
+      hasRealData(
+        localData
+      )
+
+    ){
+
+      lastCloudJSON =
+        null;
+
+      setStatus(
+        "☁️ Conservando datos locales..."
+      );
+
+      uploadLocalData();
+
+      return;
+
+    }
+
+
+    syncing = true;
+
+
+    originalSetItem.call(
+      localStorage,
+      DATA_KEY,
+      remoteJSON
+    );
+
+
+    db =
+      normalized;
+
+
+    syncing = false;
+
+
+    refreshApp();
+
+
+    lastCloudJSON =
+      remoteJSON;
+
+    try{ localStorage.setItem("aquariumFishLastSync", new Date().toISOString()); }catch(_){ }
+
+    setStatus(
+      "🟢 Datos actualizados desde Firebase"
+    );
+    refreshSyncCenter("Datos actualizados desde Firebase.");
+
+
+  }catch(error){
+
+    syncing = false;
+
+    console.error(
+      "Error aplicando Firebase:",
+      error
+    );
+
+  }
+
+}
+
+
+function initFirebase(){
+
+  try{
+
+    currentUser = window.AQ_AUTH_USER || firebase.auth().currentUser;
+
+    if(!currentUser){
+      throw new Error("Usuario no autenticado");
+    }
+
+    if(
+      typeof firebase ===
+      "undefined"
+    ){
+
+      throw new Error(
+        "Firebase no pudo cargar"
+      );
+
+    }
+
+
+    if(
+      !firebase.apps.length
+    ){
+
+      firebase.initializeApp(
+        firebaseConfig
+      );
+
+    }
+
+
+    const firestore =
+      firebase.firestore();
+
+
+    firestoreRef =
+      firestore
+        .collection(
+          COLLECTION
+        )
+        .doc(
+          DOCUMENT
+        );
+
+
+    setStatus(
+      "🟢 Firebase conectado"
+    );
+
+
+    return true;
+
+
+  }catch(error){
+
+    console.error(
+      "Error iniciando Firebase:",
+      error
+    );
+
+
+    setStatus(
+      "⚠️ Firebase no disponible. Datos locales activos."
+    );
+
+
+    return false;
+
+  }
+
+}
+
+
+async function startSync(){
+
+  currentUser = window.AQ_AUTH_USER || firebase.auth().currentUser;
+
+  if(!currentUser || !firestoreRef){
+    return;
+  }
+
+
+  try{
+
+    setStatus(
+      "☁️ Comprobando datos..."
+    );
+
+
+    const localData =
+      getLocalData();
+
+
+    if(
+      hasRealData(
+        localData
+      )
+    ){
+
+      saveLocalV5(
+        localData
+      );
+
+    }
+
+
+    const snapshot =
+      await firestoreRef.get();
+
+
+    if(
+      !snapshot.exists
+    ){
+
+      ready = true;
+
+      lastCloudJSON =
+        null;
+
+      setStatus(
+        "☁️ Subiendo tus datos a Firebase..."
+      );
+
+      uploadLocalData();
+
+
+    }else{
+
+      const rawSnapshotData =
+        snapshot.data() || {};
+
+      // Migración única del documento antiguo: mientras las reglas antiguas
+      // siguen activas, asignamos el documento al usuario autenticado.
+      if(
+        !rawSnapshotData.ownerUid &&
+        currentUser
+      ){
+        await firestoreRef.set({
+          ownerUid: currentUser.uid,
+          data: rawSnapshotData.data || normalize(null),
+          updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        }, { merge: true });
+      }else if(
+        rawSnapshotData.ownerUid &&
+        rawSnapshotData.ownerUid !== currentUser.uid
+      ){
+        throw new Error("El documento pertenece a otra cuenta de Aquarium Fish.");
+      }
+
+      const cloudData =
+        rawSnapshotData.data;
+
+
+      if(cloudData){
+
+        const normalizedCloud =
+          normalize(
+            cloudData
+          );
+
+
+        if(
+
+          !hasRealData(
+            normalizedCloud
+          ) &&
+
+          hasRealData(
+            localData
+          )
+
+        ){
+
+          ready = true;
+
+          lastCloudJSON =
+            null;
+
+          setStatus(
+            "☁️ Subiendo datos existentes..."
+          );
+
+          uploadLocalData();
+
+
+        }else{
+
+          ready = true;
+
+          applyRemoteData(
+            normalizedCloud
+          );
+
+          setStatus(
+            "🟢 Sincronización activa"
+          );
+
+        }
+
+
+      }else{
+
+        ready = true;
+
+        lastCloudJSON =
+          null;
+
+        setStatus(
+          "☁️ Guardando datos..."
+        );
+
+        uploadLocalData();
+
+      }
+
+    }
+
+
+    firestoreRef.onSnapshot(
+
+      function(snapshot){
+
+        if(
+          !snapshot.exists
+        ){
+
+          return;
+
+        }
+
+
+        const snapshotData =
+          snapshot.data();
+
+        if(
+          snapshotData &&
+          snapshotData.ownerUid &&
+          currentUser &&
+          snapshotData.ownerUid !== currentUser.uid
+        ){
+          setStatus("⚠️ Los datos de Firebase pertenecen a otra cuenta.");
+          return;
+        }
+
+        if(
+
+          !snapshotData ||
+
+          !snapshotData.data
+
+        ){
+
+          return;
+
+        }
+
+
+        const remote =
+          normalize(
+            snapshotData.data
+          );
+
+
+        const local =
+          getLocalData();
+
+
+        if(
+
+          !hasRealData(
+            remote
+          ) &&
+
+          hasRealData(
+            local
+          )
+
+        ){
+
+          lastCloudJSON =
+            null;
+
+          uploadLocalData();
+
+          return;
+
+        }
+
+
+        const remoteJSON =
+          JSON.stringify(
+            remote
+          );
+
+
+        const localJSON =
+          JSON.stringify(
+            local
+          );
+
+
+        if(
+          remoteJSON ===
+          localJSON
+        ){
+
+          lastCloudJSON =
+            remoteJSON;
+          try{ localStorage.setItem("aquariumFishLastSync", new Date().toISOString()); }catch(_){ }
+          refreshSyncCenter("Sincronización confirmada.");
+
+          return;
+
+        }
+
+
+        applyRemoteData(
+          remote
+        );
+
+      },
+
+
+      function(error){
+
+        console.error(
+          "Error escuchando Firebase:",
+          error
+        );
+
+
+        setStatus(
+          "⚠️ Firebase desconectado. Datos locales activos."
+        );
+
+      }
+
+    );
+
+
+  }catch(error){
+
+    console.error(
+      "Error de sincronización:",
+      error
+    );
+
+
+    setStatus(
+      "⚠️ Firebase no disponible. Datos locales activos."
+    );
+
+  }
+
+}
+
+
+function formatSyncDate(value){
+  if(!value) return "Aún no registrada";
+  try{ return new Date(value).toLocaleString("es-CO", {dateStyle:"short", timeStyle:"short"}); }catch(_){ return "Aún no registrada"; }
+}
+
+function refreshSyncCenter(message){
+  try{
+    const local = getLocalData();
+    const records = Object.values(local).reduce((sum,v)=>sum + (Array.isArray(v) ? v.length : 0), 0);
+    const lastSync = localStorage.getItem("aquariumFishLastSync");
+    const lastBackup = localStorage.getItem("aquariumFishLastBackup");
+    const cloud = document.getElementById("syncCenterCloud");
+    const state = document.getElementById("syncCenterState");
+    const syncEl = document.getElementById("syncCenterLastSync");
+    const backupEl = document.getElementById("syncCenterLastBackup");
+    const recordsEl = document.getElementById("syncCenterRecords");
+    const msg = document.getElementById("syncCenterMessage");
+    if(cloud) cloud.textContent = ready && firestoreRef ? "🟢 Conectado" : "📱 Solo dispositivo";
+    if(state) state.textContent = ready && firestoreRef ? "🟢 Activo" : "📱 Local";
+    if(syncEl) syncEl.textContent = formatSyncDate(lastSync);
+    if(backupEl) backupEl.textContent = formatSyncDate(lastBackup);
+    if(recordsEl) recordsEl.textContent = records + (records===1 ? " registro" : " registros");
+    if(msg && message) msg.textContent = message;
+  }catch(error){ console.warn("No se pudo actualizar el centro de sincronización", error); }
+}
+
+window.refreshSyncCenter = refreshSyncCenter;
+
+window.aquariumRetrySync = async function(){
+  try{
+    if(!currentUser){ setStatus("⚠️ Inicia sesión para sincronizar"); refreshSyncCenter("Inicia sesión para conectar con Firebase."); return; }
+    setStatus("☁️ Sincronizando ahora...");
+    if(!firestoreRef && !initFirebase()){ refreshSyncCenter("No se pudo conectar con Firebase. Los datos locales siguen disponibles."); return; }
+    ready = false;
+    await startSync();
+    refreshSyncCenter("Sincronización solicitada. Puedes seguir trabajando mientras se completa.");
+  }catch(error){
+    console.error("Error en sincronización manual:", error);
+    setStatus("⚠️ No se pudo sincronizar");
+    refreshSyncCenter("No se pudo completar la sincronización. Tus datos locales siguen disponibles.");
+  }
+};
+
+async function startAuthenticatedFirebase(){
+
+  if(!window.AQ_AUTH_USER){
+    return;
+  }
+
+  const connected = initFirebase();
+
+  if(connected){
+    await startSync();
+  }else{
+    refreshSyncCenter("Firebase no está disponible. Puedes seguir trabajando con los datos del dispositivo.");
+  }
+  refreshSyncCenter();
+
+}
+
+window.addEventListener(
+  "aquarium-auth-ready",
+  function(){
+    if(window.AQ_AUTH_USER){
+      DATA_KEY =
+        window.AQ_DATA_KEY ||
+        ("aquarium_fish_data_v5_" + window.AQ_AUTH_USER.uid);
+      startAuthenticatedFirebase();
+    }
+  }
+);
+
+if(window.AQ_AUTH_READY && window.AQ_AUTH_USER){
+  DATA_KEY =
+    window.AQ_DATA_KEY ||
+    ("aquarium_fish_data_v5_" + window.AQ_AUTH_USER.uid);
+  startAuthenticatedFirebase();
+}
+
+})();
+
+</script>
+
+
+
+
+</body>
+</html>

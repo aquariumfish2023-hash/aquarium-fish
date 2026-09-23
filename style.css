@@ -1,0 +1,519 @@
+*{box-sizing:border-box}body{margin:0;font-family:system-ui,-apple-system,Segoe UI,sans-serif;background:#f4f7f8;color:#172024;padding-bottom:92px}#splash{position:fixed;inset:0;background:#003d59;z-index:100;display:flex;align-items:center;justify-content:center;overflow:hidden;transition:opacity .45s ease,visibility .45s ease}#splash.hide{opacity:0;visibility:hidden}#splash img{width:100%;height:100%;object-fit:cover;object-position:center;display:block}header{height:66px;background:#087f8c;color:#fff;display:flex;align-items:center;justify-content:space-between;padding:0 16px;position:sticky;top:0;z-index:5}.brand{display:flex;align-items:center;gap:10px}.brand img{width:42px;height:42px}.brand strong{display:block;font-size:18px}.brand small{opacity:.8}.screen{display:none;padding:18px}.screen.active{display:block}h1{font-size:26px;margin:8px 0 18px}h2{font-size:18px;margin:0 0 12px}.cards{display:grid;grid-template-columns:1fr 1fr;gap:12px}.card,.panel,.item{background:#fff;border-radius:16px;padding:16px;box-shadow:0 2px 10px #0000000b}.card:first-child{grid-column:1/-1}.card span,.card small{display:block;color:#647277}.card b{display:block;font-size:24px;margin:5px 0}.panel{margin-top:16px}.section-head{display:flex;justify-content:space-between;align-items:center}.primary{border:0;background:#087f8c;color:#fff;border-radius:12px;padding:11px 14px;font-weight:700}.ghost{background:#fff;border:0;border-radius:10px;padding:8px 12px}.search,input,select{width:100%;padding:12px;border:1px solid #d7dfe1;border-radius:12px;background:#fff;font-size:16px;margin-bottom:10px}.list{display:grid;gap:10px}.item{display:flex;justify-content:space-between;gap:12px}.item b{display:block}.muted{color:#6b797d;font-size:13px}.right{text-align:right}.right small{display:block;color:#087f8c;font-size:12px;margin-top:3px}.badge{padding:5px 8px;border-radius:999px;background:#e7f5f5;font-size:12px;white-space:nowrap;height:max-content}.low{background:#fff0e9;color:#a43d16}.clickable{cursor:pointer}.empty{text-align:center;color:#718084;padding:28px}.data-actions{display:flex;gap:8px;flex-wrap:wrap}.data-actions button,.form-actions button{border:1px solid #d7dfe1;background:#fff;border-radius:12px;padding:11px;font-weight:600}.data-actions button:first-child{background:#087f8c;color:#fff;border-color:#087f8c}nav{position:fixed;bottom:0;left:0;right:0;min-height:70px;background:#fff;border-top:1px solid #dde4e5;display:grid;grid-template-columns:repeat(6,1fr);z-index:10}nav button{border:0;background:none;color:#67767a;font-size:19px;padding:7px 1px}nav button span{display:block;font-size:9px;margin-top:3px}nav button.active{color:#087f8c;font-weight:700}.modal{position:fixed;inset:0;background:#0008;z-index:20;display:flex;align-items:flex-end}.modal-box{background:#fff;width:100%;max-height:90vh;border-radius:22px 22px 0 0;padding:18px;overflow:auto}.modal-head{display:flex;justify-content:space-between;align-items:center}.modal-head button{border:0;background:#eef2f3;border-radius:50%;font-size:24px;width:38px;height:38px}.form-actions{display:flex;gap:10px;margin-top:10px}.form-actions button{flex:1}.hidden{display:none!important}.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}label{display:block;font-weight:600;font-size:14px;margin-bottom:6px}.sale-row{display:grid;grid-template-columns:1fr 82px 42px;gap:8px;align-items:start;margin-bottom:8px}.sale-product-search-box{margin:10px 0 12px;padding:12px;background:#f5f8f9;border:1px solid #e2e8ea;border-radius:14px}.sale-product-search-box label{margin-bottom:6px}.sale-product-search-box .search{margin-bottom:8px}.sale-search-results{display:grid;gap:6px;max-height:240px;overflow:auto}.sale-search-result{width:100%;display:flex;align-items:center;justify-content:space-between;gap:10px;text-align:left;border:1px solid #d7e1e3;background:#fff;border-radius:11px;padding:10px 12px;cursor:pointer}.sale-search-result:hover{border-color:#087f8c}.sale-search-result b{display:block;font-size:14px}.sale-search-result small{display:block;color:#6b797d;font-size:12px;margin-top:3px}.sale-search-result strong{font-size:12px;color:#087f8c;white-space:nowrap}.sale-search-result.out-of-stock{opacity:.55;cursor:not-allowed}.sale-search-result.out-of-stock strong{color:#a43d16}.sale-search-hint,.sale-search-empty{padding:9px 4px;color:#6b797d;font-size:12px}.sale-row select,.sale-row input{min-width:0}.remove-row{padding:10px 8px}.row-price{font-size:12px;color:#087f8c;margin:0 2px 6px}.sale-preview{margin:12px 0;padding:14px;border-radius:14px;background:#eef7f8;display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap}.sale-preview b{font-size:18px}.sale-preview small{display:block;color:#6b797d;margin-top:3px}.date-group{margin-bottom:12px;border:1px solid #e2e8ea;border-radius:16px;overflow:hidden;background:#fff}.date-group-head{width:100%;border:0;background:#f5f8f9;padding:14px 16px;display:flex;justify-content:space-between;align-items:center;text-align:left;cursor:pointer;color:inherit}.date-group-head b{display:block;text-transform:capitalize;font-size:16px}.date-group-head small{display:block;margin-top:3px;color:#6b757a}.date-chevron{font-size:13px;color:#087f8c}.date-group-body{display:none}.date-group-body.open{display:block}.date-group-body .item{border-radius:0;border-left:0;border-right:0;border-bottom:1px solid #edf0f1}.date-group-body .item:last-child{border-bottom:0}.customer-summary{display:grid;gap:6px;background:#f5f8f9;border-radius:14px;padding:12px;margin:8px 0}.internal-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.internal-grid div{background:#f5f8f9;border-radius:14px;padding:13px}.internal-grid span{display:block;color:#6b797d;font-size:12px}.internal-grid b{font-size:20px;display:block;margin-top:3px}.order-status{border:0;cursor:pointer}.order-status.done{background:#e8f5e9;color:#2e6b35}@media(min-width:700px){main{max-width:900px;margin:auto}.modal{align-items:center;justify-content:center}.modal-box{max-width:540px;border-radius:20px}.cards{grid-template-columns:repeat(3,1fr)}.card:first-child{grid-column:auto}nav{left:50%;transform:translateX(-50%);max-width:900px;border-radius:18px 18px 0 0}}
+
+.quote-row{overflow:hidden}.quote-row button{border:1px solid #d7dfe1;background:#fff;border-radius:10px;padding:8px 10px;font-weight:600}.quote-row .primary{border-color:#087f8c}.quote-row>div:last-child{justify-content:flex-end}@media(max-width:699px){.quote-row{grid-template-columns:1fr!important}.quote-row>div:last-child{justify-content:flex-start}.quote-row button{flex:1;min-width:120px}.quote-row .badge{display:inline-flex;align-items:center}}
+
+.portada-screen{padding:12px;min-height:calc(100vh - 158px);display:none;align-items:center;justify-content:center;background:#03182d}.portada-screen.active{display:flex}.portada-card{width:min(900px,100%);height:min(720px,calc(100vh - 190px));border-radius:24px;overflow:hidden;box-shadow:0 16px 50px #0006;background:#03182d}.portada-card img{width:100%;height:100%;display:block;object-fit:cover;object-position:center}.portada-screen + .screen{background:#f4f7f8}@media(max-width:699px){nav{display:flex;overflow-x:auto;justify-content:flex-start}nav button{min-width:72px;flex:0 0 72px}.portada-screen{padding:8px;min-height:calc(100vh - 150px)}.portada-card{height:calc(100vh - 170px);border-radius:18px}}
+
+
+/* =========================================================
+   PORTADA PROFESIONAL RESPONSIVE
+   ========================================================= */
+body.portada-mode{
+  padding-bottom:0;
+  background:#020f22;
+  overflow:hidden;
+}
+body.portada-mode main{
+  max-width:none;
+  width:100%;
+  margin:0;
+}
+body.portada-mode #appHeader{
+  display:none!important;
+}
+nav.portada-hidden{
+  display:none!important;
+}
+.portada-screen{
+  position:relative;
+  width:100%;
+  min-height:100vh!important;
+  height:100vh;
+  padding:0!important;
+  display:none;
+  align-items:center;
+  justify-content:center;
+  background:#020f22;
+}
+.portada-screen.active{display:flex}
+.portada-card{
+  position:relative;
+  width:100%;
+  height:100%;
+  max-width:none;
+  border-radius:0;
+  overflow:hidden;
+  box-shadow:none;
+  background:#020f22;
+}
+.portada-picture,.portada-picture img{
+  width:100%;
+  height:100%;
+  display:block;
+}
+.portada-picture img{
+  object-fit:cover;
+  object-position:center center;
+}
+.portada-enter{
+  position:absolute;
+  left:50%;
+  top:74%;
+  transform:translate(-50%,-50%);
+  width:min(410px,34vw);
+  height:76px;
+  border:0;
+  border-radius:999px;
+  background:transparent;
+  color:transparent;
+  cursor:pointer;
+  z-index:3;
+  outline:none;
+}
+.portada-enter:focus-visible{
+  box-shadow:0 0 0 4px rgba(0,210,255,.65);
+}
+.portada-enter span{
+  position:absolute;
+  width:1px;
+  height:1px;
+  overflow:hidden;
+  clip:rect(0 0 0 0);
+  white-space:nowrap;
+}
+@media(max-width:699px){
+  .portada-screen{
+    min-height:100dvh!important;
+    height:100dvh;
+  }
+  .portada-card{
+    height:100dvh;
+  }
+  .portada-picture img{
+    object-fit:cover;
+    object-position:center center;
+  }
+  .portada-enter{
+    top:45%;
+    width:min(82vw,360px);
+    height:70px;
+  }
+}
+@media(min-width:700px) and (max-height:760px){
+  .portada-enter{top:75%}
+}
+
+
+/* =====================================================
+   INICIO PROFESIONAL
+   ===================================================== */
+.quick-actions-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}.quick-actions-grid button{min-height:52px;border:1px solid #d7dfe1;background:#fff;border-radius:14px;padding:11px 10px;font-weight:700;font-size:14px}.quick-actions-grid .primary{border-color:#087f8c}.card-today{background:linear-gradient(135deg,#e9fbfc,#fff)}
+@media(max-width:699px){.quick-actions-grid{grid-template-columns:1fr}.quick-actions-grid button{min-height:50px}}
+
+/* =====================================================
+   V7 — EXPERIENCIA MOVIL Y TABLET
+   Mejoras visuales sin cambiar datos ni lógica.
+   ===================================================== */
+button,
+input,
+select,
+textarea{touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+button{cursor:pointer}
+
+@media(max-width:699px){
+  body{padding-bottom:122px;overflow-x:hidden}
+  header{height:60px;padding:0 10px}
+  .brand{gap:8px;min-width:0}
+  .brand img{width:36px;height:36px}
+  .brand strong{font-size:16px}
+  .brand small{font-size:11px}
+  #authUserEmail{display:none}
+  #logoutBtn,#installBtn{min-height:42px;padding:9px 11px}
+
+  main{width:100%;min-width:0}
+  .screen{padding:12px}
+  h1{font-size:23px;margin:5px 0 14px}
+  h2{font-size:17px}
+
+  .cards{grid-template-columns:1fr;gap:10px}
+  .card:first-child{grid-column:auto}
+  .card,.panel,.item{border-radius:14px;padding:14px}
+  .card b{font-size:22px}
+
+  .section-head{gap:8px;align-items:flex-start}
+  .section-head>button{min-height:42px}
+  .data-actions{gap:7px}
+  .data-actions button,.form-actions button{min-height:44px;padding:10px 12px}
+
+  .grid2{grid-template-columns:1fr;gap:0}
+  .search,input,select{min-height:44px;font-size:16px}
+  textarea{font-size:16px}
+
+  .item{align-items:flex-start}
+  .item>div:first-child{min-width:0;overflow-wrap:anywhere}
+  .right{min-width:92px}
+
+  .sale-row{grid-template-columns:minmax(0,1fr) 72px 44px;gap:6px}
+  .remove-row{min-height:44px}
+
+  .quick-actions-grid{grid-template-columns:1fr}
+  .quick-actions-grid button{min-height:52px;font-size:14px}
+
+  .modal{align-items:flex-end}
+  .modal-box{width:100%;max-height:92dvh;border-radius:20px 20px 0 0;padding:16px 14px}
+  .modal-head{position:sticky;top:-16px;background:#fff;padding:2px 0 10px;z-index:2}
+  .modal-head button{min-width:42px;min-height:42px}
+  .form-actions{gap:8px;flex-wrap:wrap}
+  .form-actions button{min-width:130px}
+
+  /* Navegación móvil: todos los módulos visibles en 2 filas, sin desplazamiento horizontal. */
+  nav{left:0;right:0;bottom:0;width:100%;max-width:none;min-height:112px;height:112px;
+      transform:none;display:grid;grid-template-columns:repeat(4,1fr);grid-template-rows:repeat(2,1fr);
+      overflow:hidden;border-radius:16px 16px 0 0;padding:4px 4px calc(4px + env(safe-area-inset-bottom));
+      box-shadow:0 -4px 18px #00000012}
+  nav button{min-width:0;width:100%;min-height:50px;font-size:20px;padding:5px 2px;border-radius:12px}
+  nav button span{font-size:10px;margin-top:2px;white-space:nowrap}
+  nav button.active{background:#eef8f8}
+
+  /* Evita que los controles queden demasiado pequeños al tocar. */
+  .quote-row button{min-height:44px}
+  .date-group-head{min-height:52px}
+}
+
+@media(min-width:700px) and (max-width:999px){
+  main{padding-left:8px;padding-right:8px}
+  .screen{padding:16px}
+  nav{max-width:760px}
+}
+
+/* =====================================================
+   REPORTES V2 — PANEL PROFESIONAL
+   ===================================================== */
+
+.report-visual-grid{display:grid;grid-template-columns:1.25fr .95fr;gap:16px;margin-top:16px}.report-chart-panel{min-width:0}.report-panel-title{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}.report-panel-title h2{margin-bottom:2px}.report-panel-title p{margin:0;font-size:12px}.report-bars{display:flex;align-items:flex-end;gap:8px;height:250px;margin-top:20px;padding:8px 4px 0;border-bottom:1px solid #dfe6e8;overflow-x:auto}.bar-item{height:100%;min-width:46px;flex:1;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:5px}.bar-item .bar-value{font-size:10px;color:#607176;white-space:nowrap;min-height:15px}.bar-track{height:190px;width:100%;max-width:48px;display:flex;align-items:flex-end;background:#f1f4f5;border-radius:8px 8px 3px 3px;overflow:hidden}.bar-track span{display:block;width:100%;background:#0b8b96;border-radius:8px 8px 2px 2px;min-height:4px}.bar-item small{font-size:10px;color:#607176;white-space:nowrap}.report-hbars{display:grid;gap:13px;margin-top:18px}.hbar-item{min-width:0}.hbar-head{display:flex;justify-content:space-between;gap:10px;font-size:13px}.hbar-head span{min-width:0;overflow-wrap:anywhere}.hbar-head strong{white-space:nowrap}.hbar-track,.payment-track{height:9px;background:#edf2f3;border-radius:99px;overflow:hidden;margin-top:6px}.hbar-track span,.payment-track span{display:block;height:100%;background:#0b8b96;border-radius:99px}.hbar-item small,.payment-row small{display:block;color:#728084;font-size:11px;margin-top:4px}.payment-visual{display:grid;gap:15px;margin-top:18px}.payment-label{display:flex;justify-content:space-between;gap:10px;font-size:13px}.payment-track{height:11px}.payment-track span{background:#5f7f87}.report-insight-panel{background:linear-gradient(135deg,#f8fbfb,#fff)}.insight{display:flex;gap:11px;align-items:flex-start;padding:12px 0;border-bottom:1px solid #edf0f1}.insight:last-child{border-bottom:0}.insight>span{font-size:20px;line-height:1}.insight b{font-size:13px}.insight p{margin:3px 0 0;color:#657477;font-size:12px}.report-visual-grid+.report-columns{margin-top:0}
+@media(max-width:699px){.report-visual-grid{grid-template-columns:1fr;gap:10px}.report-bars{height:220px}.bar-track{height:165px}.bar-item .bar-value{font-size:9px}.hbar-head{font-size:12px}}
+.report-header{gap:14px}.report-header h1{margin-bottom:2px}.report-header p{margin:0 0 8px}.report-actions{display:flex;gap:8px;flex-wrap:wrap}.report-actions button{border:1px solid #d7dfe1;background:#fff;border-radius:12px;padding:10px 13px;font-weight:700}.report-actions .primary{color:#fff;border-color:#087f8c}.report-filter-panel h2{margin-bottom:10px}.report-period-buttons{display:flex;gap:8px;flex-wrap:wrap}.report-period-buttons button{border:1px solid #d7dfe1;background:#fff;border-radius:999px;padding:9px 13px;font-weight:700}.report-period-buttons button.selected{background:#e7f5f5;border-color:#087f8c;color:#087f8c}.report-date-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}.report-date-grid label{margin:0}.report-date-grid input{margin-top:6px;margin-bottom:0}.report-card-main{background:linear-gradient(135deg,#e9fbfc,#fff)}.report-columns{display:grid;grid-template-columns:1fr 1fr;gap:16px}.report-columns .panel{margin-top:16px}.report-list{display:grid;gap:8px}.report-rank{display:grid;grid-template-columns:32px minmax(0,1fr) auto;gap:10px;align-items:center;padding:10px 0;border-bottom:1px solid #edf0f1}.report-rank:last-child{border-bottom:0}.rank-number{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;background:#eef7f8;color:#087f8c;font-weight:800}.report-rank b{display:block;overflow-wrap:anywhere}.report-rank small{display:block;color:#6b797d;margin-top:2px}.report-rank>strong{font-size:15px}.report-note{display:flex;gap:10px;align-items:flex-start}.report-note>span{font-size:20px}.report-note p{margin:4px 0 0;color:#68777b;font-size:13px;line-height:1.45}
+@media(max-width:699px){.report-header{align-items:stretch}.report-actions{width:100%}.report-actions button{flex:1}.report-date-grid{grid-template-columns:1fr}.report-columns{grid-template-columns:1fr;gap:0}.report-columns .panel{margin-top:10px}.report-period-buttons{display:grid;grid-template-columns:repeat(2,1fr)}.report-period-buttons button{width:100%}.report-period-buttons button:last-child{grid-column:1/-1}.report-rank{grid-template-columns:30px minmax(0,1fr) auto}.report-rank>strong{font-size:13px}}
+
+/* =========================================================
+   CAJA V4 - CIERRE Y CONTROL
+   ========================================================= */
+.cash-close-box{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:10px 0 14px}
+.cash-close-box>div{padding:14px;border:1px solid #e5e7eb;border-radius:12px;background:#f8fafc}
+.cash-close-box span,.cash-closing-row span{display:block;font-size:.82rem;color:#64748b;margin-bottom:4px}
+.cash-close-box b{font-size:1.25rem}
+.cash-closing-list{display:grid;gap:8px;margin-top:12px}
+.cash-closing-row{display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:12px;align-items:center;padding:12px;border:1px solid #e5e7eb;border-radius:12px;background:#fff}
+.cash-closing-row small{display:block;color:#64748b;margin-top:3px}
+.cash-ok b{font-weight:700}
+.cash-diff b{font-weight:700}
+@media(max-width:700px){.cash-close-box{grid-template-columns:1fr}.cash-closing-row{grid-template-columns:1fr 1fr}.cash-closing-row>div:first-child{grid-column:1/-1}}
+
+
+/* =========================================================
+   DASHBOARD GENERAL
+   ========================================================= */
+.dashboard-screen{max-width:1180px;margin:0 auto}.dashboard-hero{display:flex;justify-content:space-between;align-items:flex-end;gap:18px;margin-bottom:16px}.dashboard-kicker{font-size:11px;font-weight:800;letter-spacing:.12em;color:#087f8c}.dashboard-hero h1{margin:4px 0 4px;font-size:30px}.dashboard-hero p{margin:0;color:#68777b}.dashboard-date{text-transform:capitalize;background:#f1f7f8;border:1px solid #dbe8e9;padding:9px 12px;border-radius:999px;font-size:12px;font-weight:700;color:#426268}.dashboard-kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}.dashboard-kpis .card{min-width:0}.dash-main-card{background:linear-gradient(135deg,#e8fafb,#fff)}.dashboard-grid{display:grid;grid-template-columns:1.25fr .95fr;gap:16px;margin-top:16px}.dashboard-lower-grid{grid-template-columns:1.25fr .95fr}.dashboard-chart-panel{min-width:0}.dashboard-panel-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}.dashboard-panel-head h2{margin-bottom:2px}.dashboard-panel-head p{margin:0;font-size:12px}.dashboard-panel-head>strong{font-size:15px}.dashboard-bars{height:245px;display:flex;align-items:flex-end;gap:8px;margin-top:18px;padding:8px 4px 0;border-bottom:1px solid #dfe6e8;overflow-x:auto}.dashboard-bar-item{height:100%;min-width:48px;flex:1;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:5px}.dashboard-bar-value{font-size:9px;color:#607176;white-space:nowrap;min-height:15px}.dashboard-bar-track{height:185px;width:100%;max-width:52px;display:flex;align-items:flex-end;background:#f1f4f5;border-radius:8px 8px 3px 3px;overflow:hidden}.dashboard-bar-track i{display:block;width:100%;background:#0b8b96;border-radius:8px 8px 2px 2px;min-height:4px}.dashboard-bar-item small{font-size:10px;color:#607176;white-space:nowrap}.dashboard-hbars{display:grid;gap:16px;margin-top:20px}.dashboard-hbar-item{min-width:0}.dashboard-hbar-head{display:flex;justify-content:space-between;gap:10px;font-size:13px}.dashboard-hbar-head span{min-width:0;overflow-wrap:anywhere}.dashboard-hbar-head strong{white-space:nowrap}.dashboard-hbar-track{height:10px;background:#edf2f3;border-radius:99px;overflow:hidden;margin-top:7px}.dashboard-hbar-track i{display:block;height:100%;background:#0b8b96;border-radius:99px}.dashboard-actions{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:12px}.dashboard-actions button{min-height:48px}.dashboard-insights{display:grid;gap:8px}.dashboard-insight{display:flex;gap:11px;align-items:flex-start;padding:12px;border:1px solid #e7edef;border-radius:12px;background:#fafcfc}.dashboard-insight>span{font-size:20px;line-height:1}.dashboard-insight b{font-size:13px}.dashboard-insight p{margin:3px 0 0;color:#68777b;font-size:12px;line-height:1.4}.dashboard-insight.warn{background:#fffaf0;border-color:#f1dfb1}.dashboard-insight.alert{background:#fff5f5;border-color:#f0cccc}.dashboard-insight.good{background:#f3fbf6;border-color:#d3eadb}.dashboard-status-panel{margin-top:16px}.dashboard-screen .data-actions{display:flex;gap:8px;flex-wrap:wrap}
+@media(max-width:900px){.dashboard-kpis{grid-template-columns:repeat(2,1fr)}.dashboard-grid,.dashboard-lower-grid{grid-template-columns:1fr}}
+@media(max-width:699px){.dashboard-hero{align-items:flex-start;flex-direction:column}.dashboard-hero h1{font-size:25px}.dashboard-date{align-self:flex-start}.dashboard-kpis{grid-template-columns:1fr 1fr;gap:9px}.dashboard-kpis .card{padding:12px}.dashboard-kpis .card b{font-size:19px}.dashboard-grid{gap:10px;margin-top:10px}.dashboard-bars{height:220px}.dashboard-bar-track{height:165px}.dashboard-actions{grid-template-columns:1fr}.dashboard-actions button{min-height:50px}}
+
+
+/* =====================================================
+   DASHBOARD V2 — CENTRO DE CONTROL INTELIGENTE
+   ===================================================== */
+.dashboard-kpis .card{position:relative;overflow:hidden}
+.dashboard-kpis .card em{position:absolute;right:13px;top:13px;font-style:normal}
+.dashboard-change{font-size:12px;font-weight:800;white-space:nowrap}
+.dashboard-change.up{color:#208447}.dashboard-change.down{color:#b44a3f}.dashboard-change.neutral{color:#7b878a}
+.dashboard-period-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px}
+.dashboard-period-card{margin-top:0;display:flex;align-items:flex-start;gap:14px;position:relative;min-width:0}
+.dashboard-period-card>div{min-width:0;flex:1}.dashboard-period-card span,.dashboard-period-card small{display:block;color:#68777b;font-size:12px}.dashboard-period-card b{display:block;font-size:25px;margin:4px 0}.dashboard-period-card>strong{padding-top:3px}.dashboard-period-card p{position:absolute;left:16px;bottom:10px;margin:0;color:#7a878a;font-size:11px}.dashboard-inside-grid{margin-top:16px}
+.dashboard-payment-list,.dashboard-mini-list{display:grid;gap:11px;margin-top:12px}.dashboard-pay-row>div:first-child{display:flex;justify-content:space-between;gap:10px;font-size:13px}.dashboard-pay-row strong{white-space:nowrap}.dashboard-pay-row .dashboard-hbar-track{margin-top:5px;height:8px}
+.dashboard-mini-row{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid #edf1f2;font-size:13px}.dashboard-mini-row:last-child{border-bottom:0}.dashboard-mini-row span{min-width:0;overflow-wrap:anywhere}.dashboard-mini-row strong{white-space:nowrap}.dashboard-stock-footer{display:flex;justify-content:space-between;gap:10px;margin-top:12px;padding-top:11px;border-top:1px solid #e8edef;color:#667579;font-size:12px}.dashboard-stock-footer b{color:#172024}
+.dashboard-actions-v2{grid-template-columns:repeat(3,1fr)}
+@media(max-width:900px){.dashboard-period-grid{grid-template-columns:1fr}.dashboard-actions-v2{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:699px){.dashboard-period-grid{gap:10px}.dashboard-period-card b{font-size:21px}.dashboard-inside-grid{margin-top:10px}.dashboard-actions-v2{grid-template-columns:1fr}.dashboard-stock-footer{flex-direction:column}.dashboard-kpis .card em{position:static;display:inline-block;margin-top:3px}.dashboard-kpis .card{min-height:104px}}
+
+/* =========================================================
+   ETAPA A — ORDEN Y EXPERIENCIA PROFESIONAL
+   ========================================================= */
+:root{
+  --af-primary:#087f8c;
+  --af-primary-dark:#066b76;
+  --af-bg:#f4f7f8;
+  --af-card:#ffffff;
+  --af-text:#172024;
+  --af-muted:#68777b;
+  --af-border:#e2e9eb;
+  --af-shadow:0 6px 22px rgba(15,35,42,.07);
+}
+html{scroll-behavior:smooth}
+body{background:var(--af-bg);color:var(--af-text)}
+button,input,select{font-family:inherit}
+button{touch-action:manipulation}
+.screen{padding:20px}
+.screen>h1{margin-top:4px}
+.section-head{gap:16px;margin-bottom:14px;align-items:flex-start}
+.section-head>div{min-width:0}
+.page-kicker{display:block;color:var(--af-primary);font-size:11px;font-weight:800;letter-spacing:.12em;margin-bottom:4px}
+.page-subtitle{margin:-10px 0 0;line-height:1.45}
+.page-hero{display:flex;justify-content:space-between;align-items:flex-end;gap:18px;margin:4px 0 18px}
+.page-hero h1{margin:3px 0 4px}
+.panel,.card,.item{box-shadow:var(--af-shadow);border:1px solid rgba(226,233,235,.7)}
+.panel{margin-top:14px}
+.primary{background:var(--af-primary);box-shadow:0 5px 14px rgba(8,127,140,.16);transition:transform .15s ease,background .15s ease,box-shadow .15s ease}
+.primary:hover{background:var(--af-primary-dark)}
+.primary:active{transform:translateY(1px);box-shadow:none}
+.ghost{border:1px solid var(--af-border);font-weight:700}
+.search,input,select{border-color:#d7e0e2;outline:none;transition:border-color .15s ease,box-shadow .15s ease}
+.search:focus,input:focus,select:focus{border-color:#68aeb5;box-shadow:0 0 0 3px rgba(8,127,140,.10)}
+
+/* Header */
+header{height:64px;padding:0 18px;box-shadow:0 2px 14px rgba(0,0,0,.06)}
+header .brand strong{font-size:17px}
+header .brand small{font-size:11px}
+#authUserEmail{max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+/* Bottom navigation: five predictable destinations */
+nav{height:76px;min-height:76px;grid-template-columns:repeat(5,1fr);gap:4px;padding:6px 8px calc(6px + env(safe-area-inset-bottom));box-shadow:0 -6px 22px rgba(20,40,45,.07);border-top:1px solid var(--af-border);background:rgba(255,255,255,.97);backdrop-filter:blur(10px)}
+nav button{position:relative;border-radius:13px;font-size:20px;padding:7px 2px;min-width:0;line-height:1;transition:background .15s ease,color .15s ease}
+nav button span{font-size:10px;margin-top:5px;font-weight:650}
+nav button.active{background:#e8f7f8;color:var(--af-primary)}
+nav button.active:before{content:"";position:absolute;top:2px;left:50%;width:24px;height:3px;border-radius:10px;background:var(--af-primary);transform:translateX(-50%)}
+/* Reports/cotizador add their legacy nav buttons dynamically; they now live under Más. */
+nav button[data-tab="reports"],nav button[data-tab="cotizador"]{display:none!important}
+
+/* More */
+.more-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.more-card{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:12px;text-align:left;width:100%;border:1px solid var(--af-border);background:#fff;border-radius:16px;padding:15px;box-shadow:var(--af-shadow);cursor:pointer;color:inherit;transition:transform .15s ease,box-shadow .15s ease,border-color .15s ease}
+.more-card:hover{transform:translateY(-1px);border-color:#b9d9dc;box-shadow:0 9px 25px rgba(15,35,42,.09)}
+.more-card:active{transform:translateY(0)}
+.more-icon{width:42px;height:42px;border-radius:13px;display:grid;place-items:center;background:#eef8f9;font-size:21px}
+.more-card b,.more-card small{display:block}.more-card b{font-size:14px}.more-card small{font-size:11px;color:var(--af-muted);margin-top:3px;line-height:1.35}.more-card>strong{font-size:23px;color:#8a999c;font-weight:500}
+.more-tip{display:flex;gap:12px;align-items:flex-start;background:linear-gradient(135deg,#eef9fa,#fff)}
+.more-tip>span{font-size:22px}.more-tip p{margin:4px 0 0;color:var(--af-muted);font-size:12px;line-height:1.5}
+
+/* Dashboard: clearer hierarchy */
+.dashboard-screen{padding-top:20px}
+.dashboard-kpis{gap:10px}
+.dashboard-kpis .card{min-height:112px}
+.dashboard-kpis .card span{font-size:12px;font-weight:650}
+.dashboard-kpis .card b{font-size:22px}
+.dashboard-hero{margin-bottom:14px}
+.dashboard-hero h1{letter-spacing:-.02em}
+.dashboard-status-panel{background:#fff}
+
+/* Quick actions */
+.quick-actions-grid button{box-shadow:0 2px 8px rgba(20,40,45,.04);transition:transform .15s ease,border-color .15s ease}
+.quick-actions-grid button:hover{transform:translateY(-1px);border-color:#b9d9dc}
+
+/* Lists/cards */
+.item{min-height:64px}
+.item .data-actions button{min-height:40px}
+.badge{font-weight:700}
+.empty{background:#fff;border:1px dashed #d8e2e4;border-radius:14px}
+
+/* Modals / touch targets */
+.modal-box{box-shadow:0 -12px 45px rgba(0,0,0,.16)}
+.modal-head button{cursor:pointer}
+.form-actions button,.data-actions button{min-height:44px}
+
+@media(min-width:901px){
+  main{max-width:1180px;margin:auto}
+  nav{max-width:1180px}
+}
+@media(max-width:699px){
+  body{padding-bottom:88px}
+  header{height:60px;padding:0 12px}
+  header .brand img{width:36px;height:36px}
+  header .brand strong{font-size:15px}
+  #authUserEmail{display:none}
+  #logoutBtn{padding:8px 10px;font-size:12px}
+  .screen{padding:14px 12px}
+  .section-head{margin-bottom:10px}
+  .section-head .primary{white-space:nowrap}
+  .page-subtitle{font-size:12px}
+  .more-grid{grid-template-columns:1fr;gap:9px}
+  .more-card{padding:13px}
+  .more-icon{width:40px;height:40px}
+  nav{height:78px;min-height:78px;padding-left:5px;padding-right:5px}
+  nav button{font-size:19px}
+  nav button span{font-size:9px}
+  .dashboard-screen{padding-top:14px}
+  .dashboard-kpis .card{min-height:98px}
+  .dashboard-kpis .card b{font-size:18px}
+  .dashboard-hero p{font-size:12px}
+}
+@media(min-width:700px) and (max-width:1100px){
+  .screen{padding:18px}
+  .more-grid{grid-template-columns:repeat(2,1fr)}
+}
+@media(max-width:380px){
+  nav button span{font-size:8px}
+  nav button{font-size:18px}
+  .section-head h1{font-size:22px}
+}
+
+
+/* =========================================================
+   ETAPA B — INVENTARIO Y VENTAS
+   ========================================================= */
+.stageb-search-wrap{position:relative;margin-bottom:4px}
+.stageb-search-wrap .search{padding-right:44px;margin-bottom:0}
+.stageb-clear-search{position:absolute;right:8px;top:50%;transform:translateY(-50%);width:34px;height:34px;border:0;border-radius:50%;background:#eef3f4;color:#617174;font-size:21px;line-height:1;cursor:pointer}
+.stageb-controls{margin-top:10px}
+.stageb-toolbar{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px;margin:10px 0}
+.stageb-filter-group label{display:block;font-size:11px;font-weight:800;color:#718084;text-transform:uppercase;letter-spacing:.04em;margin:0 0 5px 2px}
+.stageb-select{width:100%;margin:0!important;padding:10px 11px!important;font-size:14px!important;border-radius:11px!important;background:#fff}
+.stageb-inventory-summary{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:8px 0 12px;padding:10px 12px;border:1px solid var(--af-border);border-radius:12px;background:#f9fbfb;color:#68777b;font-size:12px}
+.stageb-inventory-summary span{white-space:nowrap}.stageb-inventory-summary span+span{padding-left:10px;border-left:1px solid #dfe7e8}.stageb-inventory-summary b{color:#172024}
+.stageb-product-card{background:#fff;border:1px solid var(--af-border);border-radius:16px;box-shadow:var(--af-shadow);overflow:hidden}
+.stageb-product-main{display:block;width:100%;border:0;background:transparent;text-align:left;padding:14px 15px 10px;color:inherit;cursor:pointer}
+.stageb-product-title-row{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}.stageb-product-title-row>div{min-width:0}.stageb-product-title-row b{display:block;font-size:15px;overflow-wrap:anywhere}.stageb-product-title-row small{display:block;margin-top:3px;color:#6c7a7e;font-size:12px}
+.stageb-status{display:inline-flex;align-items:center;justify-content:center;gap:4px;padding:5px 8px;border-radius:999px;font-size:11px;font-weight:800;white-space:nowrap}.stageb-good{background:#eaf7ef;color:#237344}.stageb-warning{background:#fff5df;color:#956313}.stageb-danger{background:#fff0ee;color:#ad4038}.stageb-info{background:#eaf5fb;color:#236681}
+.stageb-product-metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:12px}.stageb-product-metrics span{background:#f7f9fa;border-radius:10px;padding:8px 9px}.stageb-product-metrics small{display:block;color:#788589;font-size:10px}.stageb-product-metrics b{display:block;margin-top:2px;font-size:13px}
+.stageb-product-actions{border-top:1px solid #edf1f2;padding:8px 12px;text-align:right}.stageb-product-actions button,.stageb-sale-side button{border:1px solid #d8e1e3;background:#fff;border-radius:9px;padding:8px 10px;font-weight:700;font-size:12px;cursor:pointer}.stageb-product-actions button:hover,.stageb-sale-side button:hover{border-color:#9fc8cd;background:#f8fcfc}
+.stageb-sales-kpi{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:10px 0 14px}.stageb-sales-kpi span{background:#fff;border:1px solid var(--af-border);border-radius:13px;padding:11px 12px;box-shadow:0 3px 12px rgba(15,35,42,.04)}.stageb-sales-kpi small{display:block;color:#758286;font-size:10px}.stageb-sales-kpi b{display:block;margin-top:3px;font-size:16px}
+.stageb-date-group{box-shadow:0 4px 16px rgba(15,35,42,.04)}.stageb-sale-card{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:14px;padding:13px 14px;border-bottom:1px solid #edf1f2;background:#fff}.stageb-sale-card:last-child{border-bottom:0}.stageb-sale-info{min-width:0}.stageb-sale-top{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}.stageb-sale-top b{display:block;font-size:14px}.stageb-sale-top small{display:block;color:#758286;font-size:11px;margin-top:3px}.stageb-sale-info p{margin:8px 0;color:#4e5d61;font-size:12px;line-height:1.45;overflow-wrap:anywhere}.stageb-sale-bottom{display:flex;justify-content:space-between;gap:10px;align-items:center;color:#7a878a;font-size:11px}.stageb-sale-bottom strong{color:#087f8c}.stageb-sale-side{text-align:right;min-width:118px}.stageb-sale-side>b{display:block;font-size:16px;margin-bottom:7px}.stageb-sale-side button{display:block;width:100%;margin-top:5px}.stageb-sale-side .danger-text{color:#a84a43}
+@media(max-width:699px){.stageb-toolbar{grid-template-columns:1fr 1fr}.stageb-toolbar .stageb-filter-group:last-child{grid-column:1/-1}.stageb-inventory-summary{gap:7px}.stageb-inventory-summary span+span{padding-left:7px}.stageb-product-title-row{align-items:flex-start}.stageb-product-title-row .stageb-status{font-size:10px;padding:5px 7px}.stageb-product-metrics{gap:6px}.stageb-product-metrics span{padding:7px}.stageb-product-metrics b{font-size:12px}.stageb-sales-kpi{grid-template-columns:1fr 1fr}.stageb-sale-card{grid-template-columns:1fr;gap:9px}.stageb-sale-side{display:grid;grid-template-columns:1fr 1fr;gap:6px;text-align:left}.stageb-sale-side>b{grid-column:1/-1;margin:0}.stageb-sale-side button{margin:0}.stageb-sale-bottom{align-items:flex-start;flex-direction:column;gap:3px}}
+@media(max-width:380px){.stageb-toolbar{grid-template-columns:1fr}.stageb-toolbar .stageb-filter-group:last-child{grid-column:auto}.stageb-inventory-summary span+span{border-left:0;padding-left:0}.stageb-product-title-row{flex-direction:column}.stageb-product-title-row .stageb-status{align-self:flex-start}}
+
+/* =====================================================
+   ETAPA D — CENTRO DE HERRAMIENTAS Y CONTROL
+   ===================================================== */
+.more-overview{margin:0 0 12px}
+.more-status-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px}
+.more-status-grid>div{background:#fff;border:1px solid var(--af-border);border-radius:14px;padding:11px 12px;box-shadow:var(--af-shadow)}
+.more-status-grid span{display:block;color:var(--af-muted);font-size:10px;font-weight:700}
+.more-status-grid b{display:block;margin-top:4px;font-size:17px}
+.more-backup-line{margin-top:8px;padding:9px 12px;border-radius:11px;background:#f7fafb;color:#6b797d;font-size:11px;border:1px solid #e3eaeb}
+.more-backup-line b{color:#273438}
+.more-backup-panel{border:1px solid #cfe3e5;background:linear-gradient(135deg,#f3fbfb,#fff)}
+.more-backup-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+.more-backup-head h2{margin-bottom:4px}
+.more-backup-head button{width:34px;height:34px;border:0;border-radius:50%;background:#eaf1f2;font-size:21px;cursor:pointer}
+.more-backup-actions{display:flex;gap:8px;flex-wrap:wrap;margin:14px 0 10px}
+.more-backup-actions button{min-height:44px}
+.more-safety-note{padding:11px 12px;border-radius:12px;background:#fff;border:1px dashed #cbdfe1;color:#536367;font-size:12px;line-height:1.45}
+.stage-d-move-controls{display:grid!important;grid-template-columns:2fr 1fr!important;gap:9px!important}
+.stage-d-move-controls .stageb-search-wrap{margin-bottom:0}
+.stage-d-move-controls .search{margin-bottom:0}
+.stage-d-move-item{align-items:center}
+.stage-d-move-item .badge{font-weight:800}
+@media(max-width:699px){
+  .more-status-grid{grid-template-columns:1fr 1fr}
+  .stage-d-move-controls{grid-template-columns:1fr!important}
+  .more-backup-actions button{flex:1;min-width:150px}
+}
+@media(max-width:380px){
+  .more-status-grid{grid-template-columns:1fr 1fr}
+  .more-status-grid>div{padding:10px}
+  .more-status-grid b{font-size:15px}
+}
+
+
+/* =========================================================
+   ETAPA 4.9 — COTIZADOR COMPACTO
+   ========================================================= */
+#cotizador details > summary { list-style: none; }
+#cotizador details > summary::-webkit-details-marker { display:none; }
+#cotizador details > summary::before { content:"＋"; display:inline-block; margin-right:6px; }
+#cotizador details[open] > summary::before { content:"−"; }
+#cotizador textarea { width:100%; box-sizing:border-box; resize:vertical; }
+#cotizador .badge { white-space:nowrap; }
+@media (max-width: 600px){
+  #cotizador .section-head { align-items:flex-start; }
+  #cotizador .section-head h1 { font-size:1.35rem; }
+  #cotizador .panel { margin-bottom:10px; }
+  #cotizador button { min-height:42px; }
+}
+@media (max-width: 430px){
+  #cotizador [style*="grid-template-columns:minmax(0,1.4fr)"] { grid-template-columns:1fr !important; }
+  #cotizador [style*="grid-template-columns:1fr 1fr"] { grid-template-columns:1fr !important; }
+  #cotizador [style*="repeat(4,minmax(0,1fr))"] { grid-template-columns:repeat(2,minmax(0,1fr)) !important; }
+}
+
+/* ETAPA E — indicadores y seguimiento */
+.dashboard-bar-col{display:flex;flex-direction:column;align-items:center;gap:5px;min-width:0;flex:1;height:190px}.dashboard-bar-col>span{font-size:.72rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}.dashboard-bar-track{height:130px;width:100%;max-width:34px;display:flex;align-items:flex-end;border-radius:10px;background:rgba(0,0,0,.04);overflow:hidden}.dashboard-bar{width:100%;border-radius:10px 10px 4px 4px;background:var(--primary,#1976d2);min-height:4px}.dashboard-bar-col small{font-size:.72rem;text-transform:capitalize}.dashboard-hbar-row{margin-bottom:12px}.dashboard-hbar-row>div:first-child{display:flex;justify-content:space-between;gap:10px;font-size:.85rem}.dashboard-hbar-track{height:8px;border-radius:99px;background:rgba(0,0,0,.06);overflow:hidden;margin-top:5px}.dashboard-hbar{height:100%;border-radius:99px;background:var(--primary,#1976d2)}.dashboard-insight{padding:10px 12px;border:1px solid rgba(0,0,0,.07);border-radius:12px;margin-bottom:8px;background:rgba(255,255,255,.5)}.dashboard-change{display:inline-flex;align-items:center;font-size:.8rem;font-weight:700;margin-top:5px}.dashboard-change.positive{color:#16803c}.dashboard-change.negative{color:#b42318}.dashboard-change.neutral{color:#667781}
+@media (max-width:700px){.dashboard-bar-col{height:155px}.dashboard-bar-track{height:105px;max-width:28px}.dashboard-bar-col>span{font-size:.65rem}.dashboard-grid{grid-template-columns:1fr}.dashboard-period-grid{grid-template-columns:1fr}.dashboard-kpis{grid-template-columns:1fr 1fr}.dashboard-kpis .dash-main-card{grid-column:1/-1}}
+
+
+/* ETAPA F — OPTIMIZACION, SEGURIDAD Y EXPERIENCIA */
+.stagef-audit-panel{margin-top:12px}
+.stagef-audit-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}
+.stagef-audit-head h2{margin:0 0 4px}.stagef-audit-head button{min-height:42px;border:1px solid var(--af-border);background:#fff;border-radius:11px;padding:9px 13px;font-weight:800;cursor:pointer}
+.stagef-audit-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.stagef-audit-item{display:flex;gap:10px;align-items:flex-start;padding:11px 12px;border:1px solid var(--af-border);border-radius:12px;background:#fff}
+.stagef-audit-item.ok{border-color:#d6eadc;background:#fbfefc}.stagef-audit-item.bad{border-color:#efd4d1;background:#fffafa}
+.stagef-audit-icon{width:24px;height:24px;display:grid;place-items:center;border-radius:50%;font-weight:900;flex:0 0 24px;background:#e8f5ec;color:#257344}.stagef-audit-item.bad .stagef-audit-icon{background:#fde9e6;color:#ad4038}
+.stagef-audit-item b{display:block;font-size:12px}.stagef-audit-item small{display:block;margin-top:3px;color:var(--af-muted);line-height:1.35;font-size:11px}
+.stagef-audit-empty{grid-column:1/-1;padding:14px;border:1px dashed var(--af-border);border-radius:12px;color:var(--af-muted);text-align:center}
+.stagef-audit-time{margin-top:9px;font-size:11px}
+@media(max-width:699px){.stagef-audit-head{align-items:stretch;flex-direction:column}.stagef-audit-head button{width:100%}.stagef-audit-grid{grid-template-columns:1fr}}
+
+
+/* =========================================================
+   ETAPA G — LISTA COMERCIAL DE DISPONIBILIDAD
+   ========================================================= */
+.inventory-head-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:flex-end}
+.availability-panel{margin:12px 0 16px;padding:14px;border:1px solid rgba(23,111,126,.16);border-radius:16px;background:linear-gradient(180deg,#ffffff,#f7fbfc);box-shadow:0 6px 18px rgba(20,70,80,.06)}
+.availability-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}
+.availability-head h2{margin:2px 0 4px;font-size:1.1rem}
+.availability-close{font-size:1.25rem;line-height:1;min-width:38px}
+.availability-controls{display:grid;grid-template-columns:minmax(180px,1fr) auto;gap:10px;align-items:end;margin:12px 0}
+.availability-controls label{display:grid;gap:5px;font-weight:700;font-size:.85rem}
+.availability-controls select{width:100%;box-sizing:border-box}
+.availability-check{display:flex !important;grid-template-columns:none !important;align-items:center;gap:8px !important;padding:10px 12px;border:1px solid rgba(0,0,0,.08);border-radius:10px;background:#fff;white-space:nowrap;height:42px}
+.availability-check input{width:auto;max-width:none}
+.availability-preview{background:#fff;border:1px solid #dce8ea;border-radius:14px;padding:14px}
+.availability-preview-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;border-bottom:1px solid #e4edef;padding-bottom:10px}
+.availability-preview-head h3{margin:4px 0;font-size:1rem}
+.availability-preview-head small{color:#6d8085}
+.availability-items{margin-top:6px}
+.availability-item{display:flex;justify-content:space-between;gap:12px;padding:9px 3px;border-bottom:1px solid #edf2f3}
+.availability-item:last-child{border-bottom:0}
+.availability-item b{min-width:28px;text-align:right}
+.availability-note{margin-top:10px;padding-top:10px;border-top:1px solid #e4edef;color:#64797e;font-size:.8rem}
+.availability-actions{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:10px}
+@media (max-width:700px){
+  .inventory-head-actions{width:100%;justify-content:stretch}
+  .inventory-head-actions button{flex:1;min-width:0}
+  .availability-controls{grid-template-columns:1fr}
+  .availability-actions{grid-template-columns:1fr}
+  .availability-preview-head{align-items:center}
+}
+
+
+/* =========================================================
+   ETAPA 1 — ESTADO DE SINCRONIZACIÓN
+   ========================================================= */
+.sync-badge{display:inline-flex;align-items:center;gap:5px;padding:6px 9px;border-radius:999px;font-size:11px;font-weight:800;white-space:nowrap;border:1px solid transparent}
+.sync-neutral{background:#f3f6f7;color:#60777d;border-color:#dbe5e7}
+.sync-working{background:#fff8e8;color:#795b00;border-color:#f0dfaa}
+.sync-ok{background:#edf9f1;color:#1f6b3a;border-color:#cbe9d5}
+.sync-error{background:#fff0f0;color:#a33a3a;border-color:#f0caca}
+@media(max-width:700px){.sync-badge{padding:5px 7px;font-size:10px}.authUserEmail{display:none}}
+
+/* =========================================================
+   ETAPA 2 — CENTRO DE SINCRONIZACIÓN Y RESPALDO
+   ========================================================= */
+.sync-center-panel{border:1px solid #cfe3e5;background:linear-gradient(135deg,#f4fbfb,#ffffff)}
+.sync-center-head{display:flex;align-items:flex-start;justify-content:space-between;gap:14px}
+.sync-center-state{display:inline-flex;align-items:center;justify-content:center;min-height:34px;padding:7px 11px;border-radius:999px;background:#eaf6f6;color:#087f8c;font-size:11px;font-weight:800;white-space:nowrap;border:1px solid #cfe3e5}
+.sync-center-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px;margin-top:14px}
+.sync-center-item{padding:11px 12px;border:1px solid #e1eaeb;border-radius:11px;background:#fff;min-width:0}
+.sync-center-item span{display:block;color:#718084;font-size:11px;margin-bottom:5px}
+.sync-center-item b{display:block;color:#273438;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sync-center-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.sync-center-actions button{min-height:43px}
+.sync-center-message{margin:10px 0 0;padding:9px 11px;border-radius:10px;background:#f7fafb;border:1px solid #e3eaeb}
+@media(max-width:900px){.sync-center-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:600px){.sync-center-head{flex-direction:column}.sync-center-state{align-self:flex-start}.sync-center-grid{grid-template-columns:1fr 1fr}.sync-center-actions button{flex:1;min-width:145px}}
+
+
+/* ETAPA 5 — Inventario inteligente */
+.stage5-inventory-panel{margin:10px 0 12px;padding:14px;border:1px solid #dbe8eb;border-radius:16px;background:linear-gradient(180deg,#fff,#f7fbfc)}
+.stage5-head{display:flex;justify-content:space-between;gap:12px;margin-bottom:10px}.stage5-head b{display:block;font-size:16px}.stage5-head small{display:block;margin-top:3px;color:#65787d}
+.stage5-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}.stage5-kpis>div,.stage5-kpis>button{min-width:0;padding:10px;border:1px solid #e0eaec;border-radius:12px;background:#fff;text-align:left}.stage5-kpis button{font:inherit;cursor:pointer}.stage5-kpis b{display:block;font-size:15px}.stage5-kpis small{display:block;margin-top:3px;color:#687b80;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.stage5-rotation{display:flex;justify-content:space-between;gap:14px;margin-top:9px;padding:10px 12px;border-radius:12px;background:#f2f7f8}.stage5-rotation>div:first-child{flex:1}.stage5-rotation b{display:block}.stage5-rotation small{display:block;color:#687b80;line-height:1.45;margin-top:3px}.stage5-rotation>div:last-child{text-align:right;min-width:110px}.stage5-rotation>div:last-child b{font-size:17px}
+@media(max-width:650px){.stage5-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.stage5-rotation{display:block}.stage5-rotation>div:last-child{text-align:left;margin-top:8px}}
