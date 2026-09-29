@@ -1,8 +1,10 @@
 const KEY = "aquarium_fish_data_v5";
 
 /* =========================================================
-   ARRANQUE SEGURO
-   Evita que un almacenamiento local corrupto bloquee la app.
+   ARRANQUE SEGURO Y AISLADO POR USUARIO
+   La aplicación NO carga datos locales compartidos antes de
+   conocer la cuenta autenticada. Firebase selecciona después
+   la clave local exclusiva del UID.
    ========================================================= */
 function readStoredObject(key){
   try{
@@ -21,72 +23,47 @@ const EMPTY_DB = {
   orders: [], cash: [], quotes: []
 };
 
-let db =
-  readStoredObject(KEY) ||
-  readStoredObject("aquarium_fish_data_v4") ||
-  readStoredObject("aquarium_fish_data_v3") ||
-  readStoredObject("aquarium_fish_data_v2") ||
-  readStoredObject("aquarium_fish_data_v1") ||
-  EMPTY_DB;
+// Importante: no recuperar aquí v1-v5 ni una clave compartida.
+// El módulo de autenticación/sincronización cargará los datos del UID.
+let db = normalizeLocalDB(EMPTY_DB);
 
-db.products =
-  Array.isArray(db.products)
-    ? db.products
-    : [];
+function normalizeLocalDB(data){
+  const source = data && typeof data === "object" ? data : {};
+  const result = {
+    products: Array.isArray(source.products) ? source.products : [],
+    sales: Array.isArray(source.sales) ? source.sales : [],
+    moves: Array.isArray(source.moves) ? source.moves : [],
+    customers: Array.isArray(source.customers) ? source.customers : [],
+    orders: Array.isArray(source.orders) ? source.orders : [],
+    cash: Array.isArray(source.cash) ? source.cash : [],
+    quotes: Array.isArray(source.quotes) ? source.quotes : []
+  };
 
-db.sales =
-  Array.isArray(db.sales)
-    ? db.sales
-    : [];
+  result.orders.forEach(order => {
+    if(!order || typeof order !== "object") return;
+    if(!order.status) order.status = "Pendiente";
+    if(order.qty == null) order.qty = 1;
+    if(order.price == null) order.price = 0;
+    if(order.note == null) order.note = "";
+  });
 
-db.moves =
-  Array.isArray(db.moves)
-    ? db.moves
-    : [];
+  result.quotes.forEach(quote => {
+    if(!quote || typeof quote !== "object") return;
+    if(!quote.id) quote.id = `COT-${String(result.quotes.indexOf(quote)+1).padStart(4,"0")}`;
+    if(!quote.status) quote.status = "Pendiente";
+    if(!Array.isArray(quote.items)) quote.items = [];
+    if(quote.discount == null) quote.discount = 0;
+  });
 
-db.customers =
-  Array.isArray(db.customers)
-    ? db.customers
-    : [];
+  result.customers.forEach(customer => {
+    if(!Array.isArray(customer.payments)) customer.payments = [];
+  });
 
-db.orders =
-  Array.isArray(db.orders)
-    ? db.orders
-    : [];
+  return result;
+}
 
-db.orders.forEach(order => {
+db = normalizeLocalDB(db);
 
-  if(!order || typeof order !== "object"){
-    return;
-  }
-
-  if(!order.status){
-    order.status = "Pendiente";
-  }
-
-  if(order.qty == null){
-    order.qty = 1;
-  }
-
-  if(order.price == null){
-    order.price = 0;
-  }
-
-  if(order.note == null){
-    order.note = "";
-  }
-
-});
-
-db.cash =
-  Array.isArray(db.cash)
-    ? db.cash
-    : [];
-
-db.quotes = Array.isArray(db.quotes) ? db.quotes : [];
-
-// Exponer la base de datos al módulo JARVIS sin cambiar su estructura.
-// El getter siempre devuelve la referencia actual, incluso después de importar un respaldo.
 if (typeof window !== "undefined") {
   Object.defineProperty(window, "db", {
     configurable: true,
@@ -94,13 +71,6 @@ if (typeof window !== "undefined") {
   });
 }
 
-db.quotes.forEach(quote => {
-  if(!quote || typeof quote !== "object") return;
-  if(!quote.id) quote.id = `COT-${String(db.quotes.indexOf(quote)+1).padStart(4,"0")}`;
-  if(!quote.status) quote.status = "Pendiente";
-  if(!Array.isArray(quote.items)) quote.items = [];
-  if(quote.discount == null) quote.discount = 0;
-});
 
 /* =========================================================
    CLIENTES - CUENTAS PENDIENTES
