@@ -14,12 +14,12 @@
   window.__AQUARIUM_FISH_MODULAR_LOADED__ = true;
 
   var modules = [
-    "app-core.js",
-    "app-inventario-reportes.js",
-    "app-cotizaciones.js",
-    "app-operacion.js",
-    "app-caja-respaldos.js",
-    "app-mejoras.js"
+    "app-core.js?v=20260929",
+    "app-inventario-reportes.js?v=20260929",
+    "app-cotizaciones.js?v=20260929",
+    "app-operacion.js?v=20260929",
+    "app-caja-respaldos.js?v=20260929",
+    "app-mejoras.js?v=20260929"
   ];
 
   // app.js se ejecuta durante el parseo de index.html. document.write

@@ -655,6 +655,14 @@ function setReportPeriod(value){
 }
 
 
+/* Compatibilidad: algunas versiones anteriores invocaban renderIA().
+   La función no forma parte del núcleo modular actual; mantener un stub
+   evita que una llamada heredada detenga el renderizado general. */
+if (typeof window.renderIA !== "function") {
+  window.renderIA = function renderIA() {};
+}
+
+
 /* =========================================================
    RENDER GENERAL
    ========================================================= */
