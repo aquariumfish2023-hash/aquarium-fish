@@ -2755,20 +2755,30 @@ function quoteFollowupStats(){
 function renderQuotesList(){
   const el=document.getElementById("quotesList");
   if(!el) return;
-  const quotes=Array.isArray(db.quotes)?db.quotes:[];
+
+  // Las cotizaciones convertidas se conservan en los datos y en Firebase
+  // para mantener el historial, pero salen del listado activo para que
+  // la pantalla de trabajo no se vuelva interminable.
+  const allQuotes=Array.isArray(db.quotes)?db.quotes:[];
+  const quotes=allQuotes.filter(q=>q && !q.convertedSaleId && String(q.status||"").toLowerCase()!=="convertida en venta");
+
+  const countLabel=el.closest("details")?.querySelector("summary");
+  if(countLabel){
+    countLabel.innerHTML=`📋 Cotizaciones pendientes <span class="muted">· ${quotes.length}</span>`;
+  }
+
   el.innerHTML=quotes.length ? quotes.slice().sort((a,b)=>String(b.updatedAt||b.createdAt||"").localeCompare(String(a.updatedAt||a.createdAt||""))).map(q=>{
     const id=q.id||"";
     const customer=q.customer||"Cliente general";
     const dateObj=parseLocalDate(q.createdAt||q.date);
     const dateText=dateObj?dateObj.toLocaleDateString("es-CO"):"";
     const total=Number(q.total||0);
-    const converted=!!q.convertedSaleId;
     const fs=quoteFollowupState(q);
     const followText=q.followupDate ? `${fs.icon} ${fs.label} · ${formatFollowupDate(q.followupDate)}` : `${fs.icon} ${fs.label}`;
     return `<div class="quote-row" style="display:grid;grid-template-columns:1.1fr .8fr .9fr 1.25fr;gap:8px;align-items:center;padding:10px 0;border-bottom:1px solid rgba(0,0,0,.08);">
       <div><b>${esc(id)}</b><div class="muted">${esc(customer)}</div></div>
       <div class="muted">${esc(dateText)}</div>
-      <div><b>${money(total)}</b><div class="muted">${esc(quoteStatusLabel(q))}</div></div>
+      <div><b>${money(total)}</b><div class="muted">${esc(q.status||"Pendiente")}</div></div>
       <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
         <span class="badge">${esc(followText)}</span>
         <button type="button" onclick="viewQuote('${esc(id)}')">👁️ Ver</button>
@@ -2776,11 +2786,13 @@ function renderQuotesList(){
         <button type="button" onclick="duplicateQuote('${esc(id)}')">📑 Duplicar</button>
         <button type="button" onclick="shareSavedQuoteWhatsApp('${esc(id)}')">📲 WhatsApp</button>
         <button type="button" onclick="printQuote('${esc(id)}')">🖨️</button>
-        ${!converted ? `<button type="button" onclick="openQuoteStatus('${esc(id)}')">📌 Estado</button>` : ""}
-        ${converted ? `<span class="badge">✅ Venta ${esc(q.convertedSaleId)}</span>` : `<button type="button" onclick="editQuote('${esc(id)}')">✏️ Editar</button><button type="button" class="primary" onclick="convertQuoteToSale('${esc(id)}')">➡️ Convertir</button>${q.followupDate&&!q.followupCompleted?`<button type="button" onclick="markQuoteFollowupDone('${esc(id)}')">☑️ Listo</button>`:""}`}
-        ${!converted ? `<button type="button" onclick="deleteQuote('${esc(id)}')">🗑️</button>` : ""}
+        <button type="button" onclick="openQuoteStatus('${esc(id)}')">📌 Estado</button>
+        <button type="button" onclick="editQuote('${esc(id)}')">✏️ Editar</button>
+        <button type="button" class="primary" onclick="convertQuoteToSale('${esc(id)}')">➡️ Convertir</button>
+        ${q.followupDate&&!q.followupCompleted?`<button type="button" onclick="markQuoteFollowupDone('${esc(id)}')">☑️ Listo</button>`:""}
+        <button type="button" onclick="deleteQuote('${esc(id)}')">🗑️</button>
       </div></div>`;
-  }).join("") : `<div class="empty">No hay cotizaciones guardadas todavía.</div>`;
+  }).join("") : `<div class="empty"><b>No hay cotizaciones pendientes</b><div class="muted">Las cotizaciones convertidas en venta se retiran automáticamente de esta lista.</div></div>`;
 }
 
 function editQuote(quoteId){
@@ -2950,8 +2962,8 @@ function convertQuoteToSale(quoteId){
     })),
     total:+q.total || 0
   };
-  q.status="Lista para venta";
-  save();
+  // La cotización permanece pendiente hasta que la venta se guarde realmente.
+  // Así, si el usuario cancela la venta, no queda marcada de forma incorrecta.
   openSale(window.pendingQuoteToSale);
 }
 
@@ -4881,6 +4893,13 @@ function updateSalePreview() {
 }
 
 
+function cancelSaleEntry(){
+  // Si la venta provenía de una cotización, cancelar aquí no debe
+  // dejar una conversión pendiente que pueda afectar una venta posterior.
+  window.pendingQuoteToSale = null;
+  closeModal();
+}
+
 function openSale(quotePayload = null) {
 
   modal(
@@ -4969,29 +4988,13 @@ function openSale(quotePayload = null) {
         style="margin-top:12px;"
       >
 
-        <b>
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;">
+          <b>Total</b>
+          <strong id="saleTotalPreview" style="font-size:1.25rem;">${money(0)}</strong>
+        </div>
 
-          Total:
-
-          <span
-            id="saleTotalPreview"
-          >
-            ${money(0)}
-          </span>
-
-        </b>
-
-
-        <div>
-
-          Ganancia estimada:
-
-          <span
-            id="saleProfitPreview"
-          >
-            ${money(0)}
-          </span>
-
+        <div class="muted" style="margin-top:7px;font-size:.9rem;">
+          👁️ Modo cliente: la información interna de costos y ganancias permanece oculta.
         </div>
 
       </div>
@@ -5088,7 +5091,7 @@ function openSale(quotePayload = null) {
 
         <button
           type="button"
-          onclick="closeModal()"
+          onclick="cancelSaleEntry()"
         >
           Cancelar
         </button>
