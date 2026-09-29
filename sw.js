@@ -1,9 +1,14 @@
-const CACHE='aquarium-fish-v25';
+const CACHE='aquarium-fish-v26';
 const ASSETS=[
   './',
   './index.html',
   './style.css',
-  './app.js',
+  './js/app-core.js',
+  './js/app-inventario-reportes.js',
+  './js/app-cotizaciones.js',
+  './js/app-operacion.js',
+  './js/app-caja-respaldos.js',
+  './js/app-mejoras.js',
   './manifest.json',
   './icon.svg',
   './splash-v7.png',
